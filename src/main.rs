@@ -1,79 +1,29 @@
 #[macro_use]
 extern crate clap;
+extern crate create_graphene;
 
-mod coords;
-mod grids;
-mod output;
-mod substrates;
-
-use coords::Coord;
-use substrates::Atom;
-
-use clap::{App, Arg, ArgMatches};
-use std::io;
-use std::io::Write;
-
-pub struct System {
-    title: String,
-    atoms: Vec<Atom>,
-    dimensions: Coord
-}
+use std::io::prelude::*;
 
 fn main() {
-    let matches = App::new("create_graphene")
-        .version("0.2")
-        .author("Petter Johansson <pettjoha@kth.se>")
-        .about("Create a graphene substrate and output it to a GROMOS formatted file")
-        .arg(Arg::with_name("output")
-            .help("output .gro file (the extension will be corrected)")
-            .value_name("PATH")
-            .required(true))
-        .arg(Arg::with_name("x")
-            .help("size along x")
-            .value_name("FLOAT")
-            .required(true))
-        .arg(Arg::with_name("y")
-            .help("size along y")
-            .value_name("FLOAT")
-            .required(true))
-        .arg(Arg::with_name("title")
-            .help("title of system (default: \"Graphene substrate\")")
-            .short("t")
-            .long("title")
-            .value_name("STR")
-            .takes_value(true)
-            .required(false))
-        .get_matches();
+    let mut stderr = std::io::stderr();
 
-    match run(matches) {
-        Err(val) => std::process::exit(val),
-        Ok(_)  => ()
-    }
-}
+    let matches = clap_app!(create_graphene =>
+        (version: crate_version!())
+        (author: crate_authors!())
+        (about: crate_description!())
+        (@arg output: <PATH> "output .gro file (the extension will be corrected)")
+        (@arg x: <X> "size along x")
+        (@arg y: <Y> "size along y")
+        (@arg title: -t --title [STR] +takes_value "title of system (default: \"Graphene substrate\")")
+    ).get_matches();
 
-fn run(matches: ArgMatches) -> Result<(), i32> {
-    let output_file = value_t_or_exit!(matches, "output", String);
-    let size_x = value_t_or_exit!(matches, "x", f64);
-    let size_y = value_t_or_exit!(matches, "y", f64);
-    let title = value_t!(matches, "title", String).unwrap_or("Graphene substrate".to_string());
+    let config = create_graphene::Config::new(matches).unwrap_or_else(|err| {
+        writeln!(&mut stderr, "{}", err).expect("could not write to stderr");
+        std::process::exit(1)
+    });
 
-    let system = match substrates::create_graphene(size_x, size_y) {
-        Ok(substrate) => System {
-            title: title,
-            atoms: substrate.coords,
-            dimensions: substrate.dimensions
-        },
-        Err(e) => {
-            writeln!(io::stderr(), "Error: Could not create system ({})", e).unwrap();
-            return Err(2);
-        }
-    };
-
-    match output::write_gromos(system, output_file) {
-        Ok(_)  => Ok(()),
-        Err(e) => {
-            writeln!(io::stderr(), "Error: Could not write system to disk ({})", e).unwrap();
-            Err(1)
-        }
+    if let Err(e) = create_graphene::run(config) {
+        writeln!(&mut stderr, "{}", e).expect("could not write to stderr");
+        std::process::exit(1)
     }
 }

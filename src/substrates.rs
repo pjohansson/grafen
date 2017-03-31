@@ -16,6 +16,12 @@ pub struct Atom {
     pub position: Coord       // Atom position
 }
 
+/// Substrate types
+pub enum Substrate {
+    Graphene,
+    Silica
+}
+
 // This is a base for generating atoms belonging to a residue.
 // Every residue has a name and a list of atoms that belong to it
 // with their base coordinates. The names are static since these
@@ -30,18 +36,28 @@ struct ResidueAtom  {
     position: Coord
 }
 
-/// Create a graphene layer of desired input size.
-///
-/// The layer consists of a hexagonal grid of carbon atoms
-/// which is created with a bond length of 0.142 nm. To ensure
-/// that the system can be periodically replicated along x and y
-/// the dimensions are trimmed to the closest possible size
-/// that fits an even number of replicas.
-pub fn create_graphene(size_x: f64, size_y: f64) -> Result<AtomSystem, String> {
+/// Create a substrate of desired input size and type.
+pub fn create_substrate((size_x, size_y): (f64, f64), substrate: Substrate)
+        -> Result<AtomSystem, String> {
     if size_x <= 0.0 || size_y <= 0.0 {
         return Err("input sizes of the system have to be positive".to_string());
     }
 
+    match substrate {
+        Substrate::Graphene => create_graphene(size_x, size_y),
+        _ => Err("Substrate not yet implemented".to_string())
+    }
+}
+
+// Create a graphene layer of desired input size.
+//
+// The layer consists of a hexagonal grid of carbon atoms
+// which is created with a bond length of 0.142 nm. To ensure
+// that the system can be periodically replicated along x and y
+// the dimensions are trimmed to the closest possible size
+// that fits an even number of replicas.
+fn create_graphene(size_x: f64, size_y: f64)
+        -> Result<AtomSystem, String> {
     let bond_length = 0.142;
     let z0 = bond_length;
     let residue_base = get_graphene_base(bond_length);
