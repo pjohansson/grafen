@@ -1,12 +1,12 @@
 use super::System;
 
+use std::error::Error;
 use std::fs::File;
-use std::io;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
 // Output the system to disk as a GROMOS formatted file.
-pub fn write_gromos(system: System, output_file: String) -> Result<(), io::Error> {
+pub fn write_gromos(system: &System, output_file: &str) -> Result<(), Box<Error>> {
     let path = PathBuf::from(output_file).with_extension("gro");
     let file = File::create(&path)?;
     let mut writer = BufWriter::new(file);
@@ -14,7 +14,7 @@ pub fn write_gromos(system: System, output_file: String) -> Result<(), io::Error
     writer.write_fmt(format_args!("{}\n", system.title))?;
     writer.write_fmt(format_args!("{}\n", system.atoms.len()))?;
 
-    for atom in system.atoms {
+    for atom in &system.atoms {
         // GROMOS files wrap atom and residue numbering after five digits
         // so we must output at most that. We also switch to indexing the
         // numbers from 1 instead of from 0.

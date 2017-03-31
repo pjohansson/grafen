@@ -40,28 +40,18 @@ impl Config {
     }
 }
 
-pub fn run(config: Config) -> Result<(), String> {
-    let substrate = match select_substrate() {
-        Ok(result) => result,
-        Err(e) => {
-            return Err(format!("error: {}", e));
-        }
-    };
-    let system = match substrates::create_substrate(config.size, substrate) {
-        Ok(sub) => System {
-            title: config.title,
-            atoms: sub.coords,
-            dimensions: sub.dimensions
-        },
-        Err(e) => {
-            return Err(format!("error: Could not create system ({})", e));
-        }
-    };
-    if let Err(e) = output::write_gromos(system, config.filename) {
-        return Err(format!("error: Could not write system to disk ({})", e))
-    }
+pub fn run(config: Config) -> Result<(), Box<Error>> {
+    let substrate = select_substrate()?;
+    let system = substrates::create_substrate(config.size, substrate)
+        .map(|sub| {
+            System {
+                title: config.title.clone(),
+                atoms: sub.coords,
+                dimensions: sub.dimensions
+            }
+        })?;
 
-    Ok(())
+    output::write_gromos(&system, &config.filename)
 }
 
 fn select_substrate() -> Result<Substrate, io::Error> {
@@ -77,7 +67,7 @@ fn select_substrate() -> Result<Substrate, io::Error> {
     io::stdin().read_line(&mut selection)?;
     let num = selection
         .trim()
-        .parse::<i64>().map_err(|e|
+        .parse::<i64>().map_err(|_|
             io::Error::new(io_other, format!("'{}' is not a valid number", selection.trim()))
         );
 
