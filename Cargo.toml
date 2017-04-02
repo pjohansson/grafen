@@ -1,8 +1,8 @@
 [package]
 name = "create_graphene"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
-description = "Create a graphene substrate and output it to a GROMOS formatted file"
+description = "Create substrates and output to GROMOS formatted files"
 
 [dependencies]
 clap = "2.22"

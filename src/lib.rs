@@ -31,7 +31,7 @@ impl Config {
         let size_x = value_t!(matches, "x", f64)?;
         let size_y = value_t!(matches, "y", f64)?;
         let title = value_t!(matches, "title", String)
-            .unwrap_or("Graphene substrate".to_string());
+            .unwrap_or("Substrate".to_string());
 
         Ok(Config {
             title: title,

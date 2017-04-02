@@ -14,7 +14,7 @@ fn main() {
         (@arg output: <PATH> "output .gro file (the extension will be corrected)")
         (@arg x: <X> "size along x")
         (@arg y: <Y> "size along y")
-        (@arg title: -t --title [STR] +takes_value "title of system (default: \"Graphene substrate\")")
+        (@arg title: -t --title [STR] +takes_value "title of system")
     ).get_matches();
 
     let config = create_graphene::Config::new(matches).unwrap_or_else(|err| {
