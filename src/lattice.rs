@@ -11,7 +11,7 @@ pub struct Crystal {
     a: f64,
     b: f64,
     gamma: f64,
-    crystal_type: LatticeType,
+    lattice_type: LatticeType,
 }
 
 struct Spacing (
@@ -29,13 +29,13 @@ impl Crystal {
                 a: length,
                 b: length,
                 gamma: 2.0*pi/3.0,
-                crystal_type: input
+                lattice_type: input
             },
             Triclinic { a, b, gamma } => Crystal {
                 a: a,
                 b: b,
                 gamma: gamma,
-                crystal_type: input
+                lattice_type: input
             }
         }
     }
@@ -65,6 +65,11 @@ impl Lattice {
 
         Lattice::new(&crystal, nx, ny)
     }
+
+    pub fn translate(mut self, translate: &Coord) -> Lattice {
+        self.coords = self.coords.iter().map(|c| c.add(&translate)).collect();
+        self
+    }
 }
 
 // Use a builder to keep the details of Lattice construction opaque
@@ -85,9 +90,9 @@ impl LatticeBuilder {
             coords: vec![],
         };
 
-        match crystal.crystal_type {
-            Hexagonal { length } => builder.hexagonal(),
-            _                                   => builder.generic()
+        match crystal.lattice_type {
+            Hexagonal { length: _ } => builder.hexagonal(),
+            _                       => builder.generic()
         };
 
         builder.finalize()
@@ -267,5 +272,21 @@ mod tests {
         assert_eq!(1.0, dx);
         assert_eq!(3.0*f64::sqrt(3.0)/2.0, dy);
         assert!((1.5 - dx_per_row).abs() < 1e-6);
+    }
+
+    #[test]
+    fn translate_lattice() {
+        let lattice = Lattice {
+            box_size: Coord { x: 1.0, y: 1.0, z: 1.0 },
+            coords: vec![
+                Coord { x: 0.0, y: 0.0, z: 0.0 },
+                Coord { x: 2.0, y: 1.0, z: 0.0 }
+            ]
+        }.translate(&Coord { x: -0.5, y: 0.5, z: 1.0 });
+
+        let mut iter = lattice.coords.iter();
+        assert_eq!(Some(&Coord { x: -0.5, y: 0.5, z: 1.0 }), iter.next());
+        assert_eq!(Some(&Coord { x:  1.5, y: 1.5, z: 1.0 }), iter.next());
+        assert_eq!(None, iter.next());
     }
 }

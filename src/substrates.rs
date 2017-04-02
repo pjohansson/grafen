@@ -1,7 +1,8 @@
 use std::f64;
 
 use coords::Coord;
-use lattice;
+use lattice::{Crystal, Lattice};
+use lattice::LatticeType::*;
 
 pub struct AtomSystem {
     pub dimensions: Coord,
@@ -20,10 +21,11 @@ pub struct Atom {
 }
 
 /// Substrate types
-pub enum Substrate {
+pub enum SubstrateType {
     Graphene,
     Silica
 }
+use self::SubstrateType::*;
 
 // This is a base for generating atoms belonging to a residue.
 // Every residue has a name and a list of atoms that belong to it
@@ -40,17 +42,18 @@ struct ResidueAtom  {
 }
 
 /// Create a substrate of desired input size and type.
-pub fn create_substrate((size_x, size_y): (f64, f64), substrate: Substrate)
+pub fn create_substrate((size_x, size_y): (f64, f64), substrate_type: SubstrateType)
         -> Result<AtomSystem, String> {
     if size_x <= 0.0 || size_y <= 0.0 {
         return Err("input sizes of the system have to be positive".to_string());
     }
 
-    match substrate {
-        Substrate::Graphene => create_graphene(size_x, size_y),
-        Substrate::Silica => create_silica(size_x, size_y),
-        //_ => Err("Substrate not yet implemented".to_string())
-    }
+    let substrate = match substrate_type {
+        Graphene => create_graphene(size_x, size_y),
+        Silica => create_silica(size_x, size_y),
+    };
+
+    Ok(substrate)
 }
 
 // Create a graphene layer of desired input size.
@@ -60,32 +63,37 @@ pub fn create_substrate((size_x, size_y): (f64, f64), substrate: Substrate)
 // that the system can be periodically replicated along x and y
 // the dimensions are trimmed to the closest possible size
 // that fits an even number of replicas.
-fn create_graphene(size_x: f64, size_y: f64) -> Result<AtomSystem, String> {
+fn create_graphene(size_x: f64, size_y: f64) -> AtomSystem {
     let bond_length = 0.142;
     let z0 = bond_length;
     let residue_base = get_graphene_base(bond_length);
 
-    //let grid = lattice::hexagonal_grid(size_x, size_y, bond_length, z0);
-    use lattice::{Crystal, Lattice};
-    use lattice::LatticeType::*;
-
     let crystal = Crystal::from_type(Hexagonal { length: bond_length });
-    let lattice = Lattice::from_size(&crystal, size_x, size_y);
+    let lattice = Lattice::from_size(&crystal, size_x, size_y)
+        .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
-    Ok(AtomSystem { dimensions: lattice.box_size, coords: atoms })
+    AtomSystem {
+        dimensions: lattice.box_size.add(&Coord { x: 0.0, y: 0.0, z: 2.0*z0 }),
+        coords: atoms
+    }
 }
 
-fn create_silica(size_x: f64, size_y: f64) -> Result<AtomSystem, String> {
+fn create_silica(size_x: f64, size_y: f64) -> AtomSystem {
     let bond_length = 0.450;
     let z0 = 0.30;
     let residue_base = get_silica_base(bond_length);
 
-    //let grid = lattice::hexagonal_grid(size_x, size_y, bond_length, z0);
-    //let atoms = gen_atom_list(&grid, residue_base);
+    let angle = 60.0f64.to_radians();
+    let crystal = Crystal::from_type(Triclinic { a: bond_length, b: bond_length, gamma: angle });
+    let lattice = Lattice::from_size(&crystal, size_x, size_y)
+        .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
+    let atoms = gen_atom_list(&lattice.coords, residue_base);
 
-    unimplemented!();
-    //Ok(AtomSystem { dimensions: grid.dimensions, coords: atoms })
+    AtomSystem {
+        dimensions: lattice.box_size.add(&Coord { x: 0.0, y: 0.0, z: 2.0*z0 }),
+        coords: atoms
+    }
 }
 
 // Use a constructed grid and generate atoms of a residue for them
@@ -107,7 +115,7 @@ fn get_atom(residue_number: usize, atom_number: usize, grid_point: &Coord,
         residue_number: residue_number as u64,
         atom_name: atom.code.to_string(),
         atom_number: (residue.atoms.len()*residue_number) as u64 + (atom_number as u64),
-        position: grid_point.add(atom.position)
+        position: grid_point.add(&atom.position)
     }
 }
 

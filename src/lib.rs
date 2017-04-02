@@ -7,7 +7,7 @@ mod output;
 mod substrates;
 
 use coords::Coord;
-use substrates::{Atom, Substrate};
+use substrates::{Atom, SubstrateType};
 
 use std::error::Error;
 use std::io;
@@ -30,7 +30,8 @@ impl Config {
         let output_file = value_t!(matches, "output", String)?;
         let size_x = value_t!(matches, "x", f64)?;
         let size_y = value_t!(matches, "y", f64)?;
-        let title = value_t!(matches, "title", String).unwrap_or("Graphene substrate".to_string());
+        let title = value_t!(matches, "title", String)
+            .unwrap_or("Graphene substrate".to_string());
 
         Ok(Config {
             title: title,
@@ -53,7 +54,7 @@ pub fn run(config: Config) -> Result<(), Box<Error>> {
     output::write_gromos(&system, &config.filename)
 }
 
-fn select_substrate() -> Result<Substrate, io::Error> {
+fn select_substrate() -> Result<SubstrateType, io::Error> {
     let io_other = io::ErrorKind::Other;
 
     println!("Available substrates:");
@@ -71,8 +72,8 @@ fn select_substrate() -> Result<Substrate, io::Error> {
         );
 
     match num {
-        Ok(0) => Ok(Substrate::Graphene),
-        Ok(1) => Ok(Substrate::Silica),
+        Ok(0) => Ok(SubstrateType::Graphene),
+        Ok(1) => Ok(SubstrateType::Silica),
         Ok(_) => Err(io::Error::new(io_other, "No substrate was selected")),
         Err(e) => Err(e)
     }
