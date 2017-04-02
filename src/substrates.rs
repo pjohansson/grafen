@@ -2,9 +2,9 @@ use std::f64;
 
 use lattice::{Coord, Crystal, Lattice};
 
-pub struct AtomSystem {
+pub struct System {
     pub dimensions: Coord,
-    pub coords: Vec<Atom>
+    pub atoms: Vec<Atom>
 }
 
 /// Every atom in a system has some information connected to it
@@ -74,7 +74,7 @@ struct ResidueAtom  {
 
 /// Create a substrate of desired input size and type.
 pub fn create_substrate((size_x, size_y): (f64, f64), substrate_type: SubstrateType)
-        -> Result<AtomSystem, String> {
+        -> Result<System, String> {
     if size_x <= 0.0 || size_y <= 0.0 {
         return Err("input sizes of the system have to be positive".to_string());
     }
@@ -94,7 +94,7 @@ pub fn create_substrate((size_x, size_y): (f64, f64), substrate_type: SubstrateT
 /// that the system can be periodically replicated along x and y
 /// the dimensions are trimmed to the closest possible size
 /// that fits an even number of replicas.
-fn create_graphene(size_x: f64, size_y: f64) -> AtomSystem {
+fn create_graphene(size_x: f64, size_y: f64) -> System {
     let bond_length = 0.142;
     let z0 = bond_length;
     let residue_base = ResidueBase::graphene(bond_length);
@@ -104,9 +104,9 @@ fn create_graphene(size_x: f64, size_y: f64) -> AtomSystem {
                           .translate(&Coord::new(0.0, 0.0, z0));
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
-    AtomSystem {
+    System {
         dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
-        coords: atoms
+        atoms: atoms
     }
 }
 
@@ -115,7 +115,7 @@ fn create_graphene(size_x: f64, size_y: f64) -> AtomSystem {
 /// The layer consists of a triclinic lattice where the spacing
 /// is 0.45 along both vectors and the angle between them
 /// is 60 degrees. At each lattice point an SiO2 molecule is placed.
-fn create_silica(size_x: f64, size_y: f64) -> AtomSystem {
+fn create_silica(size_x: f64, size_y: f64) -> System {
     let bond_length = 0.450;
     let z0 = 0.30;
     let residue_base = ResidueBase::silica(bond_length);
@@ -125,9 +125,9 @@ fn create_silica(size_x: f64, size_y: f64) -> AtomSystem {
                           .translate(&Coord::new(0.0, 0.0, z0));
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
-    AtomSystem {
+    System {
         dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
-        coords: atoms
+        atoms: atoms
     }
 }
 

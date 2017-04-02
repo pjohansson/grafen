@@ -1,17 +1,17 @@
-use config::System;
+use substrates::System;
 
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
-// Output the system to disk as a GROMOS formatted file.
-pub fn write_gromos(system: &System, output_file: &str) -> Result<(), Box<Error>> {
+/// Output the system to disk as a GROMOS formatted file.
+pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<(), Box<Error>> {
     let path = PathBuf::from(output_file).with_extension("gro");
     let file = File::create(&path)?;
     let mut writer = BufWriter::new(file);
 
-    writer.write_fmt(format_args!("{}\n", system.title))?;
+    writer.write_fmt(format_args!("{}\n", title))?;
     writer.write_fmt(format_args!("{}\n", system.atoms.len()))?;
 
     for atom in &system.atoms {

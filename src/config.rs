@@ -1,19 +1,13 @@
-use lattice::Coord;
 use output;
 use substrates;
-use substrates::{Atom, SubstrateType};
+use substrates::SubstrateType;
 
 use clap;
 use std::error::Error;
 use std::io;
 use std::io::Write;
 
-pub struct System {
-    pub title: String,
-    pub atoms: Vec<Atom>,
-    pub dimensions: Coord
-}
-
+/// Program configuration.
 pub struct Config {
     title: String,
     filename: String,
@@ -36,17 +30,11 @@ impl Config {
     }
 }
 
+/// Run the program.
 pub fn run(config: Config) -> Result<(), Box<Error>> {
     let substrate_type = select_substrate()?;
-    let system = substrates::create_substrate(config.size, substrate_type)
-        .map(|layer| {
-            System {
-                title: config.title.clone(),
-                atoms: layer.coords,
-                dimensions: layer.dimensions
-            }
-        })?;
-    output::write_gromos(&system, &config.filename)
+    let system = substrates::create_substrate(config.size, substrate_type)?;
+    output::write_gromos(&system, &config.filename, &config.title)
 }
 
 fn select_substrate() -> Result<SubstrateType, io::Error> {
