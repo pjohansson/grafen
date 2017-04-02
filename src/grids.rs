@@ -7,6 +7,77 @@ pub struct SystemBox<T> {
 
 pub type Grid = SystemBox<Coord>;
 
+enum CrystalSystem {
+    Hexagonal { length: f64 },
+    Triclinic { a: f64, b: f64, gamma: f64 }
+}
+
+struct Crystal {
+    a: f64,
+    b: f64,
+    gamma: f64,
+}
+
+struct Spacing ( f64, f64, f64);
+
+impl Crystal {
+    fn from_system(input: CrystalSystem) -> Crystal {
+        let pi = ::std::f64::consts::PI;
+
+        match input {
+            CrystalSystem::Hexagonal { length } => Crystal {
+                a: length,
+                b: length,
+                gamma: 2.0*pi/3.0
+            },
+            CrystalSystem::Triclinic { a, b, gamma } => Crystal {
+                a: a,
+                b: b,
+                gamma: gamma
+            }
+        }
+    }
+
+    fn spacing(&self) -> Spacing {
+        let dx = self.a;
+        let dy = self.b * self.gamma.sin();
+        let dx_per_row = self.b * self.gamma.cos();
+
+        Spacing(dx, dy, dx_per_row)
+    }
+}
+
+struct Lattice {
+    box_size: Coord,
+    coords: Vec<Coord>,
+}
+
+impl Lattice {
+    fn new(crystal: &Crystal, nx: u64, ny: u64) -> Lattice {
+        let Spacing(dx, dy, dx_per_row) = crystal.spacing();
+
+        let box_size = Coord { x: (nx as f64)*dx, y: (ny as f64)*dy, z: 0.0 };
+        let coords = (0..ny)
+            .flat_map(|row| {
+                (0..nx).map(move |col| Coord {
+                    x: (col as f64)*dx + (row as f64)*dx_per_row,
+                    y: (row as f64)*dy,
+                    z: 0.0,
+                })
+            })
+            .collect();
+
+        Lattice { box_size: box_size, coords: coords }
+    }
+
+    fn from_size(crystal: &Crystal, size_x: f64, size_y: f64) -> Lattice {
+        let Spacing(dx, dy, _) = crystal.spacing();
+        let (nx, ny) = ((size_x/dx).round() as u64, (size_y/dy).round() as u64);
+
+        Lattice::new(&crystal, nx, ny)
+    }
+}
+
 /// Return a hexagonal grid of input size and base length.
 pub fn hexagonal_grid(size_x: f64, size_y: f64, base_length: f64, z0: f64)
         -> Grid {
@@ -74,34 +145,70 @@ fn gen_hexagonal_grid(nx: u64, ny: u64, base_length: f64, spacing: Coord) -> Vec
 
 #[cfg(test)]
 mod tests {
-    use std::f64;
     use super::*;
+    use ::std::f64;
 
     #[test]
-    fn gen_a_small_hexagonal_grid() {
-        // A hexagonal grid must be replicated from four base points
-        // which means that a 2-by-2 input replications should result
-        // in 16 grid points. Assert that the final four are
-        // correctly placed.
-        let spacing = get_hexagonal_spacing(1.0);
-        let grid = gen_hexagonal_grid(2, 2, 1.0, spacing);
+    fn hexagonal_crystal() {
+        let system = CrystalSystem::Hexagonal { length: 1.0 };
+        let crystal = Crystal::from_system(system);
+        assert_eq!(1.0, crystal.a);
+        assert_eq!(1.0, crystal.b);
+        assert_eq!(2.0*f64::consts::PI/3.0, crystal.gamma);
+    }
 
-        // We generate the base grid points used in the creation
-        // of the grid. The angle from the first point to the second
-        // is 30 degrees which gives us the difference along x and y
-        // since cos(30) = sqrt(3)/2 and sin(30) = 0.5
-        let dx = f64::sqrt(3.0)/2.0;
-        let dy = 0.5;
-        let base = vec![
-            Coord::new(0.0, 0.0,          0.0),
-            Coord::new(dx,  dy,           0.0),
-            Coord::new(dx,  dy + 1.0,     0.0),
-            Coord::new(0.0, 2.0*dy + 1.0, 0.0)
-        ];
-        assert_eq!(base, &grid[0..4]);
+    #[test]
+    fn triclinic_crystal() {
+        let system = CrystalSystem::Triclinic { a: 1.0, b: 2.0, gamma: 3.0 };
+        let crystal = Crystal::from_system(system);
+        assert_eq!(1.0, crystal.a);
+        assert_eq!(2.0, crystal.b);
+        assert_eq!(3.0, crystal.gamma);
+    }
 
-        let spacing = Coord::new(2.0*dx, 2.0+2.0*dy, 0.0);
-        let expect_last: Vec<Coord> = base.iter().map(|c| c.at_index(1, 1, 0, &spacing)).collect();
-        assert_eq!(expect_last, &grid[12..]);
+    #[test]
+    fn triclinic_lattice() {
+        let dx = 1.0;
+        let angle = f64::consts::PI/3.0; // 60 degrees
+        let crystal = Crystal { a: dx, b: dx, gamma: angle };
+        let lattice = Lattice::new(&crystal, 3, 2);
+
+        // Calculate shifts for x and y when shifting along y
+        let dy = dx*f64::sin(angle);
+        let dx_per_y = dx*f64::cos(angle);
+
+        // Check the dimensions
+        assert_eq!(Coord { x: 3.0*dx, y: 2.0*dy, z: 0.0 }, lattice.box_size);
+
+        // ... and the coordinates
+        let mut iter = lattice.coords.iter();
+        assert_eq!(Some(&Coord { x: 0.0,               y: 0.0, z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord { x: dx,                y: 0.0, z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord { x: 2.0*dx,            y: 0.0, z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord { x: dx_per_y,          y: dy,  z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord { x: dx_per_y + dx,     y: dy,  z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord { x: dx_per_y + 2.0*dx, y: dy,  z: 0.0 }), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn lattice_from_size() {
+        // This should result in a 2-by-2 lattice
+        let crystal = Crystal { a: 1.0, b: 0.5, gamma: f64::consts::PI/2.0 };
+        let lattice = Lattice::from_size(&crystal, 2.1, 0.9);
+        let expected = Lattice::new(&crystal, 2, 2);
+
+        assert_eq!(expected.coords, lattice.coords);
+        assert_eq!(expected.box_size, lattice.box_size);
+    }
+
+    #[test]
+    fn crystal_spacing() {
+        let crystal = Crystal { a: 1.0, b: 3.0, gamma: f64::consts::PI/3.0 };
+        let Spacing(dx, dy, dx_per_row) = crystal.spacing();
+
+        assert_eq!(1.0, dx);
+        assert_eq!(3.0*f64::sqrt(3.0)/2.0, dy);
+        assert!((1.5 - dx_per_row).abs() < 1e-6);
     }
 }
