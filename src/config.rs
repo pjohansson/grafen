@@ -1,4 +1,4 @@
-use coords::Coord;
+use lattice::Coord;
 use output;
 use substrates;
 use substrates::{Atom, SubstrateType};

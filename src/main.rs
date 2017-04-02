@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate clap;
 
-mod coords;
 mod lattice;
 mod config;
 mod output;

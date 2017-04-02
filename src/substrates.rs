@@ -1,7 +1,6 @@
 use std::f64;
 
-use coords::Coord;
-use lattice::{Crystal, Lattice};
+use lattice::{Coord, Crystal, Lattice};
 
 pub struct AtomSystem {
     pub dimensions: Coord,
@@ -58,9 +57,9 @@ impl ResidueBase {
         ResidueBase {
             code: "SIO",
             atoms: vec![
-                ResidueAtom { code: "O1", position: base_coord.add_manual(0.0, 0.0,  dz)},
+                ResidueAtom { code: "O1", position: base_coord.add(&Coord { x: 0.0, y: 0.0,  z: dz}) },
                 ResidueAtom { code: "SI", position: base_coord },
-                ResidueAtom { code: "O2", position: base_coord.add_manual(0.0, 0.0, -dz)}
+                ResidueAtom { code: "O2", position: base_coord.add(&Coord { x: 0.0, y: 0.0, z: -dz }) }
             ]
         }
     }
