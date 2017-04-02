@@ -1,13 +1,13 @@
 #[macro_use]
 extern crate clap;
-extern crate create_graphene;
+extern crate create_system;
 
 use std::io::prelude::*;
 
 fn main() {
     let mut stderr = std::io::stderr();
 
-    let matches = clap_app!(create_graphene =>
+    let matches = clap_app!(create_system =>
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
@@ -17,12 +17,12 @@ fn main() {
         (@arg title: -t --title [STR] +takes_value "title of system")
     ).get_matches();
 
-    let config = create_graphene::Config::new(matches).unwrap_or_else(|err| {
+    let config = create_system::Config::new(matches).unwrap_or_else(|err| {
         writeln!(&mut stderr, "{}", err).expect("could not write to stderr");
         std::process::exit(1)
     });
 
-    if let Err(e) = create_graphene::run(config) {
+    if let Err(e) = create_system::run(config) {
         writeln!(&mut stderr, "{}", e).expect("could not write to stderr");
         std::process::exit(1)
     }

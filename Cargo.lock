@@ -1,5 +1,5 @@
 [root]
-name = "create_graphene"
+name = "create_system"
 version = "0.2.2"
 dependencies = [
  "clap 2.22.1 (registry+https://github.com/rust-lang/crates.io-index)",

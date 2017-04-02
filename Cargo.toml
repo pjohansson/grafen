@@ -1,6 +1,6 @@
 [package]
-name = "create_graphene"
-version = "0.2.2"
+name = "create_system"
+version = "0.3.0"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
 description = "Create substrates and output to GROMOS formatted files"
 
