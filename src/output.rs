@@ -1,4 +1,4 @@
-use super::System;
+use config::System;
 
 use std::error::Error;
 use std::fs::File;

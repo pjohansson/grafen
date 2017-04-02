@@ -1,22 +1,17 @@
-#[macro_use]
-extern crate clap;
-
-mod coords;
-mod lattice;
-mod output;
-mod substrates;
-
 use coords::Coord;
+use output;
+use substrates;
 use substrates::{Atom, SubstrateType};
 
+use clap;
 use std::error::Error;
 use std::io;
 use std::io::Write;
 
 pub struct System {
-    title: String,
-    atoms: Vec<Atom>,
-    dimensions: Coord
+    pub title: String,
+    pub atoms: Vec<Atom>,
+    pub dimensions: Coord
 }
 
 pub struct Config {
