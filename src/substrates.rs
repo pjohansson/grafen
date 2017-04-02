@@ -2,7 +2,6 @@ use std::f64;
 
 use coords::Coord;
 use lattice::{Crystal, Lattice};
-use lattice::LatticeType::*;
 
 pub struct AtomSystem {
     pub dimensions: Coord,
@@ -101,9 +100,9 @@ fn create_graphene(size_x: f64, size_y: f64) -> AtomSystem {
     let z0 = bond_length;
     let residue_base = ResidueBase::graphene(bond_length);
 
-    let crystal = Crystal::from_type(Hexagonal { length: bond_length });
+    let crystal = Crystal::hexagonal(bond_length);
     let lattice = Lattice::from_size(&crystal, size_x, size_y)
-        .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
+                          .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
     AtomSystem {
@@ -122,10 +121,9 @@ fn create_silica(size_x: f64, size_y: f64) -> AtomSystem {
     let z0 = 0.30;
     let residue_base = ResidueBase::silica(bond_length);
 
-    let angle = 60.0f64.to_radians();
-    let crystal = Crystal::from_type(Triclinic { a: bond_length, b: bond_length, gamma: angle });
+    let crystal = Crystal::triclinic(bond_length, bond_length, 60f64.to_radians());
     let lattice = Lattice::from_size(&crystal, size_x, size_y)
-        .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
+                          .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
     AtomSystem {
@@ -160,9 +158,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn gen_a_graphene_layer() {
+    fn graphene_layer() {
         let desired_size = (1.0, 1.0);
-        let graphene = create_graphene(desired_size.0, desired_size.1).unwrap();
+        let graphene = create_graphene(desired_size.0, desired_size.1);
 
         // Assert that we get the expected dimensions which create
         // perfect PBC replicability
