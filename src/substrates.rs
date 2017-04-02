@@ -57,9 +57,9 @@ impl ResidueBase {
         ResidueBase {
             code: "SIO",
             atoms: vec![
-                ResidueAtom { code: "O1", position: base_coord.add(&Coord { x: 0.0, y: 0.0,  z: dz}) },
+                ResidueAtom { code: "O1", position: base_coord.add(&Coord::new(0.0, 0.0,  dz)) },
                 ResidueAtom { code: "SI", position: base_coord },
-                ResidueAtom { code: "O2", position: base_coord.add(&Coord { x: 0.0, y: 0.0, z: -dz }) }
+                ResidueAtom { code: "O2", position: base_coord.add(&Coord::new(0.0, 0.0, -dz)) }
             ]
         }
     }
@@ -101,11 +101,11 @@ fn create_graphene(size_x: f64, size_y: f64) -> AtomSystem {
 
     let crystal = Crystal::hexagonal(bond_length);
     let lattice = Lattice::from_size(&crystal, size_x, size_y)
-                          .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
+                          .translate(&Coord::new(0.0, 0.0, z0));
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
     AtomSystem {
-        dimensions: lattice.box_size.add(&Coord { x: 0.0, y: 0.0, z: 2.0*z0 }),
+        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
         coords: atoms
     }
 }
@@ -122,11 +122,11 @@ fn create_silica(size_x: f64, size_y: f64) -> AtomSystem {
 
     let crystal = Crystal::triclinic(bond_length, bond_length, 60f64.to_radians());
     let lattice = Lattice::from_size(&crystal, size_x, size_y)
-                          .translate(&Coord { x: 0.0, y: 0.0, z: z0 });
+                          .translate(&Coord::new(0.0, 0.0, z0));
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
     AtomSystem {
-        dimensions: lattice.box_size.add(&Coord { x: 0.0, y: 0.0, z: 2.0*z0 }),
+        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
         coords: atoms
     }
 }

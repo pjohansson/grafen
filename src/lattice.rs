@@ -12,7 +12,7 @@ impl Coord {
     }
 
     pub fn add(&self, other: &Coord) -> Coord {
-        Coord { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
+        Coord::new(self.x + other.x, self.y + other.y, self.z + other.z)
     }
 }
 
@@ -116,11 +116,11 @@ impl LatticeBuilder {
         self.coords = (0..self.ny)
             .flat_map(|row| {
                 (0..self.nx)
-                    .map(move |col| Coord {
-                        x: (col as f64)*dx + (row as f64)*dx_per_row,
-                        y: (row as f64)*dy,
-                        z: 0.0,
-                    })
+                    .map(move |col| Coord::new(
+                        (col as f64)*dx + (row as f64)*dx_per_row,
+                        (row as f64)*dy,
+                        0.0,
+                    ))
             })
             .collect();
     }
@@ -143,11 +143,11 @@ impl LatticeBuilder {
             .flat_map(|row| {
                 (0..self.nx)
                     .filter(move |col| (col + row + 1) % 3 > 0)
-                    .map(move |col| Coord {
-                        x: (col as f64)*dx + (row as f64)*dx_per_row,
-                        y: (row as f64)*dy,
-                        z: 0.0,
-                    })
+                    .map(move |col| Coord::new(
+                        (col as f64)*dx + (row as f64)*dx_per_row,
+                        (row as f64)*dy,
+                        0.0,
+                    ))
             })
             .collect();
     }
@@ -156,7 +156,7 @@ impl LatticeBuilder {
     // since eg. the hexagonal constructor may modify (nx, ny).
     fn finalize(self) -> Lattice {
         let Spacing(dx, dy, _) = self.spacing;
-        let box_size = Coord { x: (self.nx as f64)*dx, y: (self.ny as f64)*dy, z: 0.0 };
+        let box_size = Coord::new((self.nx as f64)*dx, (self.ny as f64)*dy, 0.0);
 
         Lattice { box_size: box_size, coords: self.coords }
     }
@@ -213,16 +213,16 @@ mod tests {
         let dx_per_y = dx*f64::cos(angle);
 
         // Check the dimensions
-        assert_eq!(Coord { x: 3.0*dx, y: 2.0*dy, z: 0.0 }, lattice.box_size);
+        assert_eq!(Coord::new(3.0*dx, 2.0*dy, 0.0), lattice.box_size);
 
         // ... and the coordinates
         let mut iter = lattice.coords.iter();
-        assert_eq!(Some(&Coord { x: 0.0,               y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx,                y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: 2.0*dx,            y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_y,          y: dy,  z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_y + dx,     y: dy,  z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_y + 2.0*dx, y: dy,  z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord::new(0.0,               0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx,                0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(2.0*dx,            0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_y,          dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_y + dx,     dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_y + 2.0*dx, dy,  0.0)), iter.next());
         assert_eq!(None, iter.next());
     }
 
@@ -236,18 +236,18 @@ mod tests {
         // The hexagonal lattice has every third point removed to create
         // a chicken wire fence structure.
         let mut iter = lattice.coords.iter();
-        assert_eq!(Some(&Coord { x: 0.0,                 y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx,                  y: 0.0, z: 0.0 }), iter.next());
-        // REMOVED: assert_eq!(Some(&Coord { x: 2.0*dx, y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: 3.0*dx,              y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: 4.0*dx,              y: 0.0, z: 0.0 }), iter.next());
-        // assert_eq!(Some(&Coord { x: 5.0*dx, y: 0.0, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_row,          y: dy,  z: 0.0 }), iter.next());
-        // assert_eq!(Some(&Coord { x: dx_per_y + dx, y: dy, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_row + 2.0*dx, y: dy,  z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_row + 3.0*dx, y: dy,  z: 0.0 }), iter.next());
-        // assert_eq!(Some(&Coord { x: dx_per_row + 4.0*dx, y: dy, z: 0.0 }), iter.next());
-        assert_eq!(Some(&Coord { x: dx_per_row + 5.0*dx, y: dy,  z: 0.0 }), iter.next());
+        assert_eq!(Some(&Coord::new(0.0,                 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx,                  0.0, 0.0)), iter.next());
+        // REMOVED: assert_eq!(Some(&Coord::new(2.0*dx, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(3.0*dx,              0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(4.0*dx,              0.0, 0.0)), iter.next());
+        // REMOVED: assert_eq!(Some(&Coord::new(5.0*dx, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row,          dy,  0.0)), iter.next());
+        // REMOVED: assert_eq!(Some(&Coord::new(dx_per_y + dx, dy, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row + 2.0*dx, dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row + 3.0*dx, dy,  0.0)), iter.next());
+        // REMOVED: assert_eq!(Some(&Coord::new(dx_per_row + 4.0*dx, dy, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row + 5.0*dx, dy,  0.0)), iter.next());
         assert_eq!(None, iter.next());
     }
 
@@ -303,16 +303,16 @@ mod tests {
     #[test]
     fn translate_lattice() {
         let lattice = Lattice {
-            box_size: Coord { x: 1.0, y: 1.0, z: 1.0 },
+            box_size: Coord::new(1.0, 1.0, 1.0),
             coords: vec![
-                Coord { x: 0.0, y: 0.0, z: 0.0 },
-                Coord { x: 2.0, y: 1.0, z: 0.0 }
+                Coord::new(0.0, 0.0, 0.0),
+                Coord::new(2.0, 1.0, 0.0)
             ]
-        }.translate(&Coord { x: -0.5, y: 0.5, z: 1.0 });
+        }.translate(&Coord::new(-0.5, 0.5, 1.0));
 
         let mut iter = lattice.coords.iter();
-        assert_eq!(Some(&Coord { x: -0.5, y: 0.5, z: 1.0 }), iter.next());
-        assert_eq!(Some(&Coord { x:  1.5, y: 1.5, z: 1.0 }), iter.next());
+        assert_eq!(Some(&Coord::new(-0.5, 0.5, 1.0)), iter.next());
+        assert_eq!(Some(&Coord::new( 1.5, 1.5, 1.0)), iter.next());
         assert_eq!(None, iter.next());
     }
 }
