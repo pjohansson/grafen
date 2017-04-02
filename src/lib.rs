@@ -2,7 +2,7 @@
 extern crate clap;
 
 mod coords;
-mod grids;
+mod lattice;
 mod output;
 mod substrates;
 
@@ -41,16 +41,15 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<Error>> {
-    let substrate = select_substrate()?;
-    let system = substrates::create_substrate(config.size, substrate)
-        .map(|sub| {
+    let substrate_type = select_substrate()?;
+    let system = substrates::create_substrate(config.size, substrate_type)
+        .map(|layer| {
             System {
                 title: config.title.clone(),
-                atoms: sub.coords,
-                dimensions: sub.dimensions
+                atoms: layer.coords,
+                dimensions: layer.dimensions
             }
         })?;
-
     output::write_gromos(&system, &config.filename)
 }
 
