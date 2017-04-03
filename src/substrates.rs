@@ -1,6 +1,6 @@
 use std::f64;
 
-use lattice::{Coord, Crystal, Lattice};
+use lattice::{Coord, Lattice};
 
 pub struct System {
     pub dimensions: Coord,
@@ -99,9 +99,11 @@ fn create_graphene(size_x: f64, size_y: f64) -> System {
     let z0 = bond_length;
     let residue_base = ResidueBase::graphene(bond_length);
 
-    let crystal = Crystal::hexagonal(bond_length);
-    let lattice = Lattice::from_size(&crystal, size_x, size_y)
+    let lattice = Lattice::hexagonal(bond_length)
+                          .from_size(size_x, size_y)
+                          .finalize()
                           .translate(&Coord::new(0.0, 0.0, z0));
+
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
     System {
@@ -120,9 +122,11 @@ fn create_silica(size_x: f64, size_y: f64) -> System {
     let z0 = 0.30;
     let residue_base = ResidueBase::silica(bond_length);
 
-    let crystal = Crystal::triclinic(bond_length, bond_length, 60f64.to_radians());
-    let lattice = Lattice::from_size(&crystal, size_x, size_y)
+    let lattice = Lattice::triclinic(bond_length, bond_length, 60f64.to_radians())
+                          .from_size(size_x, size_y)
+                          .finalize()
                           .translate(&Coord::new(0.0, 0.0, z0));
+
     let atoms = gen_atom_list(&lattice.coords, residue_base);
 
     System {
@@ -173,10 +177,10 @@ mod tests {
         assert_eq!(dimensions, graphene.dimensions);
 
         // We expect 32 atoms to exist in the grid
-        assert_eq!(32, graphene.coords.len());
+        assert_eq!(32, graphene.atoms.len());
 
         // Verify the first atom
-        let mut atoms = graphene.coords.iter();
+        let mut atoms = graphene.atoms.iter();
         let first_atom = Atom {
             residue_name: "GRPH".to_string(),
             residue_number: 0,

@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate clap;
 
-mod lattice;
+pub mod lattice;
 mod config;
 mod output;
 mod substrates;
