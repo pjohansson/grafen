@@ -33,17 +33,15 @@
 //! with spacing 0.450 nm along both base vectors and an angle of 60 degrees
 //! between them.
 
-
 #[macro_use]
 extern crate clap;
 
-mod lattice;
+pub mod lattice;
 mod config;
 mod output;
 mod substrates;
 
 use std::io::prelude::*;
-
 
 fn main() {
     let mut stderr = std::io::stderr();
@@ -59,12 +57,12 @@ fn main() {
     ).get_matches();
 
     let config = config::Config::new(matches).unwrap_or_else(|err| {
-        writeln!(&mut stderr, "{}", err).expect("could not write to stderr");
+        writeln!(&mut stderr, "error: {}", err).expect("could not write to stderr");
         std::process::exit(1)
     });
 
     if let Err(e) = config::run(config) {
-        writeln!(&mut stderr, "{}", e).expect("could not write to stderr");
+        writeln!(&mut stderr, "error: {}", e).expect("could not write to stderr");
         std::process::exit(1)
     }
 }

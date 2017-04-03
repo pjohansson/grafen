@@ -104,7 +104,7 @@ fn create_graphene(size_x: f64, size_y: f64) -> System {
                           .finalize()
                           .translate(&Coord::new(0.0, 0.0, z0));
 
-    let atoms = gen_atom_list(&lattice.coords, residue_base);
+    let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
     System {
         dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
@@ -127,7 +127,7 @@ fn create_silica(size_x: f64, size_y: f64) -> System {
                           .finalize()
                           .translate(&Coord::new(0.0, 0.0, z0));
 
-    let atoms = gen_atom_list(&lattice.coords, residue_base);
+    let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
     System {
         dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
@@ -136,7 +136,7 @@ fn create_silica(size_x: f64, size_y: f64) -> System {
 }
 
 // Use a constructed grid and generate atoms of a residue for them
-fn gen_atom_list(coords: &Vec<Coord>, residue: ResidueBase) -> Vec<Atom> {
+fn broadcast_residue_onto_coords(coords: &Vec<Coord>, residue: ResidueBase) -> Vec<Atom> {
     let mut atoms: Vec<Atom> = Vec::new();
 
     for (residue_number, lattice_point) in coords.iter().enumerate() {
