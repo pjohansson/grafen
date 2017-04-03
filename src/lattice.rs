@@ -1,4 +1,6 @@
-//! Construct lattices for substrates using primitive types.
+//! Implements the `Lattice` struct which as per the name contains
+//! information about and grid coordinates of lattices. It comes
+//! with easy-to-use constructors for different lattice types.
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// A three-dimensional coordinate.
@@ -29,10 +31,12 @@ impl Coord {
 
 /// A lattice with coordinates of its grid and a total size.
 ///
-/// The lattice can be constructed using its builder methods
-/// for different types of lattices.
+/// The lattice is constructed using its builder methods
+/// for the various types of lattices.
 ///
 /// # Examples
+/// Construct a triclinic lattice:
+///
 /// ```
 /// let lattice = Lattice::triclinic(1.0, 1.0, 90f64.to_radians())
 ///                       .from_size(0.9, 1.9) // Expect a 1-by-2 binned system
@@ -44,6 +48,14 @@ impl Coord {
 /// assert_eq!(Some(&Coord::new(0.0, 0.0, 0.0), coords.next()));
 /// assert_eq!(Some(&Coord::new(0.0, 1.0, 0.0), coords.next()));
 /// assert_eq!(None, coords.next());
+/// ```
+///
+/// ... or a hexagonal:
+///
+/// ```
+/// let lattice = Lattice::hexagonal(1.0)
+///                       .from_size(1.0, 1.0)
+///                       .finalize();
 /// ```
 pub struct Lattice {
     /// Size of the lattice box.
@@ -83,7 +95,10 @@ pub struct LatticeBuilder {
 // Use a builder to keep the details of Lattice construction opaque
 // and the proper struct in a simple form.
 impl LatticeBuilder {
-    /// Set the size of the Lattice.
+    /// Set the desired size of the Lattice. The final size is adjusted
+    /// along both directions to the closest multiple of the calculated
+    /// crystal spacing. As such the system is prepared to be periodically
+    /// replicated.
     pub fn from_size(self, size_x: f64, size_y: f64) -> LatticeBuilder {
         let Spacing(dx, dy, _) = self.crystal.spacing();
         let nx = (size_x/dx).round() as u64;
@@ -92,7 +107,8 @@ impl LatticeBuilder {
         self.from_bins(nx, ny)
     }
 
-    /// Finalize and return the Lattice.
+    /// Finalize and return the Lattice. Note that if a desired size has
+    /// not been set the lattice will be empty.
     pub fn finalize(mut self) -> Lattice {
         let coords = match self.crystal.lattice_type {
             Hexagonal => self.hexagonal(),
@@ -122,8 +138,8 @@ impl LatticeBuilder {
         self
     }
 
-    // The most simple lattice contructor:
-    // Replicate all points of the crystal lattice.
+    /// The most simple lattice contructor:
+    /// Replicate all points of the crystal lattice.
     fn generic(&mut self) -> Vec<Coord> {
         let Spacing(dx, dy, dx_per_row) = self.crystal.spacing();
 
@@ -139,15 +155,15 @@ impl LatticeBuilder {
             .collect()
     }
 
-    // Hexagonal lattices have a honeycomb appearance
-    //
-    // This constructor ensures that the topography is correct:
-    // Every third grid point is the middle point of a cell and removed.
-    // This cell is shifted by one step in every row.
-    //
-    // To ensure that the system is perfectly periodic the number of column
-    // and rows are set to the closest multiple of 3 and 2 respectively,
-    // rounding up.
+    /// Hexagonal lattices have a honeycomb appearance
+    ///
+    /// This constructor ensures that the topography is correct:
+    /// Every third grid point is the middle point of a cell and removed.
+    /// This cell is shifted by one step in every row.
+    ///
+    /// To ensure that the system is perfectly periodic the number of column
+    /// and rows are set to the closest multiple of 3 and 2 respectively,
+    /// rounding up.
     fn hexagonal(&mut self) -> Vec<Coord> {
         self.nx = ((self.nx as f64 / 3.0).ceil() * 3.0) as u64;
         self.ny = ((self.ny as f64 / 2.0).ceil() * 2.0) as u64;
@@ -344,7 +360,14 @@ mod tests {
 
         assert_eq!(expected.coords, lattice.coords);
         assert_eq!(expected.box_size, lattice.box_size);
+    }
 
+    #[test]
+    fn lattice_constructed_without_size_is_empty() {
+        let lattice = Lattice::hexagonal(1.0).finalize();
+
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), lattice.box_size);
+        assert!(lattice.coords.is_empty());
     }
 
     #[test]
