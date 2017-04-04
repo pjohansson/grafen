@@ -19,6 +19,7 @@ pub struct Config {
     size: InputSize,
 }
 
+#[derive(Clone, Copy)]
 /// Input system size along x and y.
 pub struct InputSize(pub f64, pub f64);
 

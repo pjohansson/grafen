@@ -94,21 +94,22 @@ struct ResidueAtom  {
 /// Create a graphene substrate:
 ///
 /// ```
-/// let graphene = create_substrate((5.0, 4.0), SubstrateType::Graphene);
+/// let graphene = create_substrate(InputSize(5.0, 4.0), SubstrateType::Graphene);
 /// ```
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(InputSize(size_x, size_y): InputSize,
+pub fn create_substrate(size: InputSize,
                         substrate_type: SubstrateType)
                         -> Result<System, String> {
+    let InputSize(size_x, size_y) = size;
     if size_x <= 0.0 || size_y <= 0.0 {
         return Err("input sizes of the system have to be positive".to_string());
     }
 
     let substrate = match substrate_type {
-        Graphene => create_graphene(size_x, size_y),
-        Silica => create_silica(size_x, size_y),
+        Graphene => create_graphene(size),
+        Silica => create_silica(size),
     };
 
     Ok(substrate)
@@ -121,7 +122,7 @@ pub fn create_substrate(InputSize(size_x, size_y): InputSize,
 /// that the system can be periodically replicated along x and y
 /// the dimensions are trimmed to the closest possible size
 /// that fits an even number of replicas.
-fn create_graphene(size_x: f64, size_y: f64) -> System {
+fn create_graphene(InputSize(size_x, size_y): InputSize) -> System {
     let bond_length = 0.142;
     let z0 = bond_length;
     let residue_base = ResidueBase::graphene(bond_length);
@@ -144,7 +145,7 @@ fn create_graphene(size_x: f64, size_y: f64) -> System {
 /// The layer consists of a triclinic lattice where the spacing
 /// is 0.45 along both vectors and the angle between them
 /// is 60 degrees. At each lattice point an SiO2 molecule is placed.
-fn create_silica(size_x: f64, size_y: f64) -> System {
+fn create_silica(InputSize(size_x, size_y): InputSize) -> System {
     let bond_length = 0.450;
     let z0 = 0.30;
     let residue_base = ResidueBase::silica(bond_length);
@@ -193,8 +194,8 @@ mod tests {
 
     #[test]
     fn graphene_layer() {
-        let desired_size = (1.0, 1.0);
-        let graphene = create_graphene(desired_size.0, desired_size.1);
+        let desired_size = InputSize(1.0, 1.0);
+        let graphene = create_graphene(desired_size);
 
         // Assert that we get the expected dimensions which create
         // perfect PBC replicability
