@@ -14,13 +14,13 @@
 pub struct Coord {
     pub x: f64,
     pub y: f64,
-    pub z: f64
+    pub z: f64,
 }
 
 impl Coord {
     /// Construct a new coordinate.
     pub fn new(x: f64, y: f64, z: f64) -> Coord {
-        Coord {x: x, y: y, z: z}
+        Coord { x: x, y: y, z: z }
     }
 
     /// Add a coordinate to another.
@@ -61,7 +61,7 @@ pub struct Lattice {
     /// Size of the lattice box.
     pub box_size: Coord,
     /// List of coordinates belonging to the lattice.
-    pub coords: Vec<Coord>
+    pub coords: Vec<Coord>,
 }
 
 impl Lattice {
@@ -89,7 +89,7 @@ impl Lattice {
 pub struct LatticeBuilder {
     crystal: Crystal,
     nx: u64,
-    ny: u64
+    ny: u64,
 }
 
 // Use a builder to keep the details of Lattice construction opaque
@@ -101,8 +101,8 @@ impl LatticeBuilder {
     /// replicated.
     pub fn from_size(self, size_x: f64, size_y: f64) -> LatticeBuilder {
         let Spacing(dx, dy, _) = self.crystal.spacing();
-        let nx = (size_x/dx).round() as u64;
-        let ny = (size_y/dy).round() as u64;
+        let nx = (size_x / dx).round() as u64;
+        let ny = (size_y / dy).round() as u64;
 
         self.from_bins(nx, ny)
     }
@@ -112,11 +112,11 @@ impl LatticeBuilder {
     pub fn finalize(mut self) -> Lattice {
         let coords = match self.crystal.lattice_type {
             Hexagonal => self.hexagonal(),
-            _ => self.generic()
+            _ => self.generic(),
         };
 
         let Spacing(dx, dy, _) = self.crystal.spacing();
-        let box_size = Coord::new((self.nx as f64)*dx, (self.ny as f64)*dy, 0.0);
+        let box_size = Coord::new((self.nx as f64) * dx, (self.ny as f64) * dy, 0.0);
 
         Lattice {
             box_size: box_size,
@@ -128,7 +128,7 @@ impl LatticeBuilder {
         LatticeBuilder {
             crystal: crystal,
             nx: 0,
-            ny: 0
+            ny: 0,
         }
     }
 
@@ -146,11 +146,11 @@ impl LatticeBuilder {
         (0..self.ny)
             .flat_map(|row| {
                 (0..self.nx)
-                    .map(move |col| Coord::new(
-                        (col as f64)*dx + (row as f64)*dx_per_row,
-                        (row as f64)*dy,
-                        0.0,
-                    ))
+                    .map(move |col| {
+                        Coord::new((col as f64) * dx + (row as f64) * dx_per_row,
+                                   (row as f64) * dy,
+                                   0.0)
+                        })
             })
             .collect()
     }
@@ -173,11 +173,11 @@ impl LatticeBuilder {
             .flat_map(|row| {
                 (0..self.nx)
                     .filter(move |col| (col + row + 1) % 3 > 0)
-                    .map(move |col| Coord::new(
-                        (col as f64)*dx + (row as f64)*dx_per_row,
-                        (row as f64)*dy,
-                        0.0,
-                    ))
+                    .map(move |col| {
+                            Coord::new((col as f64) * dx + (row as f64) * dx_per_row,
+                                       (row as f64) * dy,
+                                       0.0)
+                        })
             })
             .collect()
     }
@@ -189,12 +189,17 @@ enum LatticeType {
 }
 use self::LatticeType::*;
 
-/// A crystal base for a 2D lattice.
+/// A crystal base for a 2D lattice. It consists of two vectors
+/// who are used to step onto neighbouring lattice sites.
 struct Crystal {
-    a: f64,      // Vector length a
-    b: f64,      // Vector length b
-    gamma: f64,  // Angle (in radians) between vectors (a, b)
-    lattice_type: LatticeType
+    /// Vector length a.
+    a: f64,
+    /// Vector length b.
+    b: f64,
+    /// Angle (in radians) between vectors a and b.
+    gamma: f64,
+    /// Type of lattice.
+    lattice_type: LatticeType,
 }
 
 /// Constructors of crystal bases from which lattices are replicated.
@@ -204,8 +209,8 @@ impl Crystal {
         Crystal {
             a: a,
             b: a,
-            gamma: 2.0*::std::f64::consts::PI/3.0, // 120 degrees
-            lattice_type: Hexagonal
+            gamma: 2.0 * ::std::f64::consts::PI / 3.0, // 120 degrees
+            lattice_type: Hexagonal,
         }
     }
 
@@ -215,7 +220,7 @@ impl Crystal {
             a: a,
             b: b,
             gamma: gamma,
-            lattice_type: Triclinic
+            lattice_type: Triclinic,
         }
     }
 
@@ -228,21 +233,21 @@ impl Crystal {
     }
 }
 
-struct Spacing (
-    f64, // Space between columns (along x) in a lattice
-    f64, // Space between rows (along y)
-    f64  // Adjustment per row of x
-);
+struct Spacing(f64, // Space between columns (along x) in a lattice
+               f64, // Space between rows (along y)
+               f64); // Adjustment per row of x
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ::std::f64;
+    use std::f64;
 
     #[test]
     fn coord_translations() {
         let coord = Coord::new(0.0, 1.0, 2.0);
-        assert_eq!(Coord{ x: 1.0, y: 0.0, z: 2.5 }, coord.add(&Coord { x: 1.0, y: -1.0, z: 0.5 }));
+        let coord_add = coord.add(&coord);
+        let expected = Coord::new(0.0, 2.0, 4.0);
+        assert_eq!(expected, coord_add);
     }
 
     #[test]
@@ -250,7 +255,7 @@ mod tests {
         let crystal = Crystal::hexagonal(1.0);
         assert_eq!(1.0, crystal.a);
         assert_eq!(1.0, crystal.b);
-        assert_eq!(2.0*f64::consts::PI/3.0, crystal.gamma);
+        assert_eq!(2.0 * f64::consts::PI / 3.0, crystal.gamma);
     }
 
     #[test]
@@ -264,35 +269,33 @@ mod tests {
     #[test]
     fn triclinic_lattice() {
         let dx = 1.0;
-        let angle = f64::consts::PI/3.0; // 60 degrees
+        let angle = 60f64.to_radians();
 
         let lattice = Lattice::triclinic(dx, dx, angle)
-                              .from_bins(3, 2)
-                              .finalize();
+            .from_bins(3, 2)
+            .finalize();
 
         // Calculate shifts for x and y when shifting along y
-        let dy = dx*f64::sin(angle);
-        let dx_per_y = dx*f64::cos(angle);
+        let dy = dx * angle.sin();
+        let dx_per_y = dx * angle.cos();
 
         // Check the dimensions
-        assert_eq!(Coord::new(3.0*dx, 2.0*dy, 0.0), lattice.box_size);
+        assert_eq!(Coord::new(3.0 * dx, 2.0 * dy, 0.0), lattice.box_size);
 
         // ... and the coordinates
         let mut iter = lattice.coords.iter();
-        assert_eq!(Some(&Coord::new(0.0,               0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx,                0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(2.0*dx,            0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_y,          dy,  0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_y + dx,     dy,  0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_y + 2.0*dx, dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(0.0, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(2.0 * dx, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_y, dy, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_y + dx, dy, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_y + 2.0 * dx, dy, 0.0)), iter.next());
         assert_eq!(None, iter.next());
     }
 
     #[test]
     fn hexagonal_lattice_has_empty_points() {
-        let lattice = Lattice::hexagonal(1.0)
-                              .from_bins(6, 2)
-                              .finalize();
+        let lattice = Lattice::hexagonal(1.0).from_bins(6, 2).finalize();
 
         let crystal = Crystal::hexagonal(1.0);
         let Spacing(dx, dy, dx_per_row) = crystal.spacing();
@@ -300,18 +303,18 @@ mod tests {
         // The hexagonal lattice has every third point removed to create
         // a chicken wire fence structure.
         let mut iter = lattice.coords.iter();
-        assert_eq!(Some(&Coord::new(0.0,                 0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx,                  0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(0.0, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx, 0.0, 0.0)), iter.next());
         // REMOVED: assert_eq!(Some(&Coord::new(2.0*dx, 0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(3.0*dx,              0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(4.0*dx,              0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(3.0 * dx, 0.0, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(4.0 * dx, 0.0, 0.0)), iter.next());
         // REMOVED: assert_eq!(Some(&Coord::new(5.0*dx, 0.0, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row,          dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row, dy, 0.0)), iter.next());
         // REMOVED: assert_eq!(Some(&Coord::new(dx_per_y + dx, dy, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row + 2.0*dx, dy,  0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row + 3.0*dx, dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row + 2.0 * dx, dy, 0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row + 3.0 * dx, dy, 0.0)), iter.next());
         // REMOVED: assert_eq!(Some(&Coord::new(dx_per_row + 4.0*dx, dy, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row + 5.0*dx, dy,  0.0)), iter.next());
+        assert_eq!(Some(&Coord::new(dx_per_row + 5.0 * dx, dy, 0.0)), iter.next());
         assert_eq!(None, iter.next());
     }
 
@@ -323,12 +326,8 @@ mod tests {
         // nx is evenly divided by 3 and ny by 2.
 
         // The final shape of this system should be (6, 2).
-        let lattice = Lattice::hexagonal(1.0)
-                              .from_bins(4, 1)
-                              .finalize();
-        let expected = Lattice::hexagonal(1.0)
-                               .from_bins(6, 2)
-                               .finalize();
+        let lattice = Lattice::hexagonal(1.0).from_bins(4, 1).finalize();
+        let expected = Lattice::hexagonal(1.0).from_bins(6, 2).finalize();
 
         assert_eq!(expected.coords, lattice.coords);
         assert_eq!(expected.box_size, lattice.box_size);
@@ -338,11 +337,11 @@ mod tests {
     fn lattice_from_size() {
         // This should result in a 2-by-2 triclinic lattice
         let lattice = Lattice::triclinic(1.0, 0.5, 90f64.to_radians())
-                              .from_size(2.1, 0.9)
-                              .finalize();
+            .from_size(2.1, 0.9)
+            .finalize();
         let expected = Lattice::triclinic(1.0, 0.5, 90f64.to_radians())
-                               .from_bins(2, 2)
-                               .finalize();
+            .from_bins(2, 2)
+            .finalize();
 
         assert_eq!(expected.coords, lattice.coords);
         assert_eq!(expected.box_size, lattice.box_size);
@@ -351,12 +350,8 @@ mod tests {
     #[test]
     fn hexagonal_lattice_from_size() {
         // This should result in a 3-by-2 hexagonal lattice
-        let lattice = Lattice::hexagonal(1.0)
-                              .from_size(2.1, 0.9)
-                              .finalize();
-        let expected = Lattice::hexagonal(1.0)
-                               .from_bins(3, 2)
-                               .finalize();
+        let lattice = Lattice::hexagonal(1.0).from_size(2.1, 0.9).finalize();
+        let expected = Lattice::hexagonal(1.0).from_bins(3, 2).finalize();
 
         assert_eq!(expected.coords, lattice.coords);
         assert_eq!(expected.box_size, lattice.box_size);
@@ -372,27 +367,25 @@ mod tests {
 
     #[test]
     fn crystal_spacing() {
-        let crystal = Crystal::triclinic(1.0, 3.0, f64::consts::PI/3.0);
+        let crystal = Crystal::triclinic(1.0, 3.0, f64::consts::PI / 3.0);
         let Spacing(dx, dy, dx_per_row) = crystal.spacing();
 
         assert_eq!(1.0, dx);
-        assert_eq!(3.0*f64::sqrt(3.0)/2.0, dy);
+        assert_eq!(3.0 * 3.0f64.sqrt() / 2.0, dy);
         assert!((1.5 - dx_per_row).abs() < 1e-6);
     }
 
     #[test]
     fn translate_lattice() {
         let lattice = Lattice {
-            box_size: Coord::new(1.0, 1.0, 1.0),
-            coords: vec![
-                Coord::new(0.0, 0.0, 0.0),
-                Coord::new(2.0, 1.0, 0.0)
-            ]
-        }.translate(&Coord::new(-0.5, 0.5, 1.0));
+                box_size: Coord::new(1.0, 1.0, 1.0),
+                coords: vec![Coord::new(0.0, 0.0, 0.0), Coord::new(2.0, 1.0, 0.0)],
+            }
+            .translate(&Coord::new(-0.5, 0.5, 1.0));
 
         let mut iter = lattice.coords.iter();
         assert_eq!(Some(&Coord::new(-0.5, 0.5, 1.0)), iter.next());
-        assert_eq!(Some(&Coord::new( 1.5, 1.5, 1.0)), iter.next());
+        assert_eq!(Some(&Coord::new(1.5, 1.5, 1.0)), iter.next());
         assert_eq!(None, iter.next());
     }
 }

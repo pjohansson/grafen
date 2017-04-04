@@ -32,14 +32,13 @@ impl Config {
         let output_file = value_t!(matches, "output", String)?;
         let size_x = value_t!(matches, "x", f64)?;
         let size_y = value_t!(matches, "y", f64)?;
-        let title = value_t!(matches, "title", String)
-            .unwrap_or("Substrate".to_string());
+        let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
 
         Ok(Config {
-            title: title,
-            filename: output_file,
-            size: InputSize(size_x, size_y),
-        })
+                title: title,
+                filename: output_file,
+                size: InputSize(size_x, size_y),
+            })
     }
 }
 
@@ -68,14 +67,16 @@ fn select_substrate() -> Result<SubstrateType, io::Error> {
     io::stdin().read_line(&mut selection)?;
     let num = selection
         .trim()
-        .parse::<i64>().map_err(|_|
-            io::Error::new(io_other, format!("'{}' is not a valid number", selection.trim()))
-        );
+        .parse::<i64>()
+        .map_err(|_| {
+                    io::Error::new(io_other,
+                                   format!("'{}' is not a valid number", selection.trim()))
+                });
 
     match num {
         Ok(0) => Ok(SubstrateType::Graphene),
         Ok(1) => Ok(SubstrateType::Silica),
         Ok(_) => Err(io::Error::new(io_other, "No substrate was selected")),
-        Err(e) => Err(e)
+        Err(e) => Err(e),
     }
 }

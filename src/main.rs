@@ -56,10 +56,12 @@ fn main() {
         (@arg title: -t --title [STR] +takes_value "Title of system")
     ).get_matches();
 
-    let config = config::Config::new(matches).unwrap_or_else(|err| {
-        writeln!(&mut stderr, "error: {}", err).expect("could not write to stderr");
-        std::process::exit(1)
-    });
+    let config = config::Config::new(matches)
+        .unwrap_or_else(|err| {
+                            writeln!(&mut stderr, "error: {}", err)
+                                .expect("could not write to stderr");
+                            std::process::exit(1)
+                        });
 
     if let Err(e) = config::run(config) {
         writeln!(&mut stderr, "error: {}", e).expect("could not write to stderr");

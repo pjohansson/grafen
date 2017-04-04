@@ -8,7 +8,7 @@ pub struct System {
     /// System dimensions.
     pub dimensions: Coord,
     /// List of atoms.
-    pub atoms: Vec<Atom>
+    pub atoms: Vec<Atom>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -24,13 +24,13 @@ pub struct Atom {
     /// Number of the atom (0-indexed).
     pub atom_number: u64,
     /// Absolute atom position in a system.
-    pub position: Coord
+    pub position: Coord,
 }
 
 /// Substrate types.
 pub enum SubstrateType {
     Graphene,
-    Silica
+    Silica,
 }
 use self::SubstrateType::*;
 
@@ -42,20 +42,19 @@ struct ResidueBase {
     /// Residue code.
     code: &'static str,
     /// List of atoms belonging to the residue.
-    atoms: Vec<ResidueAtom>
+    atoms: Vec<ResidueAtom>,
 }
 
 impl ResidueBase {
     /// Graphene is a single carbon atom at each lattice point.
     fn graphene(bond_length: f64) -> ResidueBase {
+        let dx = bond_length / 2.0;
         ResidueBase {
             code: "GRPH",
-            atoms: vec![
-                ResidueAtom {
-                    code: "C",
-                    position: Coord::new(bond_length/2.0, bond_length/2.0, bond_length/2.0)
-                }
-            ]
+            atoms: vec![ResidueAtom {
+                            code: "C",
+                            position: Coord::new(dx, dx, dx),
+                        }],
         }
     }
 
@@ -63,15 +62,22 @@ impl ResidueBase {
     fn silica(bond_length: f64) -> ResidueBase {
         let z0 = 0.000;
         let dz = 0.151;
-        let base_coord = Coord::new(bond_length/4.0, bond_length/6.0, z0);
+        let base_coord = Coord::new(bond_length / 4.0, bond_length / 6.0, z0);
 
         ResidueBase {
             code: "SIO",
-            atoms: vec![
-                ResidueAtom { code: "O1", position: base_coord.add(&Coord::new(0.0, 0.0,  dz)) },
-                ResidueAtom { code: "SI", position: base_coord },
-                ResidueAtom { code: "O2", position: base_coord.add(&Coord::new(0.0, 0.0, -dz)) }
-            ]
+            atoms: vec![ResidueAtom {
+                            code: "O1",
+                            position: base_coord.add(&Coord::new(0.0, 0.0, dz)),
+                        },
+                        ResidueAtom {
+                            code: "SI",
+                            position: base_coord,
+                        },
+                        ResidueAtom {
+                            code: "O2",
+                            position: base_coord.add(&Coord::new(0.0, 0.0, -dz)),
+                        }],
         }
     }
 }
@@ -79,11 +85,11 @@ impl ResidueBase {
 #[derive(Clone, Copy)]
 /// Every atom in a residue has their own code and relative
 /// position some base coordinate.
-struct ResidueAtom  {
+struct ResidueAtom {
     /// Atom code.
     code: &'static str,
     /// Relative position.
-    position: Coord
+    position: Coord,
 }
 
 /// Create a substrate of desired input size and type. The returned system's
@@ -99,9 +105,7 @@ struct ResidueAtom  {
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(size: InputSize,
-                        substrate_type: SubstrateType)
-                        -> Result<System, String> {
+pub fn create_substrate(size: InputSize, substrate_type: SubstrateType) -> Result<System, String> {
     let InputSize(size_x, size_y) = size;
     if size_x <= 0.0 || size_y <= 0.0 {
         return Err("input sizes of the system have to be positive".to_string());
@@ -128,15 +132,15 @@ fn create_graphene(InputSize(size_x, size_y): InputSize) -> System {
     let residue_base = ResidueBase::graphene(bond_length);
 
     let lattice = Lattice::hexagonal(bond_length)
-                          .from_size(size_x, size_y)
-                          .finalize()
-                          .translate(&Coord::new(0.0, 0.0, z0));
+        .from_size(size_x, size_y)
+        .finalize()
+        .translate(&Coord::new(0.0, 0.0, z0));
 
     let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
     System {
-        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
-        atoms: atoms
+        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0 * z0)),
+        atoms: atoms,
     }
 }
 
@@ -151,23 +155,21 @@ fn create_silica(InputSize(size_x, size_y): InputSize) -> System {
     let residue_base = ResidueBase::silica(bond_length);
 
     let lattice = Lattice::triclinic(bond_length, bond_length, 60f64.to_radians())
-                          .from_size(size_x, size_y)
-                          .finalize()
-                          .translate(&Coord::new(0.0, 0.0, z0));
+        .from_size(size_x, size_y)
+        .finalize()
+        .translate(&Coord::new(0.0, 0.0, z0));
 
     let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
     System {
-        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0*z0)),
-        atoms: atoms
+        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0 * z0)),
+        atoms: atoms,
     }
 }
 
 /// Use a constructed lattice and generate atoms from a residue
 /// at their relative positions to this lattice.
-fn broadcast_residue_onto_coords(coords: &Vec<Coord>,
-                                 residue: ResidueBase)
-                                 -> Vec<Atom> {
+fn broadcast_residue_onto_coords(coords: &Vec<Coord>, residue: ResidueBase) -> Vec<Atom> {
     let mut atoms: Vec<Atom> = Vec::new();
 
     for (residue_number, lattice_point) in coords.iter().enumerate() {
@@ -176,9 +178,8 @@ fn broadcast_residue_onto_coords(coords: &Vec<Coord>,
                 residue_name: residue.code.to_string(),
                 residue_number: residue_number as u64,
                 atom_name: residue_atom.code.to_string(),
-                atom_number: (residue.atoms.len()*residue_number) as u64
-                             + (atom_number as u64),
-                position: lattice_point.add(&residue_atom.position)
+                atom_number: (residue.atoms.len() * residue_number) as u64 + (atom_number as u64),
+                position: lattice_point.add(&residue_atom.position),
             };
             atoms.push(atom);
         }
@@ -209,7 +210,7 @@ mod tests {
             residue_number: 0,
             atom_name: "C".to_string(),
             atom_number: 0,
-            position: Coord::new(bond_length/2.0, bond_length/2.0, z0 + bond_length/2.0)
+            position: Coord::new(bond_length / 2.0, bond_length / 2.0, z0 + bond_length / 2.0),
         };
         assert_eq!(Some(&first_atom), atoms.next());
     }

@@ -12,10 +12,7 @@ use std::path::PathBuf;
 ///
 /// # Errors
 /// Returns an error if the file could not be written to.
-pub fn write_gromos(system: &System,
-                    output_file: &str,
-                    title: &str)
-                    -> Result<(), Box<Error>> {
+pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<(), Box<Error>> {
     let path = PathBuf::from(output_file).with_extension("gro");
     let file = File::create(&path)?;
     let mut writer = BufWriter::new(file);
@@ -31,12 +28,19 @@ pub fn write_gromos(system: &System,
         let atom_number = (atom.atom_number + 1) % 100_000;
 
         writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
-            residue_number, atom.residue_name, atom.atom_name, atom_number,
-            atom.position.x, atom.position.y, atom.position.z))?;
+                                    residue_number,
+                                    atom.residue_name,
+                                    atom.atom_name,
+                                    atom_number,
+                                    atom.position.x,
+                                    atom.position.y,
+                                    atom.position.z))?;
     }
 
     writer.write_fmt(format_args!("{:12.8} {:12.8} {:12.8}\n",
-        system.dimensions.x, system.dimensions.y, system.dimensions.z))?;
+                                system.dimensions.x,
+                                system.dimensions.y,
+                                system.dimensions.z))?;
 
     Ok(())
 }
