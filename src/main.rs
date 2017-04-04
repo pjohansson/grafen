@@ -2,7 +2,7 @@
 //! Writes to GROMOS formatted files.
 //!
 //! # Usage
-//! ```bash
+//! ```
 //! USAGE:
 //!     create_system [OPTIONS] <PATH> <X> <Y>
 //!
@@ -11,12 +11,12 @@
 //!     -V, --version    Prints version information
 //!
 //! OPTIONS:
-//!     -t, --title <STR>    title of system
+//!     -t, --title <STR>    Title of system
 //!
 //! ARGS:
-//!     <PATH>    output .gro file (the extension will be corrected)
-//!     <X>       size along x
-//!     <Y>       size along y
+//!     <PATH>    Output .gro file (the extension will be corrected)
+//!     <X>       Size along x
+//!     <Y>       Size along y
 //! ```
 //!
 //! # Available Substrates
@@ -50,10 +50,10 @@ fn main() {
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
-        (@arg output: <PATH> "output .gro file (the extension will be corrected)")
-        (@arg x: <X> "size along x")
-        (@arg y: <Y> "size along y")
-        (@arg title: -t --title [STR] +takes_value "title of system")
+        (@arg output: <PATH> "Output .gro file (the extension will be corrected)")
+        (@arg x: <X> "Size along x")
+        (@arg y: <Y> "Size along y")
+        (@arg title: -t --title [STR] +takes_value "Title of system")
     ).get_matches();
 
     let config = config::Config::new(matches).unwrap_or_else(|err| {

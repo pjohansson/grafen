@@ -13,12 +13,12 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -t, --title <STR>    title of system
+    -t, --title <STR>    Title of system
 
 ARGS:
-    <PATH>    output .gro file (the extension will be corrected)
-    <X>       size along x
-    <Y>       size along y
+    <PATH>    Output .gro file (the extension will be corrected)
+    <X>       Size along x
+    <Y>       Size along y
 ```
 
 # Available Substrates
