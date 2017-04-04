@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/pjohansson/create_system.svg?branch=master)](https://travis-ci.org/pjohansson/create_system)
+
 Construct substrates for use in molecular dynamics simulations.
 Writes to GROMOS formatted files.
 
