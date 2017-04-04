@@ -4,7 +4,7 @@ Construct substrates for use in molecular dynamics simulations.
 Writes to GROMOS formatted files.
 
 # Usage
-```bash
+```
 USAGE:
     create_system [OPTIONS] <PATH> <X> <Y>
 
@@ -34,3 +34,6 @@ The spacing between every atom is 0.142 nm.
 A monolayer of rigid SiO2 molecules set in a triclinic formation with
 with spacing 0.450 nm along both base vectors and an angle of 60 degrees
 between them.
+
+# License
+The program is unlicensed. See [unlicense.org](http://unlicense.org) for details.
