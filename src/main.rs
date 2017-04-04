@@ -39,7 +39,7 @@ extern crate clap;
 pub mod lattice;
 mod config;
 mod output;
-mod substrates;
+pub mod substrates;
 
 use std::io::prelude::*;
 

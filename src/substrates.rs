@@ -1,36 +1,46 @@
-use std::f64;
+//! Construct substrates of given types.
 
 use lattice::{Coord, Lattice};
 
+/// A system with a list of atoms belonging to it.
 pub struct System {
+    /// System dimensions.
     pub dimensions: Coord,
+    /// List of atoms.
     pub atoms: Vec<Atom>
 }
 
+#[derive(Debug, PartialEq)]
 /// Every atom in a system has some information connected to it
 /// which is used when writing the output.
-#[derive(Debug, PartialEq)]
 pub struct Atom {
-    pub residue_name: String, // Code for the parent residue name
-    pub residue_number: u64,  // Number of residue (0-indexed)
-    pub atom_name: String,    // Code for the atom name
-    pub atom_number: u64,     // Number of the atom (0-indexed)
-    pub position: Coord       // Atom position
+    /// Code for the parent residue name.
+    pub residue_name: String,
+    /// Number of residue (0-indexed).
+    pub residue_number: u64,
+    /// Code for the atom name.
+    pub atom_name: String,
+    /// Number of the atom (0-indexed).
+    pub atom_number: u64,
+    /// Absolute atom position in a system.
+    pub position: Coord
 }
 
-/// Substrate types
+/// Substrate types.
 pub enum SubstrateType {
     Graphene,
     Silica
 }
 use self::SubstrateType::*;
 
-/// This is a base for generating atoms belonging to a residue.
+/// A base for generating atoms belonging to a residue.
 /// Every residue has a name and a list of atoms that belong to it
-/// with their base coordinates. The names are static since these
-/// should all be generated only once from a single source.
+/// with their relative base coordinates. The names are static since
+/// they are generated only once from a single source.
 struct ResidueBase {
+    /// Residue code.
     code: &'static str,
+    /// List of atoms belonging to the residue.
     atoms: Vec<ResidueAtom>
 }
 
@@ -65,16 +75,32 @@ impl ResidueBase {
     }
 }
 
-/// Every atom in a residue has their own code and relative position
 #[derive(Clone, Copy)]
+/// Every atom in a residue has their own code and relative
+/// position some base coordinate.
 struct ResidueAtom  {
+    /// Atom code.
     code: &'static str,
+    /// Relative position.
     position: Coord
 }
 
-/// Create a substrate of desired input size and type.
-pub fn create_substrate((size_x, size_y): (f64, f64), substrate_type: SubstrateType)
-        -> Result<System, String> {
+/// Create a substrate of desired input size and type. The returned system's
+/// size will be adjusted to a multiple of the substrate spacing along both
+/// directions. Thus the system can be periodically replicated along x and y.
+///
+/// # Examples
+/// Create a graphene substrate:
+///
+/// ```
+/// let graphene = create_substrate((5.0, 4.0), SubstrateType::Graphene);
+/// ```
+///
+/// # Errors
+/// Returns an Error if the either of the input size are non-positive.
+pub fn create_substrate((size_x, size_y): (f64, f64),
+                        substrate_type: SubstrateType)
+                        -> Result<System, String> {
     if size_x <= 0.0 || size_y <= 0.0 {
         return Err("input sizes of the system have to be positive".to_string());
     }
@@ -135,8 +161,11 @@ fn create_silica(size_x: f64, size_y: f64) -> System {
     }
 }
 
-// Use a constructed grid and generate atoms of a residue for them
-fn broadcast_residue_onto_coords(coords: &Vec<Coord>, residue: ResidueBase) -> Vec<Atom> {
+/// Use a constructed lattice and generate atoms from a residue
+/// at their relative positions to this lattice.
+fn broadcast_residue_onto_coords(coords: &Vec<Coord>,
+                                 residue: ResidueBase)
+                                 -> Vec<Atom> {
     let mut atoms: Vec<Atom> = Vec::new();
 
     for (residue_number, lattice_point) in coords.iter().enumerate() {
@@ -145,7 +174,8 @@ fn broadcast_residue_onto_coords(coords: &Vec<Coord>, residue: ResidueBase) -> V
                 residue_name: residue.code.to_string(),
                 residue_number: residue_number as u64,
                 atom_name: residue_atom.code.to_string(),
-                atom_number: (residue.atoms.len()*residue_number) as u64 + (atom_number as u64),
+                atom_number: (residue.atoms.len()*residue_number) as u64
+                             + (atom_number as u64),
                 position: lattice_point.add(&residue_atom.position)
             };
             atoms.push(atom);
