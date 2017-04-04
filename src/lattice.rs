@@ -1,4 +1,4 @@
-//! Implements the `Lattice` struct which as per the name contains
+//! Implements the `Lattice` struct which as the name suggests contains
 //! information about and grid coordinates of lattices. It comes
 //! with easy-to-use constructors for different lattice types.
 

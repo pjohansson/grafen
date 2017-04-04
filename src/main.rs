@@ -37,7 +37,7 @@
 extern crate clap;
 
 pub mod lattice;
-mod config;
+pub mod config;
 mod output;
 pub mod substrates;
 

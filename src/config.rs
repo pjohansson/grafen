@@ -1,3 +1,5 @@
+//! Configure and run the program.
+
 use output;
 use substrates;
 use substrates::SubstrateType;
@@ -9,12 +11,22 @@ use std::io::Write;
 
 /// Program configuration.
 pub struct Config {
+    /// Title of output system.
     title: String,
+    /// Path of output file.
     filename: String,
-    size: (f64, f64),
+    /// Create a system of this size, please.
+    size: InputSize,
 }
 
+/// Input system size along x and y.
+pub struct InputSize(pub f64, pub f64);
+
 impl Config {
+    /// Parse the input command line arguments and return the run configuration.
+    ///
+    /// # Errors
+    /// Returns an error if any of the required arguments are missing or invalid.
     pub fn new(matches: clap::ArgMatches) -> Result<Config, Box<Error>> {
         let output_file = value_t!(matches, "output", String)?;
         let size_x = value_t!(matches, "x", f64)?;
@@ -25,18 +37,23 @@ impl Config {
         Ok(Config {
             title: title,
             filename: output_file,
-            size: (size_x, size_y)
+            size: InputSize(size_x, size_y),
         })
     }
 }
 
-/// Run the program.
+/// Run the program with a given configuration.
+///
+/// # Errors
+/// Returns an Error if the substrate couldn't be selected,
+/// constructed or output to disk.
 pub fn run(config: Config) -> Result<(), Box<Error>> {
     let substrate_type = select_substrate()?;
     let system = substrates::create_substrate(config.size, substrate_type)?;
     output::write_gromos(&system, &config.filename, &config.title)
 }
 
+/// Ask the user to select a substrate.
 fn select_substrate() -> Result<SubstrateType, io::Error> {
     let io_other = io::ErrorKind::Other;
 

@@ -1,5 +1,6 @@
 //! Construct substrates of given types.
 
+use config::InputSize;
 use lattice::{Coord, Lattice};
 
 /// A system with a list of atoms belonging to it.
@@ -98,7 +99,7 @@ struct ResidueAtom  {
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate((size_x, size_y): (f64, f64),
+pub fn create_substrate(InputSize(size_x, size_y): InputSize,
                         substrate_type: SubstrateType)
                         -> Result<System, String> {
     if size_x <= 0.0 || size_y <= 0.0 {
