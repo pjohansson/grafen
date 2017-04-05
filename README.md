@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
+[![crates.io](https://img.shields.io/crates/v/grafen.svg)](https://crates.io/crates/grafen) [![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
 
 Create graphene and other substrates for use in molecular dynamics simulations.
 
