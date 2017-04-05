@@ -3,7 +3,7 @@
 //! # Usage
 //! ```
 //! USAGE:
-//!     grafen [OPTIONS] <PATH> <X> <Y>
+//!     grafen_cli [OPTIONS] <PATH> <X> <Y>
 //!
 //! FLAGS:
 //!     -h, --help       Prints help information
@@ -35,12 +35,9 @@
 extern crate ansi_term;
 #[macro_use]
 extern crate clap;
+extern crate grafen;
 
-pub mod lattice;
-pub mod config;
-pub mod output;
-pub mod substrates;
-
+mod config;
 use config::Config;
 
 use std::io;
@@ -48,13 +45,13 @@ use std::io::Write;
 use std::process;
 
 fn main() {
-    let matches = clap_app!(grafen =>
+    let matches = clap_app!(grafen_cli =>
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
         (@arg output: <PATH> "Output GROMOS file (the extension will be set to .gro)")
-        (@arg x: <X> "Size along x")
-        (@arg y: <Y> "Size along y")
+        (@arg x: <X> "Size of system along the x axis (nm)")
+        (@arg y: <Y> "Size of system along the y axis (nm)")
         (@arg title: -t --title [STR] +takes_value "Title of system")
     ).get_matches();
 

@@ -1,11 +1,14 @@
 //! Configure and run the program.
 
-use output;
-use substrates;
-use substrates::SubstrateType;
+use grafen::error::GrafenError;
+use grafen::output;
+use grafen::substrates;
+use grafen::substrates::SubstrateType;
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
+
+use std::error::Error;
 use std::fmt;
 use std::io;
 use std::io::Write;
@@ -18,14 +21,10 @@ pub struct Config {
     /// Path of output file.
     filename: String,
     /// Create a system of this size, please.
-    size: InputSize,
+    size: (f64, f64),
     /// Selected substrate type.
     substrate_type: SubstrateType,
 }
-
-#[derive(Clone, Copy)]
-/// Input system size along x and y.
-pub struct InputSize(pub f64, pub f64);
 
 impl Config {
     /// Parse the input command line arguments, ask the user to select
@@ -45,7 +44,7 @@ impl Config {
         Ok(Config {
                 title: title,
                 filename: output_file,
-                size: InputSize(size_x, size_y),
+                size: (size_x, size_y),
                 substrate_type: substrate_type,
             })
     }
@@ -56,7 +55,8 @@ impl Config {
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
         substrates::create_substrate(self.size, self.substrate_type)
-            .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))
+            .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
+        Ok(())
     }
 }
 
@@ -106,6 +106,12 @@ impl From<io::Error> for ConfigError {
 impl From<clap::Error> for ConfigError {
     fn from(err: clap::Error) -> ConfigError {
         ConfigError::BadArgs(err)
+    }
+}
+
+impl From<GrafenError> for ConfigError {
+    fn from(err: GrafenError) -> ConfigError {
+        ConfigError::RunError(err.description().to_string())
     }
 }
 

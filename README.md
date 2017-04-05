@@ -1,11 +1,11 @@
 [![crates.io](https://img.shields.io/crates/v/grafen.svg)](https://crates.io/crates/grafen) [![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
 
-Create graphene and other substrates for use in molecular dynamics simulations.
+Create graphene and other substrates for use in molecular dynamics simulations. A binary CLI utility `grafen_cli` and the library `grafen` are both available for use.
 
 # Usage
 ```
 USAGE:
-    grafen [OPTIONS] <PATH> <X> <Y>
+    grafen_cli [OPTIONS] <PATH> <X> <Y>
 
 FLAGS:
     -h, --help       Prints help information
@@ -16,9 +16,12 @@ OPTIONS:
 
 ARGS:
     <PATH>    Output GROMOS file (the extension will be set to .gro)
-    <X>       Size along x
-    <Y>       Size along y
+    <X>       Size of system along the x axis (nm)
+    <Y>       Size of system along the y axis (nm)
 ```
+
+# Library
+See the documentation for usage examples.
 
 # Available Substrates
 Spacings and translations for all substrates is currently hard-coded.

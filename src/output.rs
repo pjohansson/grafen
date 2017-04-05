@@ -1,13 +1,13 @@
 //! Write systems to disk.
 
-use config::Result;
+use error::Result;
 use substrates::System;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
-/// Output the system to disk as a GROMOS formatted file.
+/// Output a system to disk as a GROMOS formatted file.
 /// The filename extension is adjusted to .gro.
 ///
 /// # Errors

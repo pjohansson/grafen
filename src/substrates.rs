@@ -1,6 +1,6 @@
 //! Construct substrates of given types.
 
-use config::{ConfigError, InputSize, Result};
+use error::{GrafenError, Result};
 use lattice::{Coord, Lattice};
 
 /// A system with a list of atoms belonging to it.
@@ -101,15 +101,16 @@ struct ResidueAtom {
 /// Create a graphene substrate:
 ///
 /// ```
-/// let graphene = create_substrate(InputSize(5.0, 4.0), SubstrateType::Graphene);
+/// use grafen::substrates::{create_substrate, SubstrateType};
+/// let graphene = create_substrate((5.0, 4.0), SubstrateType::Graphene);
 /// ```
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(size: InputSize, substrate_type: SubstrateType) -> Result<System> {
-    let InputSize(size_x, size_y) = size;
+pub fn create_substrate(size: (f64, f64), substrate_type: SubstrateType) -> Result<System> {
+    let (size_x, size_y) = size;
     if size_x <= 0.0 || size_y <= 0.0 {
-        return Err(ConfigError::RunError("input sizes of the system have to be positive".to_string()));
+        return Err(GrafenError::RunError("input sizes of the system have to be positive".to_string()));
     }
 
     let substrate = match substrate_type {
@@ -127,7 +128,7 @@ pub fn create_substrate(size: InputSize, substrate_type: SubstrateType) -> Resul
 /// that the system can be periodically replicated along x and y
 /// the dimensions are trimmed to the closest possible size
 /// that fits an even number of replicas.
-fn create_graphene(InputSize(size_x, size_y): InputSize) -> System {
+fn create_graphene((size_x, size_y): (f64, f64)) -> System {
     let bond_length = 0.142;
     let z0 = bond_length;
     let residue_base = ResidueBase::graphene(bond_length);
@@ -150,7 +151,7 @@ fn create_graphene(InputSize(size_x, size_y): InputSize) -> System {
 /// The layer consists of a triclinic lattice where the spacing
 /// is 0.45 along both vectors and the angle between them
 /// is 60 degrees. At each lattice point an SiO2 molecule is placed.
-fn create_silica(InputSize(size_x, size_y): InputSize) -> System {
+fn create_silica((size_x, size_y): (f64, f64)) -> System {
     let bond_length = 0.450;
     let z0 = 0.30;
     let residue_base = ResidueBase::silica(bond_length);
@@ -195,7 +196,7 @@ mod tests {
 
     #[test]
     fn graphene_layer() {
-        let desired_size = InputSize(1.0, 1.0);
+        let desired_size = (1.0, 1.0);
         let graphene = create_graphene(desired_size);
 
         let bond_length = 0.142;

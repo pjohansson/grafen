@@ -2,14 +2,17 @@
 //! information about and grid coordinates of lattices. It comes
 //! with easy-to-use constructors for different lattice types.
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 /// A three-dimensional coordinate.
 ///
 /// # Examples
 /// ```
+/// use grafen::lattice::Coord;
+///
 /// let coord1 = Coord::new(1.0, 0.0, 1.0);
 /// let coord2 = Coord::new(0.5, 0.5, 0.5);
-/// assert_eq(Coord::new(1.5, 0.5, 1.5), coord1.add(&coord2));
+///
+/// assert_eq!(Coord::new(1.5, 0.5, 1.5), coord1.add(&coord2));
 /// ```
 pub struct Coord {
     pub x: f64,
@@ -29,15 +32,27 @@ impl Coord {
     }
 }
 
+impl PartialEq for Coord {
+    fn eq(&self, other: &Coord) -> bool {
+        let atol = 1e-9;
+        (self.x - other.x).abs() < atol
+            && (self.y - other.y).abs() < atol
+            && (self.z - other.z).abs() < atol
+    }
+}
+
 /// A lattice with coordinates of its grid and a total size.
 ///
 /// The lattice is constructed using its builder methods
 /// for the various types of lattices.
 ///
 /// # Examples
-/// Construct a triclinic lattice:
+/// Construct a few lattices:
 ///
 /// ```
+/// use grafen::lattice::{Coord, Lattice};
+///
+/// // A triclinic:
 /// let lattice = Lattice::triclinic(1.0, 1.0, 90f64.to_radians())
 ///                       .from_size(0.9, 1.9) // Expect a 1-by-2 binned system
 ///                       .finalize();
@@ -45,17 +60,24 @@ impl Coord {
 /// assert_eq!(Coord::new(1.0, 2.0, 0.0), lattice.box_size);
 ///
 /// let mut coords = lattice.coords.iter();
-/// assert_eq!(Some(&Coord::new(0.0, 0.0, 0.0), coords.next()));
-/// assert_eq!(Some(&Coord::new(0.0, 1.0, 0.0), coords.next()));
+/// assert_eq!(Some(&Coord::new(0.0, 0.0, 0.0)), coords.next());
+/// assert_eq!(Some(&Coord::new(0.0, 1.0, 0.0)), coords.next());
 /// assert_eq!(None, coords.next());
-/// ```
 ///
-/// ... or a hexagonal:
-///
-/// ```
+/// // ... and a hexagonal:
 /// let lattice = Lattice::hexagonal(1.0)
 ///                       .from_size(1.0, 1.0)
 ///                       .finalize();
+/// ```
+///
+/// A lattice without size is empty:
+///
+/// ```
+/// use grafen::lattice::{Coord, Lattice};
+/// let lattice = Lattice::hexagonal(1.0).finalize();
+///
+/// assert_eq!(0, lattice.coords.len());
+/// assert_eq!(Coord::new(0.0, 0.0, 0.0), lattice.box_size);
 /// ```
 pub struct Lattice {
     /// Size of the lattice box.
@@ -248,6 +270,21 @@ mod tests {
         let coord_add = coord.add(&coord);
         let expected = Coord::new(0.0, 2.0, 4.0);
         assert_eq!(expected, coord_add);
+    }
+
+    #[test]
+    fn coord_eq_tolerance_small_deviation_passes() {
+        // Allow for some deviation when testing for equality, since floating point
+        // numbers are stupid.
+        let coord = Coord::new(0.0, 0.0, 0.0);
+        assert_eq!(coord, Coord::new(1e-10, 2e-10, 3e-10));
+    }
+
+    #[test]
+    #[should_panic]
+    fn coord_eq_tolerance_larger_deviation_does_not() {
+        let coord = Coord::new(0.0, 0.0, 0.0);
+        assert_eq!(coord, Coord::new(1e-9, 2e-9, 3e-9));
     }
 
     #[test]
