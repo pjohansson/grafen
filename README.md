@@ -2,6 +2,8 @@
 
 Create graphene and other substrates for use in molecular dynamics simulations. A binary CLI utility `grafen_cli` and the library `grafen` are both available for use.
 
+This is a pet project to help me set up simulation systems for my research. It is focused on formats used by [Gromacs](http://www.gromacs.org/). 
+
 # Usage
 ```
 USAGE:
