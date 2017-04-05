@@ -33,6 +33,7 @@
 //! with spacing 0.450 nm along both base vectors and an angle of 60 degrees
 //! between them.
 
+extern crate ansi_term;
 #[macro_use]
 extern crate clap;
 
@@ -41,11 +42,13 @@ pub mod config;
 pub mod output;
 pub mod substrates;
 
-use std::io::prelude::*;
+use config::Config;
+
+use std::io;
+use std::io::Write;
+use std::process;
 
 fn main() {
-    let mut stderr = std::io::stderr();
-
     let matches = clap_app!(create_system =>
         (version: crate_version!())
         (author: crate_authors!())
@@ -56,15 +59,9 @@ fn main() {
         (@arg title: -t --title [STR] +takes_value "Title of system")
     ).get_matches();
 
-    let config = config::Config::new(matches)
-        .unwrap_or_else(|err| {
-                            writeln!(&mut stderr, "error: {}", err)
-                                .expect("could not write to stderr");
-                            std::process::exit(1)
-                        });
-
-    if let Err(e) = config::run(config) {
-        writeln!(&mut stderr, "error: {}", e).expect("could not write to stderr");
-        std::process::exit(1)
+    if let Err(err) = Config::new(matches).and_then(|conf| conf.run()) {
+        let mut stderr = io::stderr();
+        writeln!(&mut stderr, "{}", err).expect("could not write to stderr");
+        process::exit(1);
     }
 }

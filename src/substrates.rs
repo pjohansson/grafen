@@ -1,6 +1,6 @@
 //! Construct substrates of given types.
 
-use config::InputSize;
+use config::{ConfigError, InputSize, Result};
 use lattice::{Coord, Lattice};
 
 /// A system with a list of atoms belonging to it.
@@ -27,6 +27,7 @@ pub struct Atom {
     pub position: Coord,
 }
 
+#[derive(Clone, Copy)]
 /// Substrate types.
 pub enum SubstrateType {
     Graphene,
@@ -105,10 +106,10 @@ struct ResidueAtom {
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(size: InputSize, substrate_type: SubstrateType) -> Result<System, String> {
+pub fn create_substrate(size: InputSize, substrate_type: SubstrateType) -> Result<System> {
     let InputSize(size_x, size_y) = size;
     if size_x <= 0.0 || size_y <= 0.0 {
-        return Err("input sizes of the system have to be positive".to_string());
+        return Err(ConfigError::RunError("input sizes of the system have to be positive".to_string()));
     }
 
     let substrate = match substrate_type {

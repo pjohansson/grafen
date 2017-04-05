@@ -1,8 +1,8 @@
 //! Write systems to disk.
 
+use config::Result;
 use substrates::System;
 
-use std::error::Error;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ use std::path::PathBuf;
 ///
 /// # Errors
 /// Returns an error if the file could not be written to.
-pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<(), Box<Error>> {
+pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<()> {
     let path = PathBuf::from(output_file).with_extension("gro");
     let file = File::create(&path)?;
     let mut writer = BufWriter::new(file);
