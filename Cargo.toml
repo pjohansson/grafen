@@ -1,9 +1,10 @@
 [package]
 name = "grafen"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
 description = "Create graphene and other substrates for use in molecular dynamics simulations."
 repository = "https://github.com/pjohansson/grafen"
+documentation = "https://docs.rs/crate/grafen"
 categories = ["command-line-utilities", "science"]
 keywords = ["gromacs", "molecular-dynamics", "substrates"]
 readme = "README.md"

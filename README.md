@@ -1,4 +1,4 @@
-[![crates.io](https://img.shields.io/crates/v/grafen.svg)](https://crates.io/crates/grafen) [![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
+[![crates.io](https://img.shields.io/crates/v/grafen.svg)](https://crates.io/crates/grafen) [![docs.rs](https://img.shields.io/badge/docs.rs-documentation-orange.svg)](https://docs.rs/crate/grafen) [![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
 
 Create graphene and other substrates for use in molecular dynamics simulations. A binary CLI utility `grafen_cli` and the library `grafen` are both available for use.
 
@@ -21,7 +21,7 @@ ARGS:
 ```
 
 # Library
-See the documentation for usage examples.
+See the [documentation](https://docs.rs/crate/grafen) for usage examples.
 
 # Available Substrates
 Spacings and translations for all substrates is currently hard-coded.
