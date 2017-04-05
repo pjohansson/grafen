@@ -1,12 +1,11 @@
-[![Build Status](https://travis-ci.org/pjohansson/create_system.svg?branch=master)](https://travis-ci.org/pjohansson/create_system)
+[![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
 
-Construct substrates for use in molecular dynamics simulations.
-Writes to GROMOS formatted files.
+Create graphene and other substrates for use in molecular dynamics simulations.
 
 # Usage
 ```
 USAGE:
-    create_system [OPTIONS] <PATH> <X> <Y>
+    grafen [OPTIONS] <PATH> <X> <Y>
 
 FLAGS:
     -h, --help       Prints help information
@@ -16,7 +15,7 @@ OPTIONS:
     -t, --title <STR>    Title of system
 
 ARGS:
-    <PATH>    Output .gro file (the extension will be corrected)
+    <PATH>    Output GROMOS file (the extension will be set to .gro)
     <X>       Size along x
     <Y>       Size along y
 ```

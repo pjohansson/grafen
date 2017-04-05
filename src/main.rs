@@ -1,10 +1,9 @@
-//! Construct substrates for use in molecular dynamics simulations.
-//! Writes to GROMOS formatted files.
+//! Create graphene and other substrates for use in molecular dynamics simulations.
 //!
 //! # Usage
 //! ```
 //! USAGE:
-//!     create_system [OPTIONS] <PATH> <X> <Y>
+//!     grafen [OPTIONS] <PATH> <X> <Y>
 //!
 //! FLAGS:
 //!     -h, --help       Prints help information
@@ -14,7 +13,7 @@
 //!     -t, --title <STR>    Title of system
 //!
 //! ARGS:
-//!     <PATH>    Output .gro file (the extension will be corrected)
+//!     <PATH>    Output GROMOS file (the extension will be set to .gro)
 //!     <X>       Size along x
 //!     <Y>       Size along y
 //! ```
@@ -49,11 +48,11 @@ use std::io::Write;
 use std::process;
 
 fn main() {
-    let matches = clap_app!(create_system =>
+    let matches = clap_app!(grafen =>
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
-        (@arg output: <PATH> "Output .gro file (the extension will be corrected)")
+        (@arg output: <PATH> "Output GROMOS file (the extension will be set to .gro)")
         (@arg x: <X> "Size along x")
         (@arg y: <Y> "Size along y")
         (@arg title: -t --title [STR] +takes_value "Title of system")

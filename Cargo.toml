@@ -1,8 +1,8 @@
 [package]
-name = "create_system"
+name = "grafen"
 version = "0.3.1"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
-description = "Create substrates and output to GROMOS formatted files"
+description = "Create graphene and other substrates for use in molecular dynamics simulations."
 
 [dependencies]
 ansi_term = "^0.9.0"
