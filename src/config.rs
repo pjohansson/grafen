@@ -55,8 +55,8 @@ impl Config {
     /// # Errors
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
-        let system = substrates::create_substrate(self.size, self.substrate_type)?;
-        output::write_gromos(&system, &self.filename, &self.title)
+        substrates::create_substrate(self.size, self.substrate_type)
+            .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))
     }
 }
 
@@ -66,7 +66,7 @@ pub enum ConfigError {
     NoSubstrate,
     /// Some command line arguments were bad or non-existant.
     BadArgs(clap::Error),
-    /// Something went wrong with reading or writing.
+    /// Something went wrong when reading or writing.
     IoError(io::Error),
     /// Something went wrong when creating the system.
     RunError(String),
@@ -80,17 +80,18 @@ impl fmt::Display for ConfigError {
         let red_error = Red.paint("error:");
 
         match *self {
+            // Clap already colours the `error: ` in red so we do not repeat that
             ConfigError::BadArgs(ref err) => {
                 write!(f, "{}", err)
             },
             ConfigError::IoError(ref err) => {
                 write!(f, "{} {}", red_error, err)
             },
-            ConfigError::NoSubstrate => {
-                write!(f, "{}", Yellow.paint("No substrate was selected."))
-            },
             ConfigError::RunError(ref err) => {
                 write!(f, "{} {}", red_error, err)
+            },
+            ConfigError::NoSubstrate => {
+                write!(f, "{}", Yellow.paint("No substrate was selected."))
             },
         }
     }
