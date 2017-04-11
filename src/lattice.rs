@@ -56,7 +56,7 @@ impl PartialEq for Coord {
 ///
 /// // A triclinic:
 /// let lattice = Lattice::triclinic(1.0, 1.0, 90f64.to_radians())
-///                       .from_size(0.9, 1.9) // Expect a 1-by-2 binned system
+///                       .with_size(0.9, 1.9) // Expect a 1-by-2 binned system
 ///                       .finalize();
 ///
 /// assert_eq!(Coord::new(1.0, 2.0, 0.0), lattice.box_size);
@@ -68,7 +68,7 @@ impl PartialEq for Coord {
 ///
 /// // ... and a hexagonal:
 /// let lattice = Lattice::hexagonal(1.0)
-///                       .from_size(1.0, 1.0)
+///                       .with_size(1.0, 1.0)
 ///                       .finalize();
 /// ```
 ///
@@ -152,12 +152,12 @@ impl LatticeBuilder {
     /// along both directions to the closest multiple of the calculated
     /// crystal spacing. As such the system is prepared to be periodically
     /// replicated.
-    pub fn from_size(self, size_x: f64, size_y: f64) -> LatticeBuilder {
+    pub fn with_size(self, size_x: f64, size_y: f64) -> LatticeBuilder {
         let Spacing(dx, dy, _) = self.crystal.spacing();
         let nx = (size_x / dx).round() as u64;
         let ny = (size_y / dy).round() as u64;
 
-        self.from_bins(nx, ny)
+        self.with_bins(nx, ny)
     }
 
     /// Finalize and return the Lattice. Note that if a desired size has
@@ -185,7 +185,7 @@ impl LatticeBuilder {
         }
     }
 
-    fn from_bins(mut self, nx: u64, ny: u64) -> LatticeBuilder {
+    fn with_bins(mut self, nx: u64, ny: u64) -> LatticeBuilder {
         self.nx = nx;
         self.ny = ny;
         self
@@ -340,7 +340,7 @@ mod tests {
         let angle = 60f64.to_radians();
 
         let lattice = Lattice::triclinic(dx, dx, angle)
-            .from_bins(3, 2)
+            .with_bins(3, 2)
             .finalize();
 
         // Calculate shifts for x and y when shifting along y
@@ -363,7 +363,7 @@ mod tests {
 
     #[test]
     fn hexagonal_lattice_has_empty_points() {
-        let lattice = Lattice::hexagonal(1.0).from_bins(6, 2).finalize();
+        let lattice = Lattice::hexagonal(1.0).with_bins(6, 2).finalize();
 
         let crystal = Crystal::hexagonal(1.0);
         let Spacing(dx, dy, dx_per_row) = crystal.spacing();
@@ -394,21 +394,21 @@ mod tests {
         // nx is evenly divided by 3 and ny by 2.
 
         // The final shape of this system should be (6, 2).
-        let lattice = Lattice::hexagonal(1.0).from_bins(4, 1).finalize();
-        let expected = Lattice::hexagonal(1.0).from_bins(6, 2).finalize();
+        let lattice = Lattice::hexagonal(1.0).with_bins(4, 1).finalize();
+        let expected = Lattice::hexagonal(1.0).with_bins(6, 2).finalize();
 
         assert_eq!(expected.coords, lattice.coords);
         assert_eq!(expected.box_size, lattice.box_size);
     }
 
     #[test]
-    fn lattice_from_size() {
+    fn lattice_with_size() {
         // This should result in a 2-by-2 triclinic lattice
         let lattice = Lattice::triclinic(1.0, 0.5, 90f64.to_radians())
-            .from_size(2.1, 0.9)
+            .with_size(2.1, 0.9)
             .finalize();
         let expected = Lattice::triclinic(1.0, 0.5, 90f64.to_radians())
-            .from_bins(2, 2)
+            .with_bins(2, 2)
             .finalize();
 
         assert_eq!(expected.coords, lattice.coords);
@@ -416,10 +416,10 @@ mod tests {
     }
 
     #[test]
-    fn hexagonal_lattice_from_size() {
+    fn hexagonal_lattice_with_size() {
         // This should result in a 3-by-2 hexagonal lattice
-        let lattice = Lattice::hexagonal(1.0).from_size(2.1, 0.9).finalize();
-        let expected = Lattice::hexagonal(1.0).from_bins(3, 2).finalize();
+        let lattice = Lattice::hexagonal(1.0).with_size(2.1, 0.9).finalize();
+        let expected = Lattice::hexagonal(1.0).with_bins(3, 2).finalize();
 
         assert_eq!(expected.coords, lattice.coords);
         assert_eq!(expected.box_size, lattice.box_size);
@@ -459,7 +459,7 @@ mod tests {
 
     #[test]
     fn uniform_distribution_of_lattice_positions() {
-        let mut lattice = Lattice::hexagonal(1.0).from_bins(100, 100).finalize();
+        let mut lattice = Lattice::hexagonal(1.0).with_bins(100, 100).finalize();
 
         // We translate by this to ensure that the numbers
         // are not generated around 0.0

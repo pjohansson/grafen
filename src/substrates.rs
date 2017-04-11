@@ -159,7 +159,7 @@ fn create_graphene(conf: &Config) -> System {
     let residue_base = ResidueBase::graphene(bond_length);
 
     let mut lattice = Lattice::hexagonal(bond_length)
-        .from_size(conf.size.0, conf.size.1)
+        .with_size(conf.size.0, conf.size.1)
         .finalize()
         .translate(&Coord::new(0.0, 0.0, conf.z0));
 
@@ -185,7 +185,7 @@ fn create_silica(conf: &Config) -> System {
     let residue_base = ResidueBase::silica(bond_length);
 
     let mut lattice = Lattice::triclinic(bond_length, bond_length, 60f64.to_radians())
-        .from_size(conf.size.0, conf.size.1)
+        .with_size(conf.size.0, conf.size.1)
         .finalize()
         .translate(&Coord::new(0.0, 0.0, conf.z0));
 
