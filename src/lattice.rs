@@ -115,6 +115,8 @@ impl Lattice {
 
     /// Get a copy of the lattice in which the positions along z
     /// have been shifted by a uniform random distribution.
+    /// The positions are shifted on a range of (-std_z, +std_z)
+    /// where std_z is the input deviation.
     pub fn uniform_distribution(&self, std_z: f64) -> Lattice {
         use rand::distributions::IndependentSample;
 
@@ -456,7 +458,7 @@ mod tests {
     }
 
     #[test]
-    fn uniform_distribution_in_lattice_positions() {
+    fn uniform_distribution_of_lattice_positions() {
         let mut lattice = Lattice::hexagonal(1.0).from_bins(100, 100).finalize();
 
         // We translate by this to ensure that the numbers
@@ -468,13 +470,9 @@ mod tests {
 
         // Assert that the positions are centered around zero with non-zero variance
         let len = lattice.coords.len() as f64;
-        let mean_z: f64 = lattice.coords.iter().map(|c| c.z).sum::<f64>()/len;
-        let var_z: f64 = lattice.coords.iter().map(|c| c.z*c.z - mean_z).sum::<f64>()/len;
+        let var_z: f64 = lattice.coords.iter().map(|c| c.z*c.z - z0).sum::<f64>()/len;
 
-        assert!(mean_z.abs() - z0 <= 1e-2);
-        assert!(var_z > 0.0);
-
-        // Assert that no positions exceed the limits
         assert!(lattice.coords.iter().all(|&c| c.z.abs() - z0 <= 0.1));
+        assert!(var_z > 0.0);
     }
 }

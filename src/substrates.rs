@@ -43,7 +43,9 @@ pub struct Config {
     /// Substrate position along z.
     pub z0: f64,
     /// Optionally use a random uniform distribution with this
-    /// standard deviation to shift residue positions along z.
+    /// deviation to shift residue positions along z. The
+    /// positions are shifted with the range (-std_z, +std_z)
+    /// where std_z is the input devation.
     pub std_z: Option<f64>,
 }
 

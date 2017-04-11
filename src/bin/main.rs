@@ -10,9 +10,11 @@
 //!     -V, --version    Prints version information
 //!
 //! OPTIONS:
-//!        --std <Z>        Uniformly distribute positions along z (nm)
-//!    -t, --title <STR>    Title of system
-//!        --z0 <Z>         Substrate position along z (nm)
+//!         --std <Z>        Uniformly distribute positions along z. This value is
+//!                          the deviation range (in nm) from the original position
+//!                          of each residue.
+//!     -t, --title <STR>    Title of system
+//!         --z0 <Z>         Substrate position along z (nm)
 //!
 //! ARGS:
 //!     <PATH>    Output GROMOS file (the extension will be set to .gro)
@@ -56,7 +58,9 @@ fn main() {
         (@arg y: <Y> "Size of system along the y axis (nm)")
         (@arg title: -t --title [STR] +takes_value "Title of system")
         (@arg z0: --z0 [Z] +takes_value "Substrate position along z (nm)")
-        (@arg std_z: --std [Z] +takes_value "Uniformly distribute positions along z (nm)")
+        (@arg std_z: --std [Z] +takes_value "\
+            Uniformly distribute positions along z. This value is the deviation range \
+            (in nm) from the original position of each residue.")
     ).get_matches();
 
     if let Err(err) = Config::new(matches).and_then(|conf| conf.run()) {

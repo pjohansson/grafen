@@ -14,7 +14,9 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --std <Z>        Uniformly distribute positions along z (nm)
+        --std <Z>        Uniformly distribute positions along z. This value is
+                         the deviation range (in nm) from the original position
+                         of each residue.
     -t, --title <STR>    Title of system
         --z0 <Z>         Substrate position along z (nm)
 
