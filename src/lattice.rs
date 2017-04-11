@@ -465,7 +465,7 @@ mod tests {
         let mean_z: f64 = lattice.coords.iter().map(|c| c.z).sum::<f64>()/len;
         let var_z: f64 = lattice.coords.iter().map(|c| c.z*c.z - mean_z).sum::<f64>()/len;
 
-        assert!(mean_z.abs() <= 1e-3);
+        assert!(mean_z.abs() <= 1e-2);
         assert!(var_z > 0.0);
     }
 }
