@@ -124,8 +124,8 @@ impl Lattice {
         let coords: Vec<Coord> = self.coords
             .iter()
             .map(|c| {
-                let add_z = range.ind_sample(&mut rng);
-                c.add(&Coord::new(0.0, 0.0, add_z))
+                    let add_z = range.ind_sample(&mut rng);
+                    c.add(&Coord::new(0.0, 0.0, add_z))
             })
             .collect();
 
