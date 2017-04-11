@@ -35,6 +35,18 @@ pub enum SubstrateType {
 }
 use self::SubstrateType::*;
 
+#[derive(Clone, Copy, Debug)]
+/// Configuration used for substrate construction.
+pub struct Config {
+    /// Desired size of substrate along x and y.
+    pub size: (f64, f64),
+    /// Substrate position along z.
+    pub z0: f64,
+    /// Optionally use a random uniform distribution with this
+    /// standard deviation to shift residue positions along z.
+    pub std_z: Option<f64>,
+}
+
 /// A base for generating atoms belonging to a residue.
 /// Every residue has a name and a list of atoms that belong to it
 /// with their relative base coordinates. The names are static since
@@ -101,47 +113,58 @@ struct ResidueAtom {
 /// Create a graphene substrate:
 ///
 /// ```
-/// use grafen::substrates::{create_substrate, SubstrateType};
-/// let graphene = create_substrate((5.0, 4.0), SubstrateType::Graphene);
+/// use grafen::substrates::{create_substrate, Config, SubstrateType};
+/// let conf = Config {
+///     size: (5.0, 4.0),
+///     z0: 0.10,
+///     std_z: None,
+/// };
+/// let graphene = create_substrate(&conf, SubstrateType::Graphene);
 /// ```
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(size: (f64, f64), substrate_type: SubstrateType) -> Result<System> {
-    let (size_x, size_y) = size;
+pub fn create_substrate(conf: &Config, substrate_type: SubstrateType) -> Result<System> {
+    let (size_x, size_y) = conf.size;
     if size_x <= 0.0 || size_y <= 0.0 {
-        return Err(GrafenError::RunError("input sizes of the system have to be positive".to_string()));
+        return Err(
+            GrafenError::RunError(
+                "input sizes of the system have to be positive".to_string()
+            ));
     }
 
     let substrate = match substrate_type {
-        Graphene => create_graphene(size),
-        Silica => create_silica(size),
+        Graphene => {
+            create_graphene(&conf)
+        },
+        Silica => {
+            create_silica(&conf)
+        },
     };
 
     Ok(substrate)
 }
 
-/// Create a graphene layer of desired size.
+/// Create a graphene layer.
 ///
 /// The layer consists of a hexagonal lattice of carbon atoms
 /// which is created with a bond length of 0.142 nm. To ensure
 /// that the system can be periodically replicated along x and y
 /// the dimensions are trimmed to the closest possible size
 /// that fits an even number of replicas.
-fn create_graphene((size_x, size_y): (f64, f64)) -> System {
+fn create_graphene(conf: &Config) -> System {
     let bond_length = 0.142;
-    let z0 = bond_length;
     let residue_base = ResidueBase::graphene(bond_length);
 
     let lattice = Lattice::hexagonal(bond_length)
-        .from_size(size_x, size_y)
+        .from_size(conf.size.0, conf.size.1)
         .finalize()
-        .translate(&Coord::new(0.0, 0.0, z0));
+        .translate(&Coord::new(0.0, 0.0, conf.z0));
 
     let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
     System {
-        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0 * z0)),
+        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0 * conf.z0)),
         atoms: atoms,
     }
 }
@@ -151,20 +174,19 @@ fn create_graphene((size_x, size_y): (f64, f64)) -> System {
 /// The layer consists of a triclinic lattice where the spacing
 /// is 0.45 along both vectors and the angle between them
 /// is 60 degrees. At each lattice point an SiO2 molecule is placed.
-fn create_silica((size_x, size_y): (f64, f64)) -> System {
+fn create_silica(conf: &Config) -> System {
     let bond_length = 0.450;
-    let z0 = 0.30;
     let residue_base = ResidueBase::silica(bond_length);
 
     let lattice = Lattice::triclinic(bond_length, bond_length, 60f64.to_radians())
-        .from_size(size_x, size_y)
+        .from_size(conf.size.0, conf.size.1)
         .finalize()
-        .translate(&Coord::new(0.0, 0.0, z0));
+        .translate(&Coord::new(0.0, 0.0, conf.z0));
 
     let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
     System {
-        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0 * z0)),
+        dimensions: lattice.box_size.add(&Coord::new(0.0, 0.0, 2.0 * conf.z0)),
         atoms: atoms,
     }
 }
@@ -196,23 +218,27 @@ mod tests {
 
     #[test]
     fn graphene_layer() {
-        let desired_size = (1.0, 1.0);
-        let graphene = create_graphene(desired_size);
+        let conf = Config {
+            size: (1.0, 1.0),
+            z0: 0.1,
+            std_z: None,
+        };
 
-        let bond_length = 0.142;
-        let z0 = bond_length;
-
-        // We expect 32 atoms to exist in the grid
-        //assert_eq!(32, graphene.atoms.len());
+        let graphene = create_graphene(&conf);
 
         // Verify the first atom
         let mut atoms = graphene.atoms.iter();
+        let bond_length = 0.142;
         let first_atom = Atom {
             residue_name: "GRPH".to_string(),
             residue_number: 0,
             atom_name: "C".to_string(),
             atom_number: 0,
-            position: Coord::new(bond_length / 2.0, bond_length / 2.0, z0 + bond_length / 2.0),
+            position: Coord::new(
+                bond_length / 2.0,
+                bond_length / 2.0,
+                conf.z0 + bond_length / 2.0
+            ),
         };
         assert_eq!(Some(&first_atom), atoms.next());
     }

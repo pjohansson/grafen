@@ -20,8 +20,8 @@ pub struct Config {
     title: String,
     /// Path of output file.
     filename: String,
-    /// Create a system of this size, please.
-    size: (f64, f64),
+    /// Substrate configuration.
+    substrate_conf: substrates::Config,
     /// Selected substrate type.
     substrate_type: SubstrateType,
 }
@@ -41,10 +41,21 @@ impl Config {
         let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
         let substrate_type = select_substrate()?;
 
+        let z0 = match substrate_type {
+            SubstrateType::Graphene => 0.10,
+            SubstrateType::Silica => 0.30,
+        };
+
+        let substrate_conf = substrates::Config {
+            size: (size_x, size_y),
+            z0: z0,
+            std_z: None,
+        };
+
         Ok(Config {
                 title: title,
                 filename: output_file,
-                size: (size_x, size_y),
+                substrate_conf: substrate_conf,
                 substrate_type: substrate_type,
             })
     }
@@ -54,7 +65,7 @@ impl Config {
     /// # Errors
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
-        substrates::create_substrate(self.size, self.substrate_type)
+        substrates::create_substrate(&self.substrate_conf, self.substrate_type)
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
         Ok(())
     }
