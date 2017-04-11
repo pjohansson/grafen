@@ -457,15 +457,24 @@ mod tests {
 
     #[test]
     fn uniform_distribution_in_lattice_positions() {
-        let lattice = Lattice::hexagonal(1.0).from_bins(100, 100).finalize();
-        let lattice = lattice.uniform_distribution(0.1);
+        let mut lattice = Lattice::hexagonal(1.0).from_bins(100, 100).finalize();
 
-        // Check that the positions are centered around zero with non-zero variance
+        // We translate by this to ensure that the numbers
+        // are not generated around 0.0
+        let z0 = 1.0;
+        lattice = lattice.translate(&Coord::new(0.0, 0.0, z0));
+
+        lattice = lattice.uniform_distribution(0.1);
+
+        // Assert that the positions are centered around zero with non-zero variance
         let len = lattice.coords.len() as f64;
         let mean_z: f64 = lattice.coords.iter().map(|c| c.z).sum::<f64>()/len;
         let var_z: f64 = lattice.coords.iter().map(|c| c.z*c.z - mean_z).sum::<f64>()/len;
 
-        assert!(mean_z.abs() <= 1e-2);
+        assert!(mean_z.abs() - z0 <= 1e-2);
         assert!(var_z > 0.0);
+
+        // Assert that no positions exceed the limits
+        assert!(lattice.coords.iter().all(|&c| c.z.abs() - z0 <= 0.1));
     }
 }
