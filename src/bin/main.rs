@@ -10,7 +10,9 @@
 //!     -V, --version    Prints version information
 //!
 //! OPTIONS:
-//!     -t, --title <STR>    Title of system
+//!        --std <Z>        Uniformly distribution positions along z (nm)
+//!    -t, --title <STR>    Title of system
+//!        --z0 <Z>         Substrate position along z (nm)
 //!
 //! ARGS:
 //!     <PATH>    Output GROMOS file (the extension will be set to .gro)

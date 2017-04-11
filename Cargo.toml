@@ -1,6 +1,6 @@
 [package]
 name = "grafen"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
 description = "Create graphene and other substrates for use in molecular dynamics simulations."
 repository = "https://github.com/pjohansson/grafen"
@@ -14,9 +14,9 @@ license = "Unlicense"
 travis-ci = { repository = "pjohansson/grafen", branch = "master"}
 
 [dependencies]
-ansi_term = "^0.9.0"
+ansi_term = "~0.9.0"
 clap = "~2.23.0"
-rand = "~0.3"
+rand = "~0.3.0"
 
 [[bin]]
 path = "src/bin/main.rs"
