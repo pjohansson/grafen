@@ -1,40 +1,4 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
-//!
-//! # Usage
-//! ```
-//! USAGE:
-//!     grafen_cli [OPTIONS] <PATH> <X> <Y>
-//!
-//! FLAGS:
-//!     -h, --help       Prints help information
-//!     -V, --version    Prints version information
-//!
-//! OPTIONS:
-//!         --std <Z>        Uniformly distribute positions along z. This value is
-//!                          the deviation range (in nm) from the original position
-//!                          of each residue.
-//!     -t, --title <STR>    Title of system
-//!         --z0 <Z>         Substrate position along z (nm)
-//!
-//! ARGS:
-//!     <PATH>    Output GROMOS file (the extension will be set to .gro)
-//!     <X>       Size along x
-//!     <Y>       Size along y
-//! ```
-//!
-//! # Available Substrates
-//! Spacings and translations for all substrates is currently hard-coded.
-//! Preferably this should be set in some configuration files or as an option
-//! input by the user during runtime.
-//!
-//! ## Graphene
-//! A monolayer of carbon atoms set in a hexagonal honeycomb structure.
-//! The spacing between every atom is 0.142 nm.
-//!
-//! ## Silica
-//! A monolayer of rigid SiO2 molecules set in a triclinic formation with
-//! with spacing 0.450 nm along both base vectors and an angle of 60 degrees
-//! between them.
 
 extern crate ansi_term;
 #[macro_use]
