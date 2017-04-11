@@ -14,7 +14,7 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-        --std <Z>        Uniformly distribution positions along z (nm)
+        --std <Z>        Uniformly distribute positions along z (nm)
     -t, --title <STR>    Title of system
         --z0 <Z>         Substrate position along z (nm)
 
