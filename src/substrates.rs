@@ -156,10 +156,14 @@ fn create_graphene(conf: &Config) -> System {
     let bond_length = 0.142;
     let residue_base = ResidueBase::graphene(bond_length);
 
-    let lattice = Lattice::hexagonal(bond_length)
+    let mut lattice = Lattice::hexagonal(bond_length)
         .from_size(conf.size.0, conf.size.1)
         .finalize()
         .translate(&Coord::new(0.0, 0.0, conf.z0));
+
+    if let Some(std_z) = conf.std_z {
+        lattice = lattice.uniform_distribution(std_z);
+    }
 
     let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 
@@ -178,10 +182,14 @@ fn create_silica(conf: &Config) -> System {
     let bond_length = 0.450;
     let residue_base = ResidueBase::silica(bond_length);
 
-    let lattice = Lattice::triclinic(bond_length, bond_length, 60f64.to_radians())
+    let mut lattice = Lattice::triclinic(bond_length, bond_length, 60f64.to_radians())
         .from_size(conf.size.0, conf.size.1)
         .finalize()
         .translate(&Coord::new(0.0, 0.0, conf.z0));
+
+    if let Some(std_z) = conf.std_z {
+        lattice = lattice.uniform_distribution(std_z);
+    }
 
     let atoms = broadcast_residue_onto_coords(&lattice.coords, residue_base);
 

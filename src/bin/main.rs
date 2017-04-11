@@ -53,6 +53,8 @@ fn main() {
         (@arg x: <X> "Size of system along the x axis (nm)")
         (@arg y: <Y> "Size of system along the y axis (nm)")
         (@arg title: -t --title [STR] +takes_value "Title of system")
+        (@arg z0: --z0 [Z] +takes_value "Substrate position along z (nm)")
+        (@arg std_z: --std [Z] +takes_value "Uniformly distribution positions along z (nm)")
     ).get_matches();
 
     if let Err(err) = Config::new(matches).and_then(|conf| conf.run()) {

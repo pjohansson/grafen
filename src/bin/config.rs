@@ -41,15 +41,20 @@ impl Config {
         let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
         let substrate_type = select_substrate()?;
 
-        let z0 = match substrate_type {
-            SubstrateType::Graphene => 0.10,
-            SubstrateType::Silica => 0.30,
+        // z0 has some default values depending on the chosen substrate
+        let z0 = match value_t!(matches, "z0", f64).ok() {
+            Some(v) => v,
+            None => match substrate_type {
+                SubstrateType::Graphene => 0.10,
+                SubstrateType::Silica => 0.30,
+            },
         };
+        let std_z = value_t!(matches, "std_z", f64).ok();
 
         let substrate_conf = substrates::Config {
             size: (size_x, size_y),
             z0: z0,
-            std_z: None,
+            std_z: std_z,
         };
 
         Ok(Config {
