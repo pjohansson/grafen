@@ -1,3 +1,17 @@
+//! This module implements the basic structures of an atomic system.
+//!
+//! A final ```System``` consists of a set of ```Residue```s, which
+//! can be moved around and translated with ease. Each ```Residue```
+//! in turn consists of some ```Atom```s. These atoms have positions
+//! relative to their parent.
+//!
+//! This somewhat convoluted structure is inherited from molecular
+//! simulation packages in which atoms are commonly grouped as such.
+//!  A proper physical way to look at is that atoms can be
+//! similarly grouped into molecules.
+
+/// A finalized atomic system which consists of a list of residues, each of which contains
+/// some atoms.
 pub struct System {
     /// System dimensions.
     pub dimensions: Coord,
@@ -6,10 +20,12 @@ pub struct System {
 }
 
 impl System {
+    /// Count and return the number of atoms in the system.
     pub fn num_atoms(&self) -> usize {
         self.residues.iter().map(|r| r.atoms.len()).sum()
     }
 
+    /// Translate all residues within the system and return a copy.
     pub fn translate(&self, add: &Coord) -> System {
         System {
             dimensions: self.dimensions,
@@ -18,13 +34,20 @@ impl System {
     }
 }
 
+/// Every residue has a name and a list of atoms that belong to it
+/// with their relative base coordinates. The names are static since
+/// they are generated only once from a single source.
 pub struct Residue {
+    /// Residue code.
     pub code: &'static str,
+    /// Position of residue in system.
     pub position: Coord,
+    /// List of atoms belonging to the residue. Their positions are relative to the residue.
     pub atoms: Vec<Atom>,
 }
 
 impl Residue {
+    /// Translate the residue position. Does not alter the atom relative positions.
     fn translate(&self, add: &Coord) -> Residue {
         Residue {
             code: self.code,
@@ -35,13 +58,8 @@ impl Residue {
 }
 
 /// A base for generating atoms belonging to a residue.
-/// Every residue has a name and a list of atoms that belong to it
-/// with their relative base coordinates. The names are static since
-/// they are generated only once from a single source.
 pub struct ResidueBase {
-    /// Residue code.
     pub code: &'static str,
-    /// List of atoms belonging to the residue.
     pub atoms: Vec<Atom>,
 }
 
