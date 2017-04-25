@@ -4,7 +4,7 @@ use grafen::error::GrafenError;
 use grafen::output;
 use grafen::substrates;
 use grafen::substrates::LatticeType;
-use grafen::system::ResidueBase;
+use grafen::system::{Coord, ResidueBase};
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
@@ -23,6 +23,8 @@ pub struct Config {
     filename: String,
     /// Substrate configuration.
     substrate_conf: substrates::SubstrateConf,
+    /// Substrate position along z.
+    z0: f64,
 }
 
 impl Config {
@@ -41,26 +43,26 @@ impl Config {
         let (lattice, residue) = select_substrate()?;
 
         // z0 has some default values depending on the chosen substrate
-        //let z0 = match value_t!(matches, "z0", f64).ok() {
-            //Some(v) => v,
-            //None => match substrate_type {
-                //SubstrateType::Graphene => 0.10,
-                //SubstrateType::Silica => 0.30,
-            //},
-        //};
-        //let std_z = value_t!(matches, "std_z", f64).ok();
+        let z0 = match value_t!(matches, "z0", f64).ok() {
+            Some(v) => v,
+            None => match lattice {
+                LatticeType::Hexagonal { a: _ } => 0.10,
+                LatticeType::Triclinic { a: _, b: _, gamma: _ } => 0.30,
+            },
+        };
 
         let substrate_conf = substrates::SubstrateConf {
             lattice: lattice,
             residue: residue,
             size: (size_x, size_y),
-            std_z: None,
+            std_z: value_t!(matches, "std_z", f64).ok(),
         };
 
         Ok(Config {
                 title: title,
                 filename: output_file,
                 substrate_conf: substrate_conf,
+                z0: z0,
             })
     }
 
@@ -70,6 +72,7 @@ impl Config {
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
         substrates::create_substrate(&self.substrate_conf)
+            .map(|system| system.translate(&Coord::new(0.0, 0.0, self.z0)))
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
         Ok(())
     }
