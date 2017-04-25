@@ -3,7 +3,7 @@
 use grafen::error::GrafenError;
 use grafen::output;
 use grafen::substrates;
-use grafen::substrates::SubstrateType;
+use grafen::substrates::{LatticeType, ResidueBase};
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
@@ -21,9 +21,7 @@ pub struct Config {
     /// Path of output file.
     filename: String,
     /// Substrate configuration.
-    substrate_conf: substrates::Config,
-    /// Selected substrate type.
-    substrate_type: SubstrateType,
+    substrate_conf: substrates::SubstrateConf,
 }
 
 impl Config {
@@ -39,29 +37,29 @@ impl Config {
         let size_x = value_t!(matches, "x", f64)?;
         let size_y = value_t!(matches, "y", f64)?;
         let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
-        let substrate_type = select_substrate()?;
+        let (lattice, residue) = select_substrate()?;
 
         // z0 has some default values depending on the chosen substrate
-        let z0 = match value_t!(matches, "z0", f64).ok() {
-            Some(v) => v,
-            None => match substrate_type {
-                SubstrateType::Graphene => 0.10,
-                SubstrateType::Silica => 0.30,
-            },
-        };
-        let std_z = value_t!(matches, "std_z", f64).ok();
+        //let z0 = match value_t!(matches, "z0", f64).ok() {
+            //Some(v) => v,
+            //None => match substrate_type {
+                //SubstrateType::Graphene => 0.10,
+                //SubstrateType::Silica => 0.30,
+            //},
+        //};
+        //let std_z = value_t!(matches, "std_z", f64).ok();
 
-        let substrate_conf = substrates::Config {
+        let substrate_conf = substrates::SubstrateConf {
+            lattice: lattice,
+            residue: residue,
             size: (size_x, size_y),
-            z0: z0,
-            std_z: std_z,
+            std_z: None,
         };
 
         Ok(Config {
                 title: title,
                 filename: output_file,
                 substrate_conf: substrate_conf,
-                substrate_type: substrate_type,
             })
     }
 
@@ -70,7 +68,7 @@ impl Config {
     /// # Errors
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
-        substrates::create_substrate(&self.substrate_conf, self.substrate_type)
+        substrates::create_substrate(&self.substrate_conf)
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
         Ok(())
     }
@@ -132,7 +130,7 @@ impl From<GrafenError> for ConfigError {
 }
 
 /// Ask the user to select a substrate.
-fn select_substrate() -> Result<SubstrateType> {
+fn select_substrate() -> Result<(LatticeType, ResidueBase)> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
@@ -154,8 +152,20 @@ q. Exit program
         let value = selection.trim().chars().next();
 
         match value {
-            Some('0') => return Ok(SubstrateType::Graphene),
-            Some('1') => return Ok(SubstrateType::Silica),
+            Some('0') => {
+                let spacing = 0.142;
+                return Ok((
+                    LatticeType::Hexagonal { a: spacing },
+                    ResidueBase::graphene(spacing)
+                ))
+            },
+            Some('1') => {
+                let spacing = 0.45;
+                return Ok((
+                    LatticeType::Triclinic { a: spacing, b: spacing, gamma: 60.0 },
+                    ResidueBase::silica(spacing)
+                ))
+            },
             Some('q') => return Err(ConfigError::NoSubstrate),
             _ => stdout.write(b"Not a valid option.\n")?,
         };
