@@ -12,6 +12,10 @@ pub struct System {
 }
 
 impl System {
+    pub fn num_atoms(&self) -> usize {
+        self.residues.iter().map(|r| r.atoms.len()).sum()
+    }
+
     pub fn translate(&self, add: &Coord) -> System {
         let residues = self.residues.iter().map(|r| {
             Residue {
@@ -152,5 +156,39 @@ mod tests {
     fn coord_eq_tolerance_larger_deviation_does_not() {
         let coord = Coord::new(0.0, 0.0, 0.0);
         assert_eq!(coord, Coord::new(1e-9, 2e-9, 3e-9));
+    }
+
+    #[test]
+    fn count_atoms_in_system() {
+        let coord = Coord::new(0.0, 0.0, 0.0);
+
+        // A system with two different residues, five atoms in total
+        let residue_one = Residue {
+            code: "R1",
+            position: coord,
+            atoms: vec![
+                Atom { code: "A1", position: coord, },
+                Atom { code: "A2", position: coord, },
+                Atom { code: "A3", position: coord, },
+            ]
+        };
+        let residue_two = Residue {
+            code: "R2",
+            position: coord,
+            atoms: vec![
+                Atom { code: "B1", position: coord, },
+                Atom { code: "B2", position: coord, },
+            ]
+        };
+
+        let system = System {
+            dimensions: Coord::new(0.0, 0.0, 0.0),
+            residues: vec![
+                residue_one,
+                residue_two
+            ]
+        };
+
+        assert_eq!(5, system.num_atoms());
     }
 }

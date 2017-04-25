@@ -18,8 +18,7 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<(
     let mut writer = BufWriter::new(file);
 
     writer.write_fmt(format_args!("{}\n", title))?;
-    writer.write_fmt(format_args!("{}\n", 1))?;
-    //writer.write_fmt(format_args!("{}\n", system.residues.len()))?;
+    writer.write_fmt(format_args!("{}\n", system.num_atoms()))?;
 
     for (i, residue) in system.residues.iter().enumerate() {
         for (j, atom) in residue.atoms.iter().enumerate() {
