@@ -158,37 +158,51 @@ mod tests {
         assert_eq!(coord, Coord::new(1e-9, 2e-9, 3e-9));
     }
 
-    #[test]
-    fn count_atoms_in_system() {
-        let coord = Coord::new(0.0, 0.0, 0.0);
+    // A simple system with two different residues and five atoms
+    fn setup_system() -> System {
+        let coord0 = Coord::new(0.0, 0.0, 0.0);
 
-        // A system with two different residues, five atoms in total
         let residue_one = Residue {
             code: "R1",
-            position: coord,
+            position: Coord::new(0.0, 0.0, 0.0),
             atoms: vec![
-                Atom { code: "A1", position: coord, },
-                Atom { code: "A2", position: coord, },
-                Atom { code: "A3", position: coord, },
+                Atom { code: "A1", position: coord0, },
+                Atom { code: "A2", position: coord0, },
+                Atom { code: "A3", position: coord0, },
             ]
         };
         let residue_two = Residue {
             code: "R2",
-            position: coord,
+            position: Coord::new(1.0, 1.0, 1.0),
             atoms: vec![
-                Atom { code: "B1", position: coord, },
-                Atom { code: "B2", position: coord, },
+                Atom { code: "B1", position: coord0, },
+                Atom { code: "B2", position: coord0, },
             ]
         };
 
-        let system = System {
+        System {
             dimensions: Coord::new(0.0, 0.0, 0.0),
             residues: vec![
                 residue_one,
                 residue_two
             ]
-        };
+        }
+    }
 
+    #[test]
+    fn count_atoms_in_system() {
+        let system = setup_system();
         assert_eq!(5, system.num_atoms());
+    }
+
+    #[test]
+    fn translate_a_system() {
+        let system = setup_system();
+        let translate = Coord::new(0.0, 1.0, 2.0);
+
+        let translated_system = system.translate(&translate);
+        for (orig, updated) in system.residues.iter().zip(translated_system.residues.iter()) {
+            assert_eq!(orig.position.add(&translate), updated.position);
+        }
     }
 }
