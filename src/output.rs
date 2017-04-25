@@ -25,14 +25,16 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<(
             let residue_number = (i + 1) % 100_000;
             let atom_number = (j + 1) % 100_000;
 
+            let position = residue.position.add(&atom.position);
+
             writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
                                         residue_number,
                                         residue.code,
                                         atom.code,
                                         atom_number,
-                                        atom.position.x,
-                                        atom.position.y,
-                                        atom.position.z))?;
+                                        position.x,
+                                        position.y,
+                                        position.z))?;
 
         }
     }
