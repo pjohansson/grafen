@@ -62,15 +62,18 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<System> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn negative_sizes_return_error() {
-        let mut conf = SubstrateConf {
+    fn setup_conf() -> SubstrateConf {
+        SubstrateConf {
             lattice: LatticeType::Hexagonal { a: 1.0 },
             residue: ResidueBase::graphene(1.0),
-            size: (1.0, 1.0),
+            size: (10.0, 10.0),
             std_z: None,
-        };
+        }
+    }
 
+    #[test]
+    fn negative_sizes_return_error() {
+        let mut conf = setup_conf();
         assert!(create_substrate(&conf).is_ok());
 
         conf.size = (-1.0, 1.0);
@@ -78,5 +81,23 @@ mod tests {
 
         conf.size = (1.0, -1.0);
         assert!(create_substrate(&conf).is_err());
+    }
+
+    #[test]
+    fn uniform_distribution_is_set() {
+        // The graphene is ordinarily positioned at z = 0.0
+        let mut conf = setup_conf();
+        let regular = create_substrate(&conf).unwrap();
+        assert!(regular.residues.iter().all(|r| r.position.z == 0.0));
+
+        conf.std_z = Some(1.0);
+        let uniform = create_substrate(&conf).unwrap();
+
+        // Non-zero variance This can fail, but it should not be common!
+        // How else to assert that a distribution has been applied, though?
+        assert!(uniform.residues.iter().map(|r| r.position.z).all(|z| z == 0.0) == false);
+
+        // But no positions should exceed the input distribution max
+        assert!(uniform.residues.iter().all(|r| r.position.z.abs() <= 1.0));
     }
 }
