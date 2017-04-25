@@ -3,45 +3,7 @@
 //! with easy-to-use constructors for different lattice types.
 
 use rand;
-
-#[derive(Clone, Copy, Debug)]
-/// A three-dimensional coordinate.
-///
-/// # Examples
-/// ```
-/// use grafen::lattice::Coord;
-///
-/// let coord1 = Coord::new(1.0, 0.0, 1.0);
-/// let coord2 = Coord::new(0.5, 0.5, 0.5);
-///
-/// assert_eq!(Coord::new(1.5, 0.5, 1.5), coord1.add(&coord2));
-/// ```
-pub struct Coord {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-impl Coord {
-    /// Construct a new coordinate.
-    pub fn new(x: f64, y: f64, z: f64) -> Coord {
-        Coord { x: x, y: y, z: z }
-    }
-
-    /// Add a coordinate to another.
-    pub fn add(&self, other: &Coord) -> Coord {
-        Coord::new(self.x + other.x, self.y + other.y, self.z + other.z)
-    }
-}
-
-impl PartialEq for Coord {
-    fn eq(&self, other: &Coord) -> bool {
-        let atol = 1e-9;
-        (self.x - other.x).abs() < atol
-            && (self.y - other.y).abs() < atol
-            && (self.z - other.z).abs() < atol
-    }
-}
+use system::Coord;
 
 /// A lattice with coordinates of its grid and a total size.
 ///
@@ -294,29 +256,6 @@ struct Spacing(f64, // Space between columns (along x) in a lattice
 mod tests {
     use super::*;
     use std::f64;
-
-    #[test]
-    fn coord_translations() {
-        let coord = Coord::new(0.0, 1.0, 2.0);
-        let coord_add = coord.add(&coord);
-        let expected = Coord::new(0.0, 2.0, 4.0);
-        assert_eq!(expected, coord_add);
-    }
-
-    #[test]
-    fn coord_eq_tolerance_small_deviation_passes() {
-        // Allow for some deviation when testing for equality, since floating point
-        // numbers are stupid.
-        let coord = Coord::new(0.0, 0.0, 0.0);
-        assert_eq!(coord, Coord::new(1e-10, 2e-10, 3e-10));
-    }
-
-    #[test]
-    #[should_panic]
-    fn coord_eq_tolerance_larger_deviation_does_not() {
-        let coord = Coord::new(0.0, 0.0, 0.0);
-        assert_eq!(coord, Coord::new(1e-9, 2e-9, 3e-9));
-    }
 
     #[test]
     fn hexagonal_crystal() {

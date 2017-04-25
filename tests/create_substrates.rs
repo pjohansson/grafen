@@ -1,14 +1,19 @@
 extern crate grafen;
 
-use grafen::substrates::{ResidueAtom, ResidueBase, LatticeType, SubstrateConf, System};
-use grafen::lattice::Coord;
+use grafen::system::{Atom, Coord, ResidueBase, Residue, System};
+use grafen::substrates::{ LatticeType, SubstrateConf};
 
 #[test]
 fn define_and_create_a_substrate() {
+    // Define a simple residue
+    let residue_atom_one = Atom { code: "C1", position: Coord::new(0.1, 0.2, 0.3) };
+    let residue_atom_two = Atom { code: "C2", position: Coord::new(0.3, 0.2, 0.1) };
+
     let residue = ResidueBase {
         code: "RES",
         atoms: vec![
-            ResidueAtom { code: "C", position: Coord::new(0.1, 0.2, 0.3) },
+            residue_atom_one,
+            residue_atom_two
         ],
     };
 
@@ -25,21 +30,31 @@ fn define_and_create_a_substrate() {
     };
 
     let substrate = grafen::substrates::create_substrate(&conf).unwrap();
+
     assert_eq!(Coord::new(2.0, 1.0, 0.0), substrate.dimensions);
 
-    let atoms = substrate.atoms;
-    assert_eq!(4, atoms.len());
-    assert_eq!(Coord::new(0.1, 0.2, 0.3), atoms[0].position);
-    assert_eq!(Coord::new(1.1, 0.2, 0.3), atoms[1].position);
-    assert_eq!(Coord::new(0.1, 0.7, 0.3), atoms[2].position);
-    assert_eq!(Coord::new(1.1, 0.7, 0.3), atoms[3].position);
+    // We should get the correct residue base positions
+    let residues = substrate.residues;
+    assert_eq!(4, residues.len());
+    assert_eq!(Coord::new(0.0, 0.0, 0.0), residues[0].position);
+    assert_eq!(Coord::new(1.0, 0.0, 0.0), residues[1].position);
+    assert_eq!(Coord::new(0.0, 0.5, 0.0), residues[2].position);
+    assert_eq!(Coord::new(1.0, 0.5, 0.0), residues[3].position);
+
+    // ... and each residue should be correct
+    for residue in residues {
+        assert_eq!("RES", residue.code);
+        assert_eq!(2, residue.atoms.len());
+        assert_eq!(residue_atom_one, residue.atoms[0]);
+        assert_eq!(residue_atom_two, residue.atoms[1]);
+    }
 }
 
 fn setup_substrate() -> System {
     let residue = ResidueBase {
         code: "RES",
         atoms: vec![
-            ResidueAtom { code: "C", position: Coord::new(0.0, 0.0, 0.0) },
+            Atom { code: "C", position: Coord::new(0.0, 0.0, 0.0) },
         ],
     };
 
@@ -60,36 +75,37 @@ fn translate_a_substrate() {
     let translated = substrate.translate(&add);
 
     assert_eq!(translated.dimensions, substrate.dimensions);
-    assert_eq!(translated.atoms.len(), substrate.atoms.len());
+    assert_eq!(translated.residues.len(), substrate.residues.len());
 
-    for (new, orig) in translated.atoms.iter().zip(substrate.atoms.iter()) {
+    for (new, orig) in translated.residues.iter().zip(substrate.residues.iter()) {
         assert_eq!(new.position, orig.position.add(&add));
     }
 }
 
-fn setup_residue() -> ResidueBase {
-    ResidueBase {
-        code: "RES",
-        atoms: vec![
-            ResidueAtom { code: "C", position: Coord::new(0.0, 0.0, 0.0) },
-        ],
-    }
-}
-
-#[test]
-fn uniform_distribution_on_substrate() {
-    let conf = SubstrateConf {
-        lattice: LatticeType::Hexagonal { a: 1.0 },
-        residue: setup_residue(),
-        size: (10.0, 10.0),
-        std_z: Some(1.0),
-    };
-
-    let substrate = grafen::substrates::create_substrate(&conf).unwrap();
-
-    // Not all z-positions should be zero (most likely)
-    assert_eq!(false, substrate.atoms.iter().all(|a| a.position.z == 0.0));
-
-    // ... but all will be smaller or equal to the maximum deviation
-    assert!(substrate.atoms.iter().all(|a| a.position.z.abs() <= 1.0));
-}
+//fn setup_residue() -> ResidueBase {
+    //ResidueBase {
+        //code: "RES",
+        //atoms: vec![
+            //ResidueAtom { code: "C", position: Coord::new(0.0, 0.0, 0.0) },
+        //],
+    //}
+//}
+//
+//#[test]
+//fn uniform_distribution_on_substrate() {
+    //let conf = SubstrateConf {
+        //lattice: LatticeType::Hexagonal { a: 1.0 },
+        //residue: setup_residue(),
+        //size: (10.0, 10.0),
+        //std_z: Some(1.0),
+    //};
+//
+    //let substrate = grafen::substrates::create_substrate(&conf).unwrap();
+//
+    //// Not all z-positions should be zero (most likely)
+    //assert_eq!(false, substrate.atoms.iter().all(|a| a.position.z == 0.0));
+//
+    //// ... but all will be smaller or equal to the maximum deviation
+    //assert!(substrate.atoms.iter().all(|a| a.position.z.abs() <= 1.0));
+//}
+//

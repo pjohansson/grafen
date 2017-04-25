@@ -1,7 +1,7 @@
 //! Write systems to disk.
 
 use error::Result;
-use substrates::System;
+use system::System;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -18,23 +18,24 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str) -> Result<(
     let mut writer = BufWriter::new(file);
 
     writer.write_fmt(format_args!("{}\n", title))?;
-    writer.write_fmt(format_args!("{}\n", system.atoms.len()))?;
+    writer.write_fmt(format_args!("{}\n", 1))?;
+    //writer.write_fmt(format_args!("{}\n", system.residues.len()))?;
 
-    for atom in &system.atoms {
-        // GROMOS files wrap atom and residue numbering after five digits
-        // so we must output at most that. We also switch to indexing the
-        // numbers from 1 instead of from 0.
-        let residue_number = (atom.residue_number + 1) % 100_000;
-        let atom_number = (atom.atom_number + 1) % 100_000;
+    for (i, residue) in system.residues.iter().enumerate() {
+        for (j, atom) in residue.atoms.iter().enumerate() {
+            let residue_number = (i + 1) % 100_000;
+            let atom_number = (j + 1) % 100_000;
 
-        writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
-                                    residue_number,
-                                    atom.residue_name,
-                                    atom.atom_name,
-                                    atom_number,
-                                    atom.position.x,
-                                    atom.position.y,
-                                    atom.position.z))?;
+            writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
+                                        residue_number,
+                                        residue.code,
+                                        atom.code,
+                                        atom_number,
+                                        atom.position.x,
+                                        atom.position.y,
+                                        atom.position.z))?;
+
+        }
     }
 
     writer.write_fmt(format_args!("{:12.8} {:12.8} {:12.8}\n",

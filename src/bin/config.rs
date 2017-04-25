@@ -3,7 +3,8 @@
 use grafen::error::GrafenError;
 use grafen::output;
 use grafen::substrates;
-use grafen::substrates::{LatticeType, ResidueBase};
+use grafen::substrates::LatticeType;
+use grafen::system::ResidueBase;
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
@@ -68,6 +69,7 @@ impl Config {
     /// # Errors
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
+        unimplemented!();
         substrates::create_substrate(&self.substrate_conf)
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
         Ok(())
