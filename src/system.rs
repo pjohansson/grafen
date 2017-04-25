@@ -1,9 +1,3 @@
-pub struct Residue {
-    pub code: &'static str,
-    pub position: Coord,
-    pub atoms: Vec<Atom>,
-}
-
 pub struct System {
     /// System dimensions.
     pub dimensions: Coord,
@@ -17,18 +11,25 @@ impl System {
     }
 
     pub fn translate(&self, add: &Coord) -> System {
-        let residues = self.residues.iter().map(|r| {
-            Residue {
-                code: r.code,
-                position: r.position.add(&add),
-                atoms: r.atoms.clone(),
-            }
-        })
-        .collect();
-
         System {
             dimensions: self.dimensions,
-            residues: residues,
+            residues: self.residues.iter().map(|r| r.translate(&add)).collect(),
+        }
+    }
+}
+
+pub struct Residue {
+    pub code: &'static str,
+    pub position: Coord,
+    pub atoms: Vec<Atom>,
+}
+
+impl Residue {
+    fn translate(&self, add: &Coord) -> Residue {
+        Residue {
+            code: self.code,
+            position: self.position.add(&add),
+            atoms: self.atoms.clone(),
         }
     }
 }
@@ -45,6 +46,15 @@ pub struct ResidueBase {
 }
 
 impl ResidueBase {
+    /// Generate a proper residue at the input position.
+    pub fn to_residue(&self, position: &Coord) -> Residue {
+        Residue {
+            code: self.code,
+            position: *position,
+            atoms: self.atoms.clone(),
+        }
+    }
+
     /// Graphene is a single carbon atom at each lattice point.
     pub fn graphene(bond_length: f64) -> ResidueBase {
         let dx = bond_length / 2.0;
@@ -133,7 +143,6 @@ impl PartialEq for Coord {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64;
 
     #[test]
     fn coord_translations() {
@@ -204,5 +213,22 @@ mod tests {
         for (orig, updated) in system.residues.iter().zip(translated_system.residues.iter()) {
             assert_eq!(orig.position.add(&translate), updated.position);
         }
+    }
+
+    #[test]
+    fn residue_base_to_residue() {
+        let base = ResidueBase {
+            code: "RES",
+            atoms: vec![
+                Atom { code: "A1", position: Coord::new(0.0, 0.0, 0.0) },
+                Atom { code: "A2", position: Coord::new(0.0, 1.0, 2.0) }
+            ],
+        };
+        let position = Coord::new(1.0, 1.0, 1.0);
+
+        let residue = base.to_residue(&position);
+        assert_eq!("RES", residue.code);
+        assert_eq!(position, residue.position);
+        assert_eq!(base.atoms, residue.atoms);
     }
 }

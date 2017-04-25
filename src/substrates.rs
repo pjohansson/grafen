@@ -1,6 +1,6 @@
 //! Construct substrates of given types.
 
-use error::{GrafenError, Result};
+use error:: Result;
 use lattice::Lattice;
 use system::*;
 
@@ -58,16 +58,8 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<System> {
         lattice = lattice.uniform_distribution(std);
     };
 
-    let residues = lattice.coords.iter().map(|&coord| {
-        Residue {
-            code: conf.residue.code,
-            position: coord,
-            atoms: conf.residue.atoms.clone()
-        }
-    }).collect();
-
     Ok(System {
         dimensions: lattice.box_size,
-        residues: residues,
+        residues: lattice.coords.iter().map(|&coord| conf.residue.to_residue(&coord)).collect(),
     })
 }
