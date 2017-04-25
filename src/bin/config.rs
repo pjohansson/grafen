@@ -73,7 +73,7 @@ impl Config {
     pub fn run(&self) -> Result<()> {
         substrates::create_substrate(&self.substrate_conf)
             .map(|system| system.translate(&Coord::new(0.0, 0.0, self.z0)))
-            .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
+            .and_then(|system| output::write_gromos(&system, &self.filename, &self.title, 2.0 * self.z0))?;
         Ok(())
     }
 }
