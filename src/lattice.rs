@@ -14,7 +14,8 @@ use system::Coord;
 /// Construct a few lattices:
 ///
 /// ```
-/// use grafen::lattice::{Coord, Lattice};
+/// use grafen::system::Coord;
+/// use grafen::lattice::Lattice;
 ///
 /// // A triclinic:
 /// let lattice = Lattice::triclinic(1.0, 1.0, 90f64.to_radians())
@@ -37,7 +38,8 @@ use system::Coord;
 /// A lattice without size is empty:
 ///
 /// ```
-/// use grafen::lattice::{Coord, Lattice};
+/// use grafen::system::Coord;
+/// use grafen::lattice::Lattice;
 /// let lattice = Lattice::hexagonal(1.0).finalize();
 ///
 /// assert_eq!(0, lattice.coords.len());

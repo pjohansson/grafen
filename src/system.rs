@@ -124,7 +124,7 @@ pub struct Atom {
 ///
 /// # Examples
 /// ```
-/// use grafen::lattice::Coord;
+/// use grafen::system::Coord;
 ///
 /// let coord1 = Coord::new(1.0, 0.0, 1.0);
 /// let coord2 = Coord::new(0.5, 0.5, 0.5);

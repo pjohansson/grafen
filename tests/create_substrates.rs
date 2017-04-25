@@ -1,7 +1,7 @@
 extern crate grafen;
 
-use grafen::system::{Atom, Coord, ResidueBase, Residue, System};
-use grafen::substrates::{ LatticeType, SubstrateConf};
+use grafen::system::{Atom, Coord, ResidueBase};
+use grafen::substrates::{LatticeType, SubstrateConf};
 
 #[test]
 fn define_and_create_a_substrate() {
@@ -48,22 +48,4 @@ fn define_and_create_a_substrate() {
         assert_eq!(residue_atom_one, residue.atoms[0]);
         assert_eq!(residue_atom_two, residue.atoms[1]);
     }
-}
-
-fn setup_substrate() -> System {
-    let residue = ResidueBase {
-        code: "RES",
-        atoms: vec![
-            Atom { code: "C", position: Coord::new(0.0, 0.0, 0.0) },
-        ],
-    };
-
-    let conf = SubstrateConf {
-        lattice: LatticeType::Triclinic { a: 1.0, b: 0.5, gamma: 90.0 },
-        residue: residue,
-        size: (10.0, 10.0),
-        std_z: None,
-    };
-
-    grafen::substrates::create_substrate(&conf).unwrap()
 }

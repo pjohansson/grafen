@@ -69,7 +69,6 @@ impl Config {
     /// # Errors
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
-        unimplemented!();
         substrates::create_substrate(&self.substrate_conf)
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title))?;
         Ok(())
