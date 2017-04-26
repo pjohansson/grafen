@@ -1,7 +1,8 @@
 //! Write systems to disk.
 
-use error::Result;
-use system::System;
+//use error::Result;
+use config::Result;
+use grafen::system::System;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};

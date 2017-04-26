@@ -1,7 +1,8 @@
 //! Configure and run the program.
 
+use output;
+
 use grafen::error::GrafenError;
-use grafen::output;
 use grafen::substrates;
 use grafen::substrates::LatticeType;
 use grafen::system::{Coord, ResidueBase};
@@ -72,6 +73,7 @@ impl Config {
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
         substrates::create_substrate(&self.substrate_conf)
+            .map_err(|e| ConfigError::from(e))
             .map(|system| system.translate(&Coord::new(0.0, 0.0, self.z0)))
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title, 2.0 * self.z0))?;
         Ok(())

@@ -6,6 +6,8 @@ extern crate clap;
 extern crate grafen;
 
 mod config;
+mod output;
+
 use config::Config;
 
 use std::io;
