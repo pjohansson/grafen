@@ -5,7 +5,7 @@ use output;
 use grafen::error::GrafenError;
 use grafen::substrate;
 use grafen::substrate::LatticeType;
-use grafen::system::{Coord, ResidueBase};
+use grafen::system::{Atom, Coord, ResidueBase};
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
@@ -162,14 +162,26 @@ q. Exit program
                 let spacing = 0.142;
                 return Ok((
                     LatticeType::Hexagonal { a: spacing },
-                    ResidueBase::graphene(spacing)
+                    resbase![
+                        "GRPH",
+                        ("C", spacing / 2.0, spacing / 2.0, 0.0)
+                    ]
                 ))
             },
             Some('1') => {
                 let spacing = 0.45;
+                let x0 = spacing / 4.0;
+                let y0 = spacing / 6.0;
+                let dz = 0.151;
+
                 return Ok((
                     LatticeType::Triclinic { a: spacing, b: spacing, gamma: 60.0 },
-                    ResidueBase::silica(spacing)
+                    resbase![
+                        "SIO",
+                        ("O1", x0, y0, dz),
+                        ("SI", x0, y0, 0.0),
+                        ("O2", x0, y0, -dz)
+                    ]
                 ))
             },
             Some('q') => return Err(ConfigError::NoSubstrate),

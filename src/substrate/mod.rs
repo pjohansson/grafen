@@ -67,7 +67,10 @@ mod tests {
     fn setup_conf() -> SubstrateConf {
         SubstrateConf {
             lattice: LatticeType::Hexagonal { a: 1.0 },
-            residue: ResidueBase::graphene(1.0),
+            residue: ResidueBase {
+                code: "GRPH",
+                atoms: vec![Atom { code: "C", position: Coord::new(0.0, 0.0, 0.0) }],
+            },
             size: (10.0, 10.0),
             std_z: None,
         }

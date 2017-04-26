@@ -137,27 +137,6 @@ impl ResidueBase {
             atoms: self.atoms.clone(),
         }
     }
-
-    /// Graphene is a single carbon atom at each lattice point.
-    pub fn graphene(bond_length: f64) -> ResidueBase {
-        let dx = bond_length / 2.0;
-
-        resbase!["GRPH", ("C", dx, dx, 0.0)]
-    }
-
-    /// Silica is a rigid SiO2 molecule at each lattice point.
-    pub fn silica(bond_length: f64) -> ResidueBase {
-        let x0 = bond_length / 4.0;
-        let y0 = bond_length / 6.0;
-        let dz = 0.151;
-
-        resbase![
-            "SIO",
-            ("O1", x0, y0, dz),
-            ("SI", x0, y0, 0.0),
-            ("O2", x0, y0, -dz)
-        ]
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
