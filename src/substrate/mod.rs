@@ -1,7 +1,9 @@
 //! Construct substrates of given types.
 
+mod lattice;
+
 use error::{GrafenError, Result};
-use lattice::Lattice;
+use substrate::lattice::Lattice;
 use system::*;
 
 /// Configuration for constructing a substrate.

@@ -1,7 +1,7 @@
 extern crate grafen;
 
 use grafen::system::{Atom, Coord, ResidueBase};
-use grafen::substrates::{LatticeType, SubstrateConf};
+use grafen::substrate::{LatticeType, SubstrateConf};
 
 #[test]
 fn define_and_create_a_substrate() {
@@ -29,7 +29,7 @@ fn define_and_create_a_substrate() {
         std_z: None,
     };
 
-    let substrate = grafen::substrates::create_substrate(&conf).unwrap();
+    let substrate = grafen::substrate::create_substrate(&conf).unwrap();
 
     assert_eq!(Coord::new(2.0, 1.0, 0.0), substrate.dimensions);
 

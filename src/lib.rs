@@ -1,6 +1,5 @@
 extern crate rand;
 
 pub mod error;
-pub mod lattice;
-pub mod substrates;
+pub mod substrate;
 pub mod system;

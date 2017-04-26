@@ -9,42 +9,6 @@ use system::Coord;
 ///
 /// The lattice is constructed using its builder methods
 /// for the various types of lattices.
-///
-/// # Examples
-/// Construct a few lattices:
-///
-/// ```
-/// use grafen::system::Coord;
-/// use grafen::lattice::Lattice;
-///
-/// // A triclinic:
-/// let lattice = Lattice::triclinic(1.0, 1.0, 90f64.to_radians())
-///                       .with_size(0.9, 1.9) // Expect a 1-by-2 binned system
-///                       .finalize();
-///
-/// assert_eq!(Coord::new(1.0, 2.0, 0.0), lattice.box_size);
-///
-/// let mut coords = lattice.coords.iter();
-/// assert_eq!(Some(&Coord::new(0.0, 0.0, 0.0)), coords.next());
-/// assert_eq!(Some(&Coord::new(0.0, 1.0, 0.0)), coords.next());
-/// assert_eq!(None, coords.next());
-///
-/// // ... and a hexagonal:
-/// let lattice = Lattice::hexagonal(1.0)
-///                       .with_size(1.0, 1.0)
-///                       .finalize();
-/// ```
-///
-/// A lattice without size is empty:
-///
-/// ```
-/// use grafen::system::Coord;
-/// use grafen::lattice::Lattice;
-/// let lattice = Lattice::hexagonal(1.0).finalize();
-///
-/// assert_eq!(0, lattice.coords.len());
-/// assert_eq!(Coord::new(0.0, 0.0, 0.0), lattice.box_size);
-/// ```
 pub struct Lattice {
     /// Size of the lattice box.
     pub box_size: Coord,
@@ -64,17 +28,6 @@ impl Lattice {
     pub fn triclinic(a: f64, b: f64, gamma: f64) -> LatticeBuilder {
         let crystal = Crystal::triclinic(a, b, gamma);
         LatticeBuilder::new(crystal)
-    }
-
-    /// Get a copy of the lattice which has been translated
-    /// by an input coordinate vector.
-    pub fn translate(&self, translate: &Coord) -> Lattice {
-        let coords = self.coords.iter().map(|c| c.add(&translate)).collect();
-
-        Lattice {
-            box_size: self.box_size,
-            coords: coords,
-        }
     }
 
     /// Get a copy of the lattice in which the positions along z
@@ -385,27 +338,13 @@ mod tests {
     }
 
     #[test]
-    fn translate_lattice() {
-        let lattice = Lattice {
-                box_size: Coord::new(1.0, 1.0, 1.0),
-                coords: vec![Coord::new(0.0, 0.0, 0.0), Coord::new(2.0, 1.0, 0.0)],
-            }
-            .translate(&Coord::new(-0.5, 0.5, 1.0));
-
-        let mut iter = lattice.coords.iter();
-        assert_eq!(Some(&Coord::new(-0.5, 0.5, 1.0)), iter.next());
-        assert_eq!(Some(&Coord::new(1.5, 1.5, 1.0)), iter.next());
-        assert_eq!(None, iter.next());
-    }
-
-    #[test]
     fn uniform_distribution_of_lattice_positions() {
         let mut lattice = Lattice::hexagonal(1.0).with_bins(100, 100).finalize();
 
         // We translate by this to ensure that the numbers
         // are not generated around 0.0
         let z0 = 1.0;
-        lattice = lattice.translate(&Coord::new(0.0, 0.0, z0));
+        lattice.coords = lattice.coords.iter().map(|c| c.add(&Coord::new(0.0, 0.0, z0))).collect();
 
         lattice = lattice.uniform_distribution(0.1);
 

@@ -3,8 +3,8 @@
 use output;
 
 use grafen::error::GrafenError;
-use grafen::substrates;
-use grafen::substrates::LatticeType;
+use grafen::substrate;
+use grafen::substrate::LatticeType;
 use grafen::system::{Coord, ResidueBase};
 
 use ansi_term::Colour::{Yellow, Red};
@@ -23,7 +23,7 @@ pub struct Config {
     /// Path of output file.
     filename: String,
     /// Substrate configuration.
-    substrate_conf: substrates::SubstrateConf,
+    substrate_conf: substrate::SubstrateConf,
     /// Substrate position along z.
     z0: f64,
 }
@@ -52,7 +52,7 @@ impl Config {
             },
         };
 
-        let substrate_conf = substrates::SubstrateConf {
+        let substrate_conf = substrate::SubstrateConf {
             lattice: lattice,
             residue: residue,
             size: (size_x, size_y),
@@ -72,7 +72,7 @@ impl Config {
     /// # Errors
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
-        substrates::create_substrate(&self.substrate_conf)
+        substrate::create_substrate(&self.substrate_conf)
             .map_err(|e| ConfigError::from(e))
             .map(|system| system.translate(&Coord::new(0.0, 0.0, self.z0)))
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title, 2.0 * self.z0))?;
