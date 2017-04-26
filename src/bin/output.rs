@@ -23,6 +23,9 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str, box_z: f64)
 
     for (i, residue) in system.residues.iter().enumerate() {
         for (j, atom) in residue.atoms.iter().enumerate() {
+            // GROMOS files wrap atom and residue numbering after five digits
+            // so we must output at most that. We also switch to indexing the
+            // numbers from 1 instead of from 0.
             let residue_number = (i + 1) % 100_000;
             let atom_number = (j + 1) % 100_000;
 
