@@ -21,9 +21,13 @@ pub struct SubstrateConf {
     pub std_z: Option<f64>,
 }
 
-/// Lattice types.
+/// Lattice types which a substrate can be constructed from.
 pub enum LatticeType {
+    /// A hexagonal (honey comb) lattice with bond spacing `a`.
     Hexagonal { a: f64 },
+    /// A triclinic lattice with base vectors of length `a` and `b`.
+    /// Vector `a` is directed along the x axis and vector `b` is separated
+    /// to it by the input angle `gamma` in degrees.
     Triclinic { a: f64, b: f64, gamma: f64 },
 }
 
