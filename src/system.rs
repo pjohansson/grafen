@@ -10,8 +10,8 @@
 //!  A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
-/// A finalized atomic system which consists of a list of residues, each of which contains
-/// some atoms.
+/// A finalized atomic system which consists of a list of residues,
+/// each of which contains some atoms.
 pub struct System {
     /// System dimensions.
     pub dimensions: Coord,
@@ -57,56 +57,21 @@ impl Residue {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// Every atom in a residue has their own code and relative
+/// position some base coordinate.
+pub struct Atom {
+    /// Atom code.
+    pub code: &'static str,
+    /// Relative position.
+    pub position: Coord,
+}
+
 /// A base for generating atoms belonging to a residue.
 #[derive(Debug, PartialEq)]
 pub struct ResidueBase {
     pub code: &'static str,
     pub atoms: Vec<Atom>,
-}
-
-impl ResidueBase {
-    /// Generate a proper residue at the input position.
-    pub fn to_residue(&self, position: &Coord) -> Residue {
-        Residue {
-            code: self.code,
-            position: *position,
-            atoms: self.atoms.clone(),
-        }
-    }
-
-    /// Graphene is a single carbon atom at each lattice point.
-    pub fn graphene(bond_length: f64) -> ResidueBase {
-        let dx = bond_length / 2.0;
-        ResidueBase {
-            code: "GRPH",
-            atoms: vec![Atom {
-                            code: "C",
-                            position: Coord::new(dx, dx, 0.0),
-                        }],
-        }
-    }
-
-    /// Silica is a rigid SiO2 molecule at each lattice point.
-    pub fn silica(bond_length: f64) -> ResidueBase {
-        let dz = 0.151;
-        let base_coord = Coord::new(bond_length / 4.0, bond_length / 6.0, 0.0);
-
-        ResidueBase {
-            code: "SIO",
-            atoms: vec![Atom {
-                            code: "O1",
-                            position: base_coord.add(&Coord::new(0.0, 0.0, dz)),
-                        },
-                        Atom {
-                            code: "SI",
-                            position: base_coord,
-                        },
-                        Atom {
-                            code: "O2",
-                            position: base_coord.add(&Coord::new(0.0, 0.0, -dz)),
-                        }],
-        }
-    }
 }
 
 #[macro_export]
@@ -163,14 +128,36 @@ macro_rules! resbase {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-/// Every atom in a residue has their own code and relative
-/// position some base coordinate.
-pub struct Atom {
-    /// Atom code.
-    pub code: &'static str,
-    /// Relative position.
-    pub position: Coord,
+impl ResidueBase {
+    /// Generate a proper residue at the input position.
+    pub fn to_residue(&self, position: &Coord) -> Residue {
+        Residue {
+            code: self.code,
+            position: *position,
+            atoms: self.atoms.clone(),
+        }
+    }
+
+    /// Graphene is a single carbon atom at each lattice point.
+    pub fn graphene(bond_length: f64) -> ResidueBase {
+        let dx = bond_length / 2.0;
+
+        resbase!["GRPH", ("C", dx, dx, 0.0)]
+    }
+
+    /// Silica is a rigid SiO2 molecule at each lattice point.
+    pub fn silica(bond_length: f64) -> ResidueBase {
+        let x0 = bond_length / 4.0;
+        let y0 = bond_length / 6.0;
+        let dz = 0.151;
+
+        resbase![
+            "SIO",
+            ("O1", x0, y0, dz),
+            ("SI", x0, y0, 0.0),
+            ("O2", x0, y0, -dz)
+        ]
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
