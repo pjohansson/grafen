@@ -1,4 +1,32 @@
-//! Construct substrates of given types.
+//! Define and construct substrates.
+//!
+//! # Examples
+//! Construct a triclinic lattice of hydrogen molecules.
+//!
+//! ```
+//! use grafen::substrate::{create_substrate, LatticeType, SubstrateConf};
+//! use grafen::system::{Atom, Coord, ResidueBase};
+//!
+//! // Define the molecule as a Residue.
+//! let residue_base = ResidueBase {
+//!     code: "HMOL",
+//!     atoms: vec![
+//!         Atom { code: "H1", position: Coord::new(0.0, 0.0, 0.5), },
+//!         Atom { code: "H2", position: Coord::new(0.0, 0.0, -0.5), }
+//!     ],
+//! };
+//!
+//! // Define the substrate
+//! let conf = SubstrateConf {
+//!     lattice: LatticeType::Triclinic { a: 1.0, b: 0.5, gamma: 60.0 },
+//!     residue: residue_base,
+//!     size: (5.0, 10.0),
+//!     std_z: None,
+//! };
+//!
+//! // ... and create it!
+//! let substrate = create_substrate(&conf).unwrap();
+//! ```
 
 mod lattice;
 
@@ -31,9 +59,11 @@ pub enum LatticeType {
     Triclinic { a: f64, b: f64, gamma: f64 },
 }
 
-/// Create a substrate of input configuration. The returned system's
-/// size will be adjusted to a multiple of the substrate spacing along both
-/// directions. Thus the system can be periodically replicated along x and y.
+/// Create a substrate of input configuration and return as a `System`.
+///
+/// The returned system's size will be adjusted to a multiple of the
+/// substrate spacing along both directions. Thus the system can be
+/// periodically replicated along x and y.
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
