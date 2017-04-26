@@ -1,8 +1,8 @@
-//! This module implements the basic structures of an atomic system.
+//! Contains the basic structures of an atomic `System`.
 //!
-//! A final ```System``` consists of a set of ```Residue```s, which
-//! can be moved around and translated with ease. Each ```Residue```
-//! in turn consists of some ```Atom```s. These atoms have positions
+//! A final `System` consists of a set of `Residue`s, which
+//! can be moved around and translated with ease. Each `Residue`
+//! in turn consists of some `Atom`s. These atoms have positions
 //! relative to their parent.
 //!
 //! This somewhat convoluted structure is inherited from molecular
@@ -81,7 +81,7 @@ pub struct ResidueBase {
 /// when explicitly constructing a residue, but it makes no sense to allow
 /// it when invoking a constructor like this.
 ///
-/// # Examples:
+/// # Examples
 /// ```
 /// # #[macro_use] extern crate grafen;
 /// use grafen::system::{Atom, Coord, ResidueBase};
