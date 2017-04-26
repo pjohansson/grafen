@@ -1,3 +1,11 @@
+0.5.1
+=====
+* The `substrates` module has been renamed to the singular `substrate`.
+* The `lattice` module is now a *private* submodule to `substrate`.
+* The `output` module has been moved to the binary.
+* A macro `resbase` has been added to easily construct `ResidueBase` objects.
+* `ResidueBase` no longer implements methods for getting a silica or graphene base. These definitions belong in the binary, not in the library.
+
 0.5
 ===
 * Substrate configurations are now user-defined instead of hard-coded in the library. They are made available through the ```SubstrateConf``` struct which is passed to the construction function.
