@@ -58,6 +58,7 @@ impl Residue {
 }
 
 /// A base for generating atoms belonging to a residue.
+#[derive(Debug, PartialEq)]
 pub struct ResidueBase {
     pub code: &'static str,
     pub atoms: Vec<Atom>,
@@ -80,16 +81,15 @@ impl ResidueBase {
             code: "GRPH",
             atoms: vec![Atom {
                             code: "C",
-                            position: Coord::new(dx, dx, dx),
+                            position: Coord::new(dx, dx, 0.0),
                         }],
         }
     }
 
     /// Silica is a rigid SiO2 molecule at each lattice point.
     pub fn silica(bond_length: f64) -> ResidueBase {
-        let z0 = 0.000;
         let dz = 0.151;
-        let base_coord = Coord::new(bond_length / 4.0, bond_length / 6.0, z0);
+        let base_coord = Coord::new(bond_length / 4.0, bond_length / 6.0, 0.0);
 
         ResidueBase {
             code: "SIO",
@@ -105,6 +105,60 @@ impl ResidueBase {
                             code: "O2",
                             position: base_coord.add(&Coord::new(0.0, 0.0, -dz)),
                         }],
+        }
+    }
+}
+
+#[macro_export]
+/// Construct a ResidueBase with a code and atoms.
+///
+/// At least one atom has to be present in the base. This is not a limitation
+/// when explicitly constructing a residue, but it makes no sense to allow
+/// it when invoking a constructor like this.
+///
+/// # Examples:
+/// ```
+/// # #[macro_use] extern crate grafen;
+/// use grafen::system::{Atom, Coord, ResidueBase};
+/// # fn main() {
+///
+/// let expect = ResidueBase {
+///     code: "RES",
+///     atoms: vec![
+///         Atom { code: "A", position: Coord::new(0.0, 0.0, 0.0) },
+///         Atom { code: "B", position: Coord::new(1.0, 2.0, 3.0) }
+///     ],
+/// };
+///
+/// let residue = resbase![
+///     "RES",
+///     ("A", 0.0, 0.0, 0.0),
+///     ("B", 1.0, 2.0, 3.0)
+/// ];
+///
+/// assert_eq!(expect, residue);
+/// # }
+/// ```
+macro_rules! resbase {
+    (
+        $rescode:expr,
+        $(($atname:expr, $x:expr, $y:expr, $z:expr)),+
+    ) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push(
+                    Atom {
+                        code: $atname,
+                        position: Coord::new($x, $y, $z),
+                    }
+                );
+            )*
+
+            ResidueBase {
+                code: $rescode,
+                atoms: temp_vec,
+            }
         }
     }
 }
@@ -248,5 +302,23 @@ mod tests {
         assert_eq!("RES", residue.code);
         assert_eq!(position, residue.position);
         assert_eq!(base.atoms, residue.atoms);
+    }
+
+    #[test]
+    fn create_residue_base_macro() {
+        let expect = ResidueBase {
+            code: "RES",
+            atoms: vec![
+                Atom { code: "A1", position: Coord::new(0.0, 0.0, 0.0) },
+                Atom { code: "A2", position: Coord::new(0.0, 1.0, 2.0) }
+            ],
+        };
+        let result = resbase![
+            "RES",
+            ("A1", 0.0, 0.0, 0.0),
+            ("A2", 0.0, 1.0, 2.0)
+        ];
+
+        assert_eq!(expect, result);
     }
 }

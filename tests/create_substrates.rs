@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate grafen;
 
 use grafen::system::{Atom, Coord, ResidueBase};
@@ -48,4 +49,19 @@ fn define_and_create_a_substrate() {
         assert_eq!(residue_atom_one, residue.atoms[0]);
         assert_eq!(residue_atom_two, residue.atoms[1]);
     }
+}
+
+// Ensure that the macro is exported
+#[test]
+fn define_a_residue_with_a_macro() {
+    let res_orig = ResidueBase {
+        code: "RES",
+        atoms: vec![
+            Atom { code: "A1", position: Coord::new(0.0, 0.0, 0.0) },
+            Atom { code: "A2", position: Coord::new(1.0, 0.0, 0.0) },
+        ],
+    };
+    let res_macro = resbase!["RES", ("A1", 0.0, 0.0, 0.0), ("A2", 1.0, 0.0, 0.0)];
+
+    assert_eq!(res_orig, res_macro);
 }
