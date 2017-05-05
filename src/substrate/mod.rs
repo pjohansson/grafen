@@ -28,10 +28,14 @@
 //! let substrate = create_substrate(&conf).unwrap();
 //! ```
 
+mod distribution;
 mod lattice;
+mod points;
 
 use error::{GrafenError, Result};
+use substrate::distribution::PoissonDistribution;
 use substrate::lattice::Lattice;
+use substrate::points::IntoPoints;
 use system::*;
 
 /// Configuration for constructing a substrate.
@@ -57,6 +61,15 @@ pub enum LatticeType {
     /// Vector `a` is directed along the x axis and vector `b` is separated
     /// to it by the input angle `gamma` in degrees.
     Triclinic { a: f64, b: f64, gamma: f64 },
+    /// A Poisson disc distribution of points with an input `density` in number
+    /// of points per unit area. It is implemented using Bridson's algorithm
+    /// which ensures that no points are within sqrt(2 / (pi * density)) of
+    /// each other. This creates a good match to the input density.
+    ///
+    /// *Fast Poisson disk sampling in arbitrary dimensions*,
+    ///  R. Bridson, ACM SIGGRAPH 2007 Sketches Program,
+    ///  http://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph07-poissondisk.pdf
+    PoissonDisc { density: f64 },
 }
 
 /// Create a substrate of input configuration and return as a `System`.
@@ -69,28 +82,35 @@ pub enum LatticeType {
 /// Returns an Error if the either of the input size are non-positive.
 pub fn create_substrate(conf: &SubstrateConf) -> Result<System> {
     let (dx, dy) = conf.size;
-    if dx < 0.0 || dy < 0.0 {
+    if dx <= 0.0 || dy <= 0.0 {
         return Err(
             GrafenError::RunError("cannot create a substrate of negative size".to_string())
         );
     }
 
-    let mut lattice = match conf.lattice {
+    let mut points = match conf.lattice {
         LatticeType::Hexagonal { a } => {
-            Lattice::hexagonal(a)
+            Lattice::hexagonal(a).with_size(dx, dy).finalize().into_points()
         },
         LatticeType::Triclinic { a, b, gamma } => {
-            Lattice::triclinic(a, b, gamma.to_radians())
+            Lattice::triclinic(a, b, gamma.to_radians()).with_size(dx, dy).finalize().into_points()
         },
-    }.with_size(dx, dy).finalize();
+        LatticeType::PoissonDisc { density } => {
+            // The factor 1/sqrt(pi) comes from the area and the factor sqrt(2)
+            // is a magic number which roughly gives the correct density. It works!
+            use std::f64::consts::PI;
+            let rmin = (2.0 / (PI * density)).sqrt();
+            PoissonDistribution::new(rmin, dx, dy).into_points()
+        },
+    };
 
     if let Some(std) = conf.std_z {
-        lattice = lattice.uniform_distribution(std);
+        points = points.uniform_distribution(std);
     };
 
     Ok(System {
-        dimensions: lattice.box_size,
-        residues: lattice.coords.iter().map(|&coord| conf.residue.to_residue(&coord)).collect(),
+        dimensions: points.box_size,
+        residues: points.broadcast_residue(&conf.residue),
     })
 }
 
@@ -127,16 +147,17 @@ mod tests {
         // The graphene is ordinarily positioned at z = 0.0
         let mut conf = setup_conf();
         let regular = create_substrate(&conf).unwrap();
-        assert!(regular.residues.iter().all(|r| r.position.z == 0.0));
+        assert!(regular.residues.iter().any(|r| r.position.z != 0.0) == false);
 
-        conf.std_z = Some(1.0);
+        let std_z = 1.0;
+        conf.std_z = Some(std_z);
         let uniform = create_substrate(&conf).unwrap();
 
-        // Non-zero variance This can fail, but it should not be common!
+        // Non-zero variance: This *can* fail, but it should not be common!
         // How else to assert that a distribution has been applied, though?
-        assert!(uniform.residues.iter().map(|r| r.position.z).all(|z| z == 0.0) == false);
+        assert!(uniform.residues.iter().map(|r| r.position.z).any(|z| z != 0.0));
 
-        // But no positions should exceed the input distribution max
-        assert!(uniform.residues.iter().all(|r| r.position.z.abs() <= 1.0));
+        // No positions should exceed the input distribution max
+        assert!(uniform.residues.iter().all(|r| r.position.z.abs() <= std_z));
     }
 }

@@ -49,6 +49,7 @@ impl Config {
             None => match lattice {
                 LatticeType::Hexagonal { a: _ } => 0.10,
                 LatticeType::Triclinic { a: _, b: _, gamma: _ } => 0.30,
+                _ => 0.0,
             },
         };
 

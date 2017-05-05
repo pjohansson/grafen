@@ -2,7 +2,7 @@
 //! information about and grid coordinates of lattices. It comes
 //! with easy-to-use constructors for different lattice types.
 
-use rand;
+use substrate::points::{Points, IntoPoints};
 use system::Coord;
 
 /// A lattice with coordinates of its grid and a total size.
@@ -29,29 +29,13 @@ impl Lattice {
         let crystal = Crystal::triclinic(a, b, gamma);
         LatticeBuilder::new(crystal)
     }
+}
 
-    /// Get a copy of the lattice in which the positions along z
-    /// have been shifted by a uniform random distribution.
-    /// The positions are shifted on a range of (-std_z, +std_z)
-    /// where std_z is the input deviation.
-    pub fn uniform_distribution(&self, std_z: f64) -> Lattice {
-        use rand::distributions::IndependentSample;
-
-        let range = rand::distributions::Range::new(-std_z, std_z);
-        let mut rng = rand::thread_rng();
-
-        let coords: Vec<Coord> = self.coords
-            .iter()
-            .map(|&c| {
-                    let add_z = range.ind_sample(&mut rng);
-                    //c.add(Coord::new(0.0, 0.0, add_z))
-                    c + Coord::new(0.0, 0.0, add_z)
-            })
-            .collect();
-
-        Lattice {
+impl IntoPoints for Lattice {
+    fn into_points(self) -> Points {
+        Points {
             box_size: self.box_size,
-            coords: coords,
+            coords: self.coords,
         }
     }
 }
@@ -336,24 +320,5 @@ mod tests {
         assert_eq!(1.0, dx);
         assert_eq!(3.0 * 3.0f64.sqrt() / 2.0, dy);
         assert!((1.5 - dx_per_row).abs() < 1e-6);
-    }
-
-    #[test]
-    fn uniform_distribution_of_lattice_positions() {
-        let mut lattice = Lattice::hexagonal(1.0).with_bins(100, 100).finalize();
-
-        // We translate by this to ensure that the numbers
-        // are not generated around 0.0
-        let z0 = 1.0;
-        lattice.coords = lattice.coords.iter().map(|&c| c + Coord::new(0.0, 0.0, z0)).collect();
-
-        lattice = lattice.uniform_distribution(0.1);
-
-        // Assert that the positions are centered around zero with non-zero variance
-        let len = lattice.coords.len() as f64;
-        let var_z: f64 = lattice.coords.iter().map(|c| c.z*c.z - z0).sum::<f64>()/len;
-
-        assert!(lattice.coords.iter().all(|&c| c.z.abs() - z0 <= 0.1));
-        assert!(var_z > 0.0);
     }
 }
