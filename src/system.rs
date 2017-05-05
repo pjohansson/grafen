@@ -165,12 +165,10 @@ impl Coord {
         Coord { x: x, y: y, z: z }
     }
 
-    pub fn distance(&self, other: &Coord) -> f64 {
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        let dz = self.z - other.z;
+    pub fn distance(self, other: Coord) -> f64 {
+        let dx = self - other;
 
-        (dx * dx + dy * dy + dz * dz).sqrt()
+        (dx.x * dx.x + dx.y * dx.y + dx.z * dx.z).sqrt()
     }
 }
 
@@ -233,8 +231,8 @@ mod tests {
         let coord1 = Coord::new(1.0, 1.0, 1.0);
         let coord2 = Coord::new(3.0, 3.0, 2.0);
 
-        assert_eq!(3.0, Coord::distance(&coord1, &coord2));
-        assert_eq!(3.0, coord1.distance(&coord2));
+        assert_eq!(3.0, Coord::distance(coord1, coord2));
+        assert_eq!(3.0, coord1.distance(coord2));
     }
 
     // A simple system with two different residues and five atoms
