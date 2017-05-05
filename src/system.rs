@@ -29,7 +29,7 @@ impl System {
     pub fn translate(&self, add: &Coord) -> System {
         System {
             dimensions: self.dimensions,
-            residues: self.residues.iter().map(|r| r.translate(&add)).collect(),
+            residues: self.residues.iter().map(|r| r.translate(*add)).collect(),
         }
     }
 }
@@ -48,10 +48,10 @@ pub struct Residue {
 
 impl Residue {
     /// Translate the residue position. Does not alter the atom relative positions.
-    fn translate(&self, add: &Coord) -> Residue {
+    fn translate(&self, add: Coord) -> Residue {
         Residue {
             code: self.code,
-            position: self.position.add(&add),
+            position: self.position + add,
             atoms: self.atoms.clone(),
         }
     }
@@ -157,16 +157,39 @@ pub struct Coord {
     pub z: f64,
 }
 
+use std::ops::{Add, Sub};
+
 impl Coord {
     /// Construct a new coordinate.
     pub fn new(x: f64, y: f64, z: f64) -> Coord {
         Coord { x: x, y: y, z: z }
     }
 
-    /// Add a coordinate to another.
-    pub fn add(&self, other: &Coord) -> Coord {
+    pub fn distance(&self, other: &Coord) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+}
+
+impl Add for Coord {
+    type Output = Coord;
+
+    fn add(self, other: Coord) -> Coord {
         Coord::new(self.x + other.x, self.y + other.y, self.z + other.z)
     }
+
+}
+
+impl Sub for Coord {
+    type Output = Coord;
+
+    fn sub(self, other: Coord) -> Coord {
+        Coord::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+
 }
 
 impl PartialEq for Coord {
@@ -183,11 +206,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn coord_translations() {
+    fn coord_addition_and_subtraction() {
         let coord = Coord::new(0.0, 1.0, 2.0);
-        let coord_add = coord.add(&coord);
-        let expected = Coord::new(0.0, 2.0, 4.0);
-        assert_eq!(expected, coord_add);
+        assert_eq!(Coord::new(0.0, 2.0, 4.0), coord + coord);
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), coord - coord);
+
     }
 
     #[test]
@@ -203,6 +226,15 @@ mod tests {
     fn coord_eq_tolerance_larger_deviation_does_not() {
         let coord = Coord::new(0.0, 0.0, 0.0);
         assert_eq!(coord, Coord::new(1e-9, 2e-9, 3e-9));
+    }
+
+    #[test]
+    fn coord_distance_calc() {
+        let coord1 = Coord::new(1.0, 1.0, 1.0);
+        let coord2 = Coord::new(3.0, 3.0, 2.0);
+
+        assert_eq!(3.0, Coord::distance(&coord1, &coord2));
+        assert_eq!(3.0, coord1.distance(&coord2));
     }
 
     // A simple system with two different residues and five atoms
@@ -249,7 +281,7 @@ mod tests {
 
         let translated_system = system.translate(&translate);
         for (orig, updated) in system.residues.iter().zip(translated_system.residues.iter()) {
-            assert_eq!(orig.position.add(&translate), updated.position);
+            assert_eq!(orig.position + translate, updated.position);
         }
     }
 

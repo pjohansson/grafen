@@ -42,9 +42,10 @@ impl Lattice {
 
         let coords: Vec<Coord> = self.coords
             .iter()
-            .map(|c| {
+            .map(|&c| {
                     let add_z = range.ind_sample(&mut rng);
-                    c.add(&Coord::new(0.0, 0.0, add_z))
+                    //c.add(Coord::new(0.0, 0.0, add_z))
+                    c + Coord::new(0.0, 0.0, add_z)
             })
             .collect();
 
@@ -344,7 +345,7 @@ mod tests {
         // We translate by this to ensure that the numbers
         // are not generated around 0.0
         let z0 = 1.0;
-        lattice.coords = lattice.coords.iter().map(|c| c.add(&Coord::new(0.0, 0.0, z0))).collect();
+        lattice.coords = lattice.coords.iter().map(|&c| c + Coord::new(0.0, 0.0, z0)).collect();
 
         lattice = lattice.uniform_distribution(0.1);
 

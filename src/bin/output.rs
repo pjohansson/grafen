@@ -29,7 +29,7 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str, box_z: f64)
             let residue_number = (i + 1) % 100_000;
             let atom_number = (j + 1) % 100_000;
 
-            let position = residue.position.add(&atom.position);
+            let position = residue.position + atom.position;
 
             writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
                                         residue_number,
