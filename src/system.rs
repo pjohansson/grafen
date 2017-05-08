@@ -150,6 +150,7 @@ impl ResidueBase {
 /// let coord2 = Coord::new(0.5, 0.5, 0.5);
 ///
 /// assert_eq!(Coord::new(1.5, 0.5, 1.5), coord1 + coord2);
+/// assert_eq!(Coord::new(0.5, -0.5, 0.5), coord1 - coord2);
 /// ```
 pub struct Coord {
     pub x: f64,
