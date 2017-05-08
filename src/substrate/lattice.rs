@@ -2,7 +2,7 @@
 //! information about and grid coordinates of lattices. It comes
 //! with easy-to-use constructors for different lattice types.
 
-use substrate::points::{Points, IntoPoints};
+use substrate::points::Points;
 use system::Coord;
 
 /// A lattice with coordinates of its grid and a total size.
@@ -31,15 +31,6 @@ impl Lattice {
     }
 }
 
-impl IntoPoints for Lattice {
-    fn into_points(self) -> Points {
-        Points {
-            box_size: self.box_size,
-            coords: self.coords,
-        }
-    }
-}
-
 /// Constructor for a Lattice.
 pub struct LatticeBuilder {
     crystal: Crystal,
@@ -64,7 +55,7 @@ impl LatticeBuilder {
 
     /// Finalize and return the Lattice. Note that if a desired size has
     /// not been set the lattice will be empty.
-    pub fn finalize(mut self) -> Lattice {
+    pub fn finalize(mut self) -> Points {
         let coords = match self.crystal.lattice_type {
             Hexagonal => self.hexagonal(),
             _ => self.generic(),
@@ -73,7 +64,7 @@ impl LatticeBuilder {
         let Spacing(dx, dy, _) = self.crystal.spacing();
         let box_size = Coord::new((self.nx as f64) * dx, (self.ny as f64) * dy, 0.0);
 
-        Lattice {
+        Points {
             box_size: box_size,
             coords: coords,
         }

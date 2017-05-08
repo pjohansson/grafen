@@ -4,16 +4,13 @@ use rand;
 use rand::distributions::IndependentSample;
 use std::cmp;
 
-use substrate::points::{Points, IntoPoints};
+use substrate::points::Points;
 use system::Coord;
 
-pub struct PoissonDistribution {
-    box_size: Coord,
-    coords: Vec<Coord>,
-}
+pub struct PoissonDistribution {}
 
 impl PoissonDistribution {
-    pub fn new(rmin: f64, size_x: f64, size_y: f64) -> PoissonDistribution {
+    pub fn new(rmin: f64, size_x: f64, size_y: f64) -> Points {
         let mut grid = PoissonGrid::new(rmin, size_x, size_y);
 
         let init_coord = gen_grid_coord(size_x, size_y);
@@ -32,18 +29,9 @@ impl PoissonDistribution {
             };
         }
 
-        PoissonDistribution {
+        Points {
             box_size: Coord::new(size_x, size_y, 0.0),
             coords: grid.into_coords(),
-        }
-    }
-}
-
-impl IntoPoints for PoissonDistribution {
-    fn into_points(self) -> Points {
-        Points {
-            box_size: self.box_size,
-            coords: self.coords,
         }
     }
 }

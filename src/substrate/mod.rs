@@ -35,7 +35,6 @@ mod points;
 use error::{GrafenError, Result};
 use substrate::distribution::PoissonDistribution;
 use substrate::lattice::Lattice;
-use substrate::points::IntoPoints;
 use system::*;
 
 /// Configuration for constructing a substrate.
@@ -90,17 +89,17 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<System> {
 
     let mut points = match conf.lattice {
         LatticeType::Hexagonal { a } => {
-            Lattice::hexagonal(a).with_size(dx, dy).finalize().into_points()
+            Lattice::hexagonal(a).with_size(dx, dy).finalize()
         },
         LatticeType::Triclinic { a, b, gamma } => {
-            Lattice::triclinic(a, b, gamma.to_radians()).with_size(dx, dy).finalize().into_points()
+            Lattice::triclinic(a, b, gamma.to_radians()).with_size(dx, dy).finalize()
         },
         LatticeType::PoissonDisc { density } => {
             // The factor 1/sqrt(pi) comes from the area and the factor sqrt(2)
             // is a magic number which roughly gives the correct density. It works!
             use std::f64::consts::PI;
             let rmin = (2.0 / (PI * density)).sqrt();
-            PoissonDistribution::new(rmin, dx, dy).into_points()
+            PoissonDistribution::new(rmin, dx, dy)
         },
     };
 

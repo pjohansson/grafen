@@ -14,11 +14,6 @@ pub struct Points {
     pub coords: Vec<Coord>,
 }
 
-/// Shared trait for distributions and lattices.
-pub trait IntoPoints {
-    fn into_points(self) -> Points;
-}
-
 impl Points {
     /// Broadcast an input residue base onto all coordinates.
     pub fn broadcast_residue(&self, residue: &ResidueBase) -> Vec<Residue> {
