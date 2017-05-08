@@ -5,16 +5,7 @@
 use substrate::points::Points;
 use system::Coord;
 
-/// A lattice with coordinates of its grid and a total size.
-///
-/// The lattice is constructed using its builder methods
-/// for the various types of lattices.
-pub struct Lattice {
-    /// Size of the lattice box.
-    pub box_size: Coord,
-    /// List of coordinates belonging to the lattice.
-    pub coords: Vec<Coord>,
-}
+pub struct Lattice;
 
 impl Lattice {
     /// Constructor for a hexagonal lattice with spacing a.

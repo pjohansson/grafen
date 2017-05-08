@@ -7,7 +7,7 @@ use std::cmp;
 use substrate::points::Points;
 use system::Coord;
 
-pub struct PoissonDistribution {}
+pub struct PoissonDistribution;
 
 impl PoissonDistribution {
     pub fn new(rmin: f64, size_x: f64, size_y: f64) -> Points {
