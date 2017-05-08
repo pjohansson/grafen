@@ -1,3 +1,7 @@
+0.5.2
+=====
+* Implement a Poisson Disc distribution for generating substrates.
+
 0.5.1
 =====
 * The `substrates` module has been renamed to the singular `substrate`.
