@@ -9,10 +9,10 @@
 //!
 //! // Define the molecule as a Residue.
 //! let residue_base = ResidueBase {
-//!     code: "HMOL",
+//!     code: "HMOL".to_string(),
 //!     atoms: vec![
-//!         Atom { code: "H1", position: Coord::new(0.0, 0.0, 0.5), },
-//!         Atom { code: "H2", position: Coord::new(0.0, 0.0, -0.5), }
+//!         Atom { code: "H1".to_string(), position: Coord::new(0.0, 0.0, 0.5), },
+//!         Atom { code: "H2".to_string(), position: Coord::new(0.0, 0.0, -0.5), }
 //!     ],
 //! };
 //!
@@ -121,8 +121,8 @@ mod tests {
         SubstrateConf {
             lattice: LatticeType::Hexagonal { a: 1.0 },
             residue: ResidueBase {
-                code: "GRPH",
-                atoms: vec![Atom { code: "C", position: Coord::new(0.0, 0.0, 0.0) }],
+                code: "GRPH".to_string(),
+                atoms: vec![Atom { code: "C".to_string(), position: Coord::new(0.0, 0.0, 0.0) }],
             },
             size: (10.0, 10.0),
             std_z: None,
@@ -145,8 +145,10 @@ mod tests {
     fn uniform_distribution_is_set() {
         // The graphene is ordinarily positioned at z = 0.0
         let mut conf = setup_conf();
-        let regular = create_substrate(&conf).unwrap();
-        assert!(regular.residues.iter().any(|r| r.position.z != 0.0) == false);
+        {
+            let regular = create_substrate(&conf).unwrap();
+            assert!(regular.residues.iter().any(|r| r.position.z != 0.0) == false);
+        }
 
         let std_z = 1.0;
         conf.std_z = Some(std_z);

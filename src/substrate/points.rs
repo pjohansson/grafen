@@ -16,7 +16,7 @@ pub struct Points {
 
 impl Points {
     /// Broadcast an input residue base onto all coordinates.
-    pub fn broadcast_residue(&self, residue: &ResidueBase) -> Vec<Residue> {
+    pub fn broadcast_residue<'a>(&self, residue: &'a ResidueBase) -> Vec<Residue<'a>> {
         self.coords.iter().map(|&coord| residue.to_residue(&coord)).collect()
     }
 

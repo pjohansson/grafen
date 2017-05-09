@@ -7,26 +7,26 @@
 //!
 //! This somewhat convoluted structure is inherited from molecular
 //! simulation packages in which atoms are commonly grouped as such.
-//!  A proper physical way to look at is that atoms can be
+//! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
 /// A finalized atomic system which consists of a list of residues,
 /// each of which contains some atoms.
-pub struct System {
+pub struct System<'a> {
     /// System dimensions.
     pub dimensions: Coord,
     /// List of residues.
-    pub residues: Vec<Residue>,
+    pub residues: Vec<Residue<'a>>,
 }
 
-impl System {
+impl<'a> System<'a> {
     /// Count and return the number of atoms in the system.
     pub fn num_atoms(&self) -> usize {
         self.residues.iter().map(|r| r.atoms.len()).sum()
     }
 
     /// Translate all residues within the system and return a copy.
-    pub fn translate(&self, add: &Coord) -> System {
+    pub fn translate(&self, add: &Coord) -> System<'a> {
         System {
             dimensions: self.dimensions,
             residues: self.residues.iter().map(|r| r.translate(*add)).collect(),
@@ -35,34 +35,33 @@ impl System {
 }
 
 /// Every residue has a name and a list of atoms that belong to it
-/// with their relative base coordinates. The names are static since
-/// they are generated only once from a single source.
-pub struct Residue {
+/// with their relative base coordinates.
+pub struct Residue<'a> {
     /// Residue code.
-    pub code: &'static str,
+    pub code: &'a str,
     /// Position of residue in system.
     pub position: Coord,
     /// List of atoms belonging to the residue. Their positions are relative to the residue.
-    pub atoms: Vec<Atom>,
+    pub atoms: &'a Vec<Atom>,
 }
 
-impl Residue {
+impl<'a> Residue<'a> {
     /// Translate the residue position. Does not alter the atom relative positions.
-    fn translate(&self, add: Coord) -> Residue {
+    fn translate(&self, add: Coord) -> Residue<'a> {
         Residue {
             code: self.code,
             position: self.position + add,
-            atoms: self.atoms.clone(),
+            atoms: self.atoms,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// Every atom in a residue has their own code and relative
 /// position some base coordinate.
 pub struct Atom {
     /// Atom code.
-    pub code: &'static str,
+    pub code: String,
     /// Relative position.
     pub position: Coord,
 }
@@ -70,7 +69,7 @@ pub struct Atom {
 /// A base for generating atoms belonging to a residue.
 #[derive(Debug, PartialEq)]
 pub struct ResidueBase {
-    pub code: &'static str,
+    pub code: String,
     pub atoms: Vec<Atom>,
 }
 
@@ -88,10 +87,10 @@ pub struct ResidueBase {
 /// # fn main() {
 ///
 /// let expect = ResidueBase {
-///     code: "RES",
+///     code: "RES".to_string(),
 ///     atoms: vec![
-///         Atom { code: "A", position: Coord::new(0.0, 0.0, 0.0) },
-///         Atom { code: "B", position: Coord::new(1.0, 2.0, 3.0) }
+///         Atom { code: "A".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+///         Atom { code: "B".to_string(), position: Coord::new(1.0, 2.0, 3.0) }
 ///     ],
 /// };
 ///
@@ -114,14 +113,14 @@ macro_rules! resbase {
             $(
                 temp_vec.push(
                     Atom {
-                        code: $atname,
+                        code: $atname.to_string(),
                         position: Coord::new($x, $y, $z),
                     }
                 );
             )*
 
             ResidueBase {
-                code: $rescode,
+                code: $rescode.to_string(),
                 atoms: temp_vec,
             }
         }
@@ -132,9 +131,9 @@ impl ResidueBase {
     /// Generate a proper residue at the input position.
     pub fn to_residue(&self, position: &Coord) -> Residue {
         Residue {
-            code: self.code,
+            code: self.code.as_str(),
             position: *position,
-            atoms: self.atoms.clone(),
+            atoms: self.atoms.as_ref(),
         }
     }
 }
@@ -236,26 +235,38 @@ mod tests {
         assert_eq!(3.0, coord1.distance(coord2));
     }
 
-    // A simple system with two different residues and five atoms
-    fn setup_system() -> System {
+    fn setup_residues() -> (ResidueBase, ResidueBase) {
         let coord0 = Coord::new(0.0, 0.0, 0.0);
-
-        let residue_one = Residue {
-            code: "R1",
-            position: Coord::new(0.0, 0.0, 0.0),
+        let residue_one = ResidueBase {
+            code: "R1".to_string(),
             atoms: vec![
-                Atom { code: "A1", position: coord0, },
-                Atom { code: "A2", position: coord0, },
-                Atom { code: "A3", position: coord0, },
+                Atom { code: "A1".to_string(), position: coord0, },
+                Atom { code: "A2".to_string(), position: coord0, },
+                Atom { code: "A3".to_string(), position: coord0, },
             ]
         };
-        let residue_two = Residue {
-            code: "R2",
-            position: Coord::new(1.0, 1.0, 1.0),
+        let residue_two = ResidueBase {
+            code: "R2".to_string(),
             atoms: vec![
-                Atom { code: "B1", position: coord0, },
-                Atom { code: "B2", position: coord0, },
+                Atom { code: "B1".to_string(), position: coord0, },
+                Atom { code: "B2".to_string(), position: coord0, },
             ]
+        };
+
+        (residue_one, residue_two)
+    }
+
+    // A simple system with two different residues and five atoms
+    fn setup_system<'a>(base_one: &'a ResidueBase, base_two: &'a ResidueBase) -> System<'a> {
+        let residue_one = Residue {
+            code: &base_one.code,
+            position: Coord::new(0.0, 0.0, 0.0),
+            atoms: &base_one.atoms,
+        };
+        let residue_two = Residue {
+            code: &base_two.code,
+            position: Coord::new(1.0, 1.0, 1.0),
+            atoms: &base_two.atoms,
         };
 
         System {
@@ -269,13 +280,15 @@ mod tests {
 
     #[test]
     fn count_atoms_in_system() {
-        let system = setup_system();
+        let (res_one, res_two) = setup_residues();
+        let system = setup_system(&res_one, &res_two);
         assert_eq!(5, system.num_atoms());
     }
 
     #[test]
     fn translate_a_system() {
-        let system = setup_system();
+        let (res_one, res_two) = setup_residues();
+        let system = setup_system(&res_one, &res_two);
         let translate = Coord::new(0.0, 1.0, 2.0);
 
         let translated_system = system.translate(&translate);
@@ -287,27 +300,27 @@ mod tests {
     #[test]
     fn residue_base_to_residue() {
         let base = ResidueBase {
-            code: "RES",
+            code: "RES".to_string(),
             atoms: vec![
-                Atom { code: "A1", position: Coord::new(0.0, 0.0, 0.0) },
-                Atom { code: "A2", position: Coord::new(0.0, 1.0, 2.0) }
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(0.0, 1.0, 2.0) }
             ],
         };
         let position = Coord::new(1.0, 1.0, 1.0);
 
         let residue = base.to_residue(&position);
-        assert_eq!("RES", residue.code);
+        assert_eq!("RES".to_string(), residue.code);
         assert_eq!(position, residue.position);
-        assert_eq!(base.atoms, residue.atoms);
+        assert_eq!(&base.atoms, residue.atoms);
     }
 
     #[test]
     fn create_residue_base_macro() {
         let expect = ResidueBase {
-            code: "RES",
+            code: "RES".to_string(),
             atoms: vec![
-                Atom { code: "A1", position: Coord::new(0.0, 0.0, 0.0) },
-                Atom { code: "A2", position: Coord::new(0.0, 1.0, 2.0) }
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(0.0, 1.0, 2.0) }
             ],
         };
         let result = resbase![

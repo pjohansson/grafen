@@ -7,14 +7,14 @@ use grafen::substrate::{LatticeType, SubstrateConf};
 #[test]
 fn define_and_create_a_substrate() {
     // Define a simple residue
-    let residue_atom_one = Atom { code: "C1", position: Coord::new(0.1, 0.2, 0.3) };
-    let residue_atom_two = Atom { code: "C2", position: Coord::new(0.3, 0.2, 0.1) };
+    let residue_atom_one = Atom { code: "C1".to_string(), position: Coord::new(0.1, 0.2, 0.3) };
+    let residue_atom_two = Atom { code: "C2".to_string(), position: Coord::new(0.3, 0.2, 0.1) };
 
     let residue = ResidueBase {
-        code: "RES",
+        code: "RES".to_string(),
         atoms: vec![
-            residue_atom_one,
-            residue_atom_two
+            residue_atom_one.clone(),
+            residue_atom_two.clone()
         ],
     };
 
@@ -55,10 +55,10 @@ fn define_and_create_a_substrate() {
 #[test]
 fn define_a_residue_with_a_macro() {
     let res_orig = ResidueBase {
-        code: "RES",
+        code: "RES".to_string(),
         atoms: vec![
-            Atom { code: "A1", position: Coord::new(0.0, 0.0, 0.0) },
-            Atom { code: "A2", position: Coord::new(1.0, 0.0, 0.0) },
+            Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+            Atom { code: "A2".to_string(), position: Coord::new(1.0, 0.0, 0.0) },
         ],
     };
     let res_macro = resbase!["RES", ("A1", 0.0, 0.0, 0.0), ("A2", 1.0, 0.0, 0.0)];
