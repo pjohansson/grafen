@@ -22,7 +22,7 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str, box_z: f64)
     writer.write_fmt(format_args!("{}\n", system.num_atoms()))?;
 
     for (i, residue) in system.residues.iter().enumerate() {
-        for (j, atom) in residue.atoms.iter().enumerate() {
+        for (j, atom) in residue.base.atoms.iter().enumerate() {
             // GROMOS files wrap atom and residue numbering after five digits
             // so we must output at most that. We also switch to indexing the
             // numbers from 1 instead of from 0.
@@ -33,7 +33,7 @@ pub fn write_gromos(system: &System, output_file: &str, title: &str, box_z: f64)
 
             writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
                                         residue_number,
-                                        residue.code,
+                                        residue.base.code,
                                         atom.code,
                                         atom_number,
                                         position.x,

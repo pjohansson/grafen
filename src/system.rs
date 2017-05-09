@@ -22,7 +22,7 @@ pub struct System<'a> {
 impl<'a> System<'a> {
     /// Count and return the number of atoms in the system.
     pub fn num_atoms(&self) -> usize {
-        self.residues.iter().map(|r| r.atoms.len()).sum()
+        self.residues.iter().map(|r| r.base.atoms.len()).sum()
     }
 
     /// Translate all residues within the system and return a copy.
@@ -34,24 +34,20 @@ impl<'a> System<'a> {
     }
 }
 
-/// Every residue has a name and a list of atoms that belong to it
-/// with their relative base coordinates.
+/// Every residue has a reference to their base and a position.
 pub struct Residue<'a> {
-    /// Residue code.
-    pub code: &'a str,
+    /// Residue base.
+    pub base: &'a ResidueBase,
     /// Position of residue in system.
     pub position: Coord,
-    /// List of atoms belonging to the residue. Their positions are relative to the residue.
-    pub atoms: &'a Vec<Atom>,
 }
 
 impl<'a> Residue<'a> {
     /// Translate the residue position. Does not alter the atom relative positions.
     fn translate(&self, add: Coord) -> Residue<'a> {
         Residue {
-            code: self.code,
+            base: self.base,
             position: self.position + add,
-            atoms: self.atoms,
         }
     }
 }
@@ -131,9 +127,8 @@ impl ResidueBase {
     /// Generate a proper residue at the input position.
     pub fn to_residue(&self, position: &Coord) -> Residue {
         Residue {
-            code: self.code.as_str(),
+            base: &self,
             position: *position,
-            atoms: self.atoms.as_ref(),
         }
     }
 }
@@ -259,14 +254,12 @@ mod tests {
     // A simple system with two different residues and five atoms
     fn setup_system<'a>(base_one: &'a ResidueBase, base_two: &'a ResidueBase) -> System<'a> {
         let residue_one = Residue {
-            code: &base_one.code,
+            base: &base_one,
             position: Coord::new(0.0, 0.0, 0.0),
-            atoms: &base_one.atoms,
         };
         let residue_two = Residue {
-            code: &base_two.code,
+            base: &base_two,
             position: Coord::new(1.0, 1.0, 1.0),
-            atoms: &base_two.atoms,
         };
 
         System {
@@ -309,9 +302,9 @@ mod tests {
         let position = Coord::new(1.0, 1.0, 1.0);
 
         let residue = base.to_residue(&position);
-        assert_eq!("RES".to_string(), residue.code);
+        assert_eq!("RES", residue.base.code);
         assert_eq!(position, residue.position);
-        assert_eq!(&base.atoms, residue.atoms);
+        assert_eq!(base.atoms, residue.base.atoms);
     }
 
     #[test]

@@ -44,10 +44,10 @@ fn define_and_create_a_substrate() {
 
     // ... and each residue should be correct
     for residue in residues {
-        assert_eq!("RES", residue.code);
-        assert_eq!(2, residue.atoms.len());
-        assert_eq!(residue_atom_one, residue.atoms[0]);
-        assert_eq!(residue_atom_two, residue.atoms[1]);
+        assert_eq!("RES", residue.base.code);
+        assert_eq!(2, residue.base.atoms.len());
+        assert_eq!(residue_atom_one, residue.base.atoms[0]);
+        assert_eq!(residue_atom_two, residue.base.atoms[1]);
     }
 }
 
