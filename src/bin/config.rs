@@ -91,6 +91,8 @@ pub enum ConfigError {
     IoError(io::Error),
     /// Something went wrong when creating the system.
     RunError(String),
+    /// Something went wrong when constructing a Residue.
+    ConstructError(String),
 }
 
 /// Shorthand for our `Result` class.
@@ -111,10 +113,19 @@ impl fmt::Display for ConfigError {
             ConfigError::RunError(ref err) => {
                 write!(f, "{} {}", red_error, err)
             },
+            ConfigError::ConstructError(ref err) => {
+                write!(f, "{}", Yellow.paint(err.as_str()))
+            },
             ConfigError::NoSubstrate => {
                 write!(f, "{}", Yellow.paint("No substrate was selected."))
             },
         }
+    }
+}
+
+impl<'a> From<&'a str> for ConfigError {
+    fn from(err: &'a str) -> ConfigError {
+        ConfigError::ConstructError(err.to_string())
     }
 }
 
@@ -164,7 +175,7 @@ q. Exit program
                 return Ok((
                     LatticeType::Hexagonal { a: spacing },
                     resbase![
-                        "GRPH",
+                        "GPH",
                         ("C", spacing / 2.0, spacing / 2.0, 0.0)
                     ]
                 ))
