@@ -2,13 +2,21 @@ use grafen::substrate::{LatticeType, SubstrateConf};
 use grafen::system::{Atom, Coord, ResidueBase};
 use serde_json;
 
-struct DataBase {
-    filename: Option<String>,
-    residues: Vec<ResidueBase>,
-    substrate_confs: Vec<SubstrateConfEntry>,
+/// A collection of residues and substrate configurations
+/// which can be saved to and read from disk.
+pub struct DataBase {
+    /// A path to the `DataBase` location on the hard drive.
+    pub filename: Option<String>,
+    /// Definitions of `ResidueBase` objects.
+    pub residues: Vec<ResidueBase>,
+    /// Definitions of `SubstrateConf` objects without their size.
+    pub substrate_confs: Vec<SubstrateConfEntry>,
 }
 
 impl Default for DataBase {
+    /// By default the `DataBase` has a few options.
+    // These could be moved to an included library in which case this
+    // should contain empty vectors.
     fn default() -> DataBase {
         const SP_GRAPHENE: f64 = 0.142;
         let res_graphene = resbase!("GRP", ("C", SP_GRAPHENE / 2.0, SP_GRAPHENE / 2.0, 0.0));
@@ -43,16 +51,24 @@ impl Default for DataBase {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct SubstrateConfEntry {
-    name: String,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+/// A definition (catalog entry) for a `SubstrateConf`, which also has a size.
+///
+/// See `SubstrateConf` for more information.
+pub struct SubstrateConfEntry {
+    /// Definition name.
+    pub name: String,
+    /// Lattice constructor.
     lattice: LatticeType,
+    /// Base residue.
     residue: ResidueBase,
+    /// Optional distribution of positions along z.
     std_z: Option<f64>,
 }
 
 impl SubstrateConfEntry {
-    fn to_conf(&self, size_x: f64, size_y: f64) -> SubstrateConf {
+    /// Supply a size to construct a `SubstrateConf` definition.
+    pub fn to_conf(&self, size_x: f64, size_y: f64) -> SubstrateConf {
         SubstrateConf {
             lattice: self.lattice.clone(),
             residue: self.residue.clone(),

@@ -1,5 +1,6 @@
 //! Configure and run the program.
 
+use database::{DataBase, SubstrateConfEntry};
 use output;
 
 use grafen::error::GrafenError;
@@ -41,23 +42,19 @@ impl Config {
         let size_x = value_t!(matches, "x", f64)?;
         let size_y = value_t!(matches, "y", f64)?;
         let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
-        let (lattice, residue) = select_substrate()?;
+
+        let database = DataBase::default();
+        let substrate_entry = select_substrate(&database.substrate_confs)?;
+        let substrate_conf = substrate_entry.to_conf(size_x, size_y);
 
         // z0 has some default values depending on the chosen substrate
         let z0 = match value_t!(matches, "z0", f64).ok() {
             Some(v) => v,
-            None => match lattice {
+            None => match substrate_conf.lattice {
                 LatticeType::Hexagonal { a: _ } => 0.10,
                 LatticeType::Triclinic { a: _, b: _, gamma: _ } => 0.30,
-                _ => 0.0,
+                _ => 0.10,
             },
-        };
-
-        let substrate_conf = substrate::SubstrateConf {
-            lattice: lattice,
-            residue: residue,
-            size: (size_x, size_y),
-            std_z: value_t!(matches, "std_z", f64).ok(),
         };
 
         Ok(Config {
@@ -147,18 +144,44 @@ impl From<GrafenError> for ConfigError {
     }
 }
 
+#[derive(Debug, PartialEq)]
+/// The user either wants to quit or entered something invalid
+enum BadSelection {
+    Quit,
+    Invalid,
+}
+
+/// Parse the input for a positive number or a quit message.
+fn parse_selection<'a>(input: &'a str) -> ::std::result::Result<usize, BadSelection> {
+    if let Ok(i) = input.parse::<usize>() {
+        return Ok(i);
+    }
+
+    match input.chars().next() {
+        Some('q') | Some('Q') => Err(BadSelection::Quit),
+        _ => Err(BadSelection::Invalid),
+    }
+}
+
 /// Ask the user to select a substrate.
-fn select_substrate() -> Result<(LatticeType, ResidueBase)> {
+fn select_substrate(substrates: &[SubstrateConfEntry]) -> Result<SubstrateConfEntry> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
-    const PROMPT: &'static [u8] = b"\
-Available substrates:
-0. Graphene
-1. Silica
-q. Exit program
-";
-    stdout.write(PROMPT)?;
+    let substrate_list = substrates
+        .iter()
+        .enumerate()
+        .map(|(i, sub)| format!("{}. {}", i, sub.name).to_string())
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    let prompt = format!("\
+        Available substrates:\n\
+        {}\n\
+        q. Exit program\n",
+        substrate_list);
+
+    stdout.write(prompt.as_bytes())?;
     let mut selection = String::new();
 
     loop {
@@ -167,37 +190,53 @@ q. Exit program
 
         selection.clear();
         stdin.read_line(&mut selection)?;
-        let value = selection.trim().chars().next();
 
-        match value {
-            Some('0') => {
-                let spacing = 0.142;
-                return Ok((
-                    LatticeType::Hexagonal { a: spacing },
-                    resbase![
-                        "GPH",
-                        ("C", spacing / 2.0, spacing / 2.0, 0.0)
-                    ]
-                ))
-            },
-            Some('1') => {
-                let spacing = 0.45;
-                let x0 = spacing / 4.0;
-                let y0 = spacing / 6.0;
-                let dz = 0.151;
+        let parsed = parse_selection(&selection.trim())
+            .and_then(|i| {
+                substrates.iter().nth(i).ok_or(BadSelection::Invalid)
+            });
 
-                return Ok((
-                    LatticeType::Triclinic { a: spacing, b: spacing, gamma: 60.0 },
-                    resbase![
-                        "SIO",
-                        ("O1", x0, y0, dz),
-                        ("SI", x0, y0, 0.0),
-                        ("O2", x0, y0, -dz)
-                    ]
-                ))
+        // In case the user entered something invalid we keep looping
+        match parsed {
+            Ok(i) => {
+                return Ok(i.clone());
             },
-            Some('q') => return Err(ConfigError::NoSubstrate),
-            _ => stdout.write(b"Not a valid option.\n")?,
-        };
+            Err(BadSelection::Quit) => {
+                return Err(ConfigError::NoSubstrate)
+            },
+            Err(BadSelection::Invalid) => {
+                stdout.write(b"Not a valid option.\n")?;
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_substrate_selection() {
+        assert_eq!(Ok(1), parse_selection("1"));
+        assert_eq!(Ok(0), parse_selection("0"));
+        assert_eq!(Ok(100), parse_selection("100"));
+    }
+
+    #[test]
+    fn parse_substrate_badnumber() {
+        assert_eq!(Err(BadSelection::Invalid), parse_selection("-1"));
+    }
+
+    #[test]
+    fn parse_substrate_quit_message() {
+        assert_eq!(Err(BadSelection::Quit), parse_selection("q"));
+        assert_eq!(Err(BadSelection::Quit), parse_selection("quit"));
+        assert_eq!(Err(BadSelection::Quit), parse_selection("Q"));
+    }
+
+    #[test]
+    fn parse_substrate_no_selection() {
+        assert_eq!(Err(BadSelection::Invalid), parse_selection(""));
+        assert_eq!(Err(BadSelection::Invalid), parse_selection("v"));
     }
 }
