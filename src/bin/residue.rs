@@ -1,4 +1,4 @@
-//! Construct ResidueBase objects at runtime.
+//! Define ResidueBase objects at runtime.
 
 use config::{ConfigError, Result};
 use grafen::system::{Atom, Coord, ResidueBase};
@@ -14,8 +14,8 @@ enum Control {
     Cancel,
 }
 
-/// Ask the user to construct a `ResidueBase` object.
-pub fn construct_residue() -> Result<ResidueBase> {
+/// Ask the user to define a `ResidueBase` object.
+pub fn define_residue() -> Result<ResidueBase> {
     let mut name = String::new();
     let mut atoms: Vec<Atom> = Vec::new();
 
@@ -71,7 +71,7 @@ pub fn construct_residue() -> Result<ResidueBase> {
 fn add_atom(atoms: &mut Vec<Atom>, args: &mut SplitWhitespace) -> Result<Control> {
     let name = check_name(args.next(), 4)?;
 
-    let mut read_float = | | {
+    let mut read_float = || {
         args.next()
             .ok_or("Not all position arguments were supplied.")
             .and_then(|s| s.parse::<f64>().map_err(|_| "Bad position argument supplied."))

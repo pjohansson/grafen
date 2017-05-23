@@ -52,7 +52,7 @@ impl<'a> Residue<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// Every atom in a residue has their own code and relative
 /// position some base coordinate.
 pub struct Atom {
@@ -63,7 +63,7 @@ pub struct Atom {
 }
 
 /// A base for generating atoms belonging to a residue.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ResidueBase {
     pub code: String,
     pub atoms: Vec<Atom>,
@@ -133,7 +133,7 @@ impl ResidueBase {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 /// A three-dimensional coordinate.
 ///
 /// # Examples
