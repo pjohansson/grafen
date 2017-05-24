@@ -1,6 +1,6 @@
 //! Configure and run the program.
 
-use database::{DataBase, SubstrateConfEntry};
+use database::{read_database, write_database, DataBase, SubstrateConfEntry};
 use output;
 
 use grafen::error::GrafenError;
@@ -14,7 +14,6 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use std::io::Write;
-use std::path::PathBuf;
 use std::result;
 
 /// The program run configuration.
@@ -43,14 +42,11 @@ impl Config {
         let size_y = value_t!(matches, "y", f64)?;
         let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
 
-        let mut database = match value_t!(matches, "database", String) {
-            Ok(path) => DataBase::from_file(&path),
+        let database = match value_t!(matches, "database", String) {
+            Ok(path) => read_database(&path),
             _ => Ok(DataBase::new()),
         }?;
 
-        //let mut database = DataBase::from_file("database.json")?;
-        database.filename = Some(PathBuf::from("database_new.json"));
-        database.write()?;
         let substrate_entry = select_substrate(&database.substrate_confs)?;
         let substrate_conf = substrate_entry.to_conf(size_x, size_y);
 

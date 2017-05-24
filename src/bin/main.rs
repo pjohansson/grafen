@@ -27,7 +27,7 @@ fn main() {
         (@arg output: <PATH> "Output GROMOS file (the extension will be set to .gro)")
         (@arg x: <X> "Size of system along the x axis (nm)")
         (@arg y: <Y> "Size of system along the y axis (nm)")
-        (@arg title: -t --title [STR] +takes_value "Title of system")
+        (@arg title: -t --title [STR] +takes_value "Title of output system")
         (@arg database: -d --database [STR] +takes_value "Path to database")
     ).get_matches();
 

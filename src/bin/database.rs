@@ -1,8 +1,12 @@
+//! Collect definitions for `ResidueBase` and `SubstrateConf` objects
+//! into a `DataBase` which can be read from or saved to disk.
+
 use grafen::substrate::{LatticeType, SubstrateConf};
 use grafen::system::ResidueBase;
 use serde_json;
 
 use std::io;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::fs::File;
 
@@ -13,48 +17,70 @@ pub struct DataBase {
     #[serde(skip_serializing, skip_deserializing)]
     /// A path to the `DataBase` location on the hard drive.
     pub filename: Option<PathBuf>,
-    #[serde(rename="residue_definitions")]
+
+    #[serde(rename = "residue_definitions")]
     /// Definitions of `ResidueBase` objects.
     pub residues: Vec<ResidueBase>,
-    #[serde(rename="substrate_definitions")]
+
+    #[serde(rename = "substrate_definitions")]
     /// Definitions of `SubstrateConf` objects without their size.
     pub substrate_confs: Vec<SubstrateConfEntry>,
 }
 
 impl DataBase {
-    /// By default a `DataBase` is empty.
+    /// Construct an empty `DataBase`.
     pub fn new() -> DataBase {
         DataBase {
             filename: None,
-            residues: vec![],
-            substrate_confs: vec![],
+            residues: Vec::new(),
+            substrate_confs: Vec::new(),
         }
+    }
+
+    /// Parse a reader for a JSON formatted `DataBase`.
+    ///
+    /// This and the `to_writer` method is defined to enable a unit
+    /// test which ensures that the behaviour for reading and writing
+    /// a `DataBase` is consistent.
+    fn from_reader<R: Read>(reader: R) -> Result<DataBase, io::Error> {
+        serde_json::from_reader(reader).map_err(|e| io::Error::from(e))
+    }
+
+    /// Write a `DataBase` as a JSON formatted object to an input writer.
+    fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        serde_json::to_writer_pretty(writer, self).map_err(|e| io::Error::from(e))
     }
 }
 
-impl DataBase {
-    pub fn from_file<'a>(input_path: &'a str) -> Result<DataBase, io::Error> {
-        let path = Path::new(input_path);
-        let buffer = File::open(&path)?;
+/// Read a `DataBase` from a JSON formatted file.
+/// The owned filename is set to the input path.
+pub fn read_database<'a>(from_path: &'a str) -> Result<DataBase, io::Error> {
+    let path = Path::new(from_path);
+    let buffer = File::open(&path)?;
 
-        let mut database: DataBase = serde_json::from_reader(buffer)?;
-        database.filename = Some(PathBuf::from(&path));
+    let mut database = DataBase::from_reader(buffer)?;
+    database.filename = Some(PathBuf::from(&from_path));
 
-        Ok(database)
-    }
-
-    pub fn write(&self) -> Result<(), io::Error> {
-        if let Some(ref path) = self.filename {
-            let buffer = File::create(&path)?;
-            serde_json::to_writer_pretty(buffer, self)?;
-            Ok(())
-        } else {
-            unreachable!();
-        }
-    }
+    Ok(database)
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+/// Write a `DataBase` as a JSON formatted file.
+/// The function writes to the filename owned by the object.
+pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
+    if let Some(ref path) = database.filename {
+        let mut buffer = File::create(&path)?;
+        database.to_writer(&mut buffer)?;
+
+        return Ok(());
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::Other,
+        "No filename was set when trying to write the DataBase")
+    )
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// A definition (catalog entry) for a `SubstrateConf`.
 ///
 /// See `SubstrateConf` for more information. The final configuration
@@ -138,7 +164,7 @@ mod tests {
 
         let mut conf = SubstrateConfEntry {
             name: "Test".to_string(),
-            lattice: LatticeType::PoissonDisc{ density: 1.0 },
+            lattice: LatticeType::PoissonDisc { density: 1.0 },
             residue: base,
             std_z: None,
         };
@@ -146,13 +172,43 @@ mod tests {
         let serialized = serde_json::to_string(&conf).unwrap();
         let deserialized: SubstrateConfEntry = serde_json::from_str(&serialized).unwrap();
 
-        assert_eq!(conf.name, deserialized.name);
-        assert_eq!(conf.residue, deserialized.residue);
-        assert_eq!(conf.std_z, deserialized.std_z);
+        assert_eq!(conf, deserialized);
 
         conf.std_z = Some(1.0);
         let serialized = serde_json::to_string(&conf).unwrap();
         let deserialized: SubstrateConfEntry = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(conf.std_z, deserialized.std_z);
+        assert_eq!(conf, deserialized);
+    }
+
+    #[test]
+    fn read_and_write_database() {
+        let base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(3.0, 4.0, 5.0) },
+            ]
+        };
+
+        let conf = SubstrateConfEntry {
+            name: "Test".to_string(),
+            lattice: LatticeType::PoissonDisc { density: 1.0 },
+            residue: base.clone(),
+            std_z: None,
+        };
+
+        let database = DataBase {
+            filename: Some(PathBuf::from("This/will/be/removed")),
+            residues: vec![base.clone()],
+            substrate_confs: vec![conf.clone()],
+        };
+
+        let mut serialized: Vec<u8> = Vec::new();
+        database.to_writer(&mut serialized).unwrap();
+        let deserialized = DataBase::from_reader(serialized.as_slice()).unwrap();
+
+        assert_eq!(None, deserialized.filename);
+        assert_eq!(database.residues, deserialized.residues);
+        assert_eq!(database.substrate_confs, deserialized.substrate_confs);
     }
 }
