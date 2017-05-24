@@ -5,8 +5,7 @@ use output;
 
 use grafen::error::GrafenError;
 use grafen::substrate;
-use grafen::substrate::LatticeType;
-use grafen::system::{Atom, Coord, ResidueBase};
+use grafen::system::Coord;
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
@@ -15,6 +14,7 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 use std::io::Write;
+use std::path::PathBuf;
 use std::result;
 
 /// The program run configuration.
@@ -43,25 +43,22 @@ impl Config {
         let size_y = value_t!(matches, "y", f64)?;
         let title = value_t!(matches, "title", String).unwrap_or("Substrate".to_string());
 
-        let database = DataBase::default();
+        let mut database = match value_t!(matches, "database", String) {
+            Ok(path) => DataBase::from_file(&path),
+            _ => Ok(DataBase::new()),
+        }?;
+
+        //let mut database = DataBase::from_file("database.json")?;
+        database.filename = Some(PathBuf::from("database_new.json"));
+        database.write()?;
         let substrate_entry = select_substrate(&database.substrate_confs)?;
         let substrate_conf = substrate_entry.to_conf(size_x, size_y);
-
-        // z0 has some default values depending on the chosen substrate
-        let z0 = match value_t!(matches, "z0", f64).ok() {
-            Some(v) => v,
-            None => match substrate_conf.lattice {
-                LatticeType::Hexagonal { a: _ } => 0.10,
-                LatticeType::Triclinic { a: _, b: _, gamma: _ } => 0.30,
-                _ => 0.10,
-            },
-        };
 
         Ok(Config {
                 title: title,
                 filename: output_file,
                 substrate_conf: substrate_conf,
-                z0: z0,
+                z0: 0.0,
             })
     }
 
@@ -168,24 +165,16 @@ fn select_substrate(substrates: &[SubstrateConfEntry]) -> Result<SubstrateConfEn
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
-    let substrate_list = substrates
-        .iter()
-        .enumerate()
-        .map(|(i, sub)| format!("{}. {}", i, sub.name).to_string())
-        .collect::<Vec<String>>()
-        .join("\n");
+    println!("Available substrates:");
+    for (i, substrate) in substrates.iter().enumerate() {
+        println!("{}. {}", i, substrate.name);
+    }
+    println!("q. Exit program");
 
-    let prompt = format!("\
-        Available substrates:\n\
-        {}\n\
-        q. Exit program\n",
-        substrate_list);
-
-    stdout.write(prompt.as_bytes())?;
     let mut selection = String::new();
 
     loop {
-        stdout.write(b"Substrate number: ")?;
+        print!("Substrate number: ");
         stdout.flush()?;
 
         selection.clear();

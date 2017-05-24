@@ -1,60 +1,64 @@
 use grafen::substrate::{LatticeType, SubstrateConf};
-use grafen::system::{Atom, Coord, ResidueBase};
+use grafen::system::ResidueBase;
 use serde_json;
 
+use std::io;
+use std::path::{Path, PathBuf};
+use std::fs::File;
+
+#[derive(Deserialize, Serialize)]
 /// A collection of residues and substrate configurations
 /// which can be saved to and read from disk.
 pub struct DataBase {
+    #[serde(skip_serializing, skip_deserializing)]
     /// A path to the `DataBase` location on the hard drive.
-    pub filename: Option<String>,
+    pub filename: Option<PathBuf>,
+    #[serde(rename="residue_definitions")]
     /// Definitions of `ResidueBase` objects.
     pub residues: Vec<ResidueBase>,
+    #[serde(rename="substrate_definitions")]
     /// Definitions of `SubstrateConf` objects without their size.
     pub substrate_confs: Vec<SubstrateConfEntry>,
 }
 
-impl Default for DataBase {
-    /// By default the `DataBase` has a few options.
-    // These could be moved to an included library in which case this
-    // should contain empty vectors.
-    fn default() -> DataBase {
-        const SP_GRAPHENE: f64 = 0.142;
-        let res_graphene = resbase!("GRP", ("C", SP_GRAPHENE / 2.0, SP_GRAPHENE / 2.0, 0.0));
-
-        const SP_SILICA: f64 = 0.45;
-        const DZ_SILICA: f64 = 0.151;
-        let res_silica = resbase!("SIO", ("O1", SP_SILICA / 4.0, SP_SILICA / 6.0, DZ_SILICA),
-                                         ("SI", SP_SILICA / 4.0, SP_SILICA / 6.0, 0.0),
-                                         ("O2", SP_SILICA / 4.0, SP_SILICA / 6.0, -DZ_SILICA));
-
+impl DataBase {
+    /// By default a `DataBase` is empty.
+    pub fn new() -> DataBase {
         DataBase {
             filename: None,
-            residues: vec![
-                res_graphene.clone(),
-                res_silica.clone()
-            ],
-            substrate_confs: vec![
-                SubstrateConfEntry {
-                    name: "Graphene".to_string(),
-                    lattice: LatticeType::Hexagonal { a: SP_GRAPHENE },
-                    residue: res_graphene.clone(),
-                    std_z: None,
-                },
-                SubstrateConfEntry {
-                    name: "Silica".to_string(),
-                    lattice: LatticeType::Triclinic { a: SP_SILICA, b: SP_SILICA, gamma: 60.0 },
-                    residue: res_silica.clone(),
-                    std_z: None,
-                },
-            ],
+            residues: vec![],
+            substrate_confs: vec![],
+        }
+    }
+}
+
+impl DataBase {
+    pub fn from_file<'a>(input_path: &'a str) -> Result<DataBase, io::Error> {
+        let path = Path::new(input_path);
+        let buffer = File::open(&path)?;
+
+        let mut database: DataBase = serde_json::from_reader(buffer)?;
+        database.filename = Some(PathBuf::from(&path));
+
+        Ok(database)
+    }
+
+    pub fn write(&self) -> Result<(), io::Error> {
+        if let Some(ref path) = self.filename {
+            let buffer = File::create(&path)?;
+            serde_json::to_writer_pretty(buffer, self)?;
+            Ok(())
+        } else {
+            unreachable!();
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-/// A definition (catalog entry) for a `SubstrateConf`, which also has a size.
+/// A definition (catalog entry) for a `SubstrateConf`.
 ///
-/// See `SubstrateConf` for more information.
+/// See `SubstrateConf` for more information. The final configuration
+/// requires a size, which is not kept in the definition.
 pub struct SubstrateConfEntry {
     /// Definition name.
     pub name: String,
@@ -81,6 +85,7 @@ impl SubstrateConfEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use grafen::system::*;
 
     #[test]
     fn substrate_conf_entry_into_conf() {

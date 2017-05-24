@@ -1,0 +1,110 @@
+{
+  "residue_definitions": [
+    {
+      "code": "GRA",
+      "atoms": [
+        {
+          "code": "C",
+          "position": {
+            "x": 0.071,
+            "y": 0.071,
+            "z": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "code": "SIO",
+      "atoms": [
+        {
+          "code": "O1",
+          "position": {
+            "x": 0.1125,
+            "y": 0.075,
+            "z": 0.151
+          }
+        },
+        {
+          "code": "SI",
+          "position": {
+            "x": 0.1125,
+            "y": 0.075,
+            "z": 0.0
+          }
+        },
+        {
+          "code": "O2",
+          "position": {
+            "x": 0.1125,
+            "y": 0.075,
+            "z": -0.151
+          }
+        }
+      ]
+    }
+  ],
+  "substrate_definitions": [
+    {
+      "name": "Graphene",
+      "lattice": {
+        "Hexagonal": {
+          "a": 0.142
+        }
+      },
+      "residue": {
+        "code": "GRA",
+        "atoms": [
+          {
+            "code": "C",
+            "position": {
+              "x": 0.071,
+              "y": 0.071,
+              "z": 0.0
+            }
+          }
+        ]
+      },
+      "std_z": null
+    },
+    {
+      "name": "Silica",
+      "lattice": {
+        "Triclinic": {
+          "a": 0.45,
+          "b": 0.45,
+          "gamma": 60.0
+        }
+      },
+      "residue": {
+        "code": "SIO",
+        "atoms": [
+          {
+            "code": "O1",
+            "position": {
+              "x": 0.1125,
+              "y": 0.075,
+              "z": 0.151
+            }
+          },
+          {
+            "code": "SI",
+            "position": {
+              "x": 0.1125,
+              "y": 0.075,
+              "z": 0.0
+            }
+          },
+          {
+            "code": "O2",
+            "position": {
+              "x": 0.1125,
+              "y": 0.075,
+              "z": -0.151
+            }
+          }
+        ]
+      },
+      "std_z": null
+    }
+  ]
+}
