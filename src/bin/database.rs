@@ -89,27 +89,36 @@ mod tests {
 
     #[test]
     fn substrate_conf_entry_into_conf() {
+        let base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+            ]
+        };
         let (size_x, size_y) = (2.0, 3.0);
+
         let conf = SubstrateConfEntry {
                     name: "".to_string(),
                     lattice: LatticeType::Hexagonal { a: 1.0 },
-                    residue: resbase!("RES", ("A", 0.0, 1.0, 2.0)),
+                    residue: base.clone(),
                     std_z: Some(0.5),
         }.to_conf(size_x, size_y);
 
         assert_eq!(LatticeType::Hexagonal { a: 1.0 }, conf.lattice);
-        assert_eq!(resbase!("RES", ("A", 0.0, 1.0, 2.0)), conf.residue);
+        assert_eq!(base, conf.residue);
         assert_eq!((size_x, size_y), conf.size);
         assert_eq!(Some(0.5), conf.std_z);
     }
 
     #[test]
     fn serialize_and_deserialize_residue_entry() {
-        let base = resbase!(
-            "RES",
-            ("A1", 0.0, 1.0, 2.0),
-            ("A2", 3.0, 4.0, 5.0)
-        );
+        let base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(3.0, 4.0, 5.0) },
+            ]
+        };
 
         let serialized = serde_json::to_string(&base).unwrap();
         let deserialized: ResidueBase = serde_json::from_str(&serialized).unwrap();
@@ -119,11 +128,13 @@ mod tests {
 
     #[test]
     fn serialize_and_deserialize_substrateconf_entry() {
-        let base = resbase!(
-            "RES",
-            ("A1", 0.0, 1.0, 2.0),
-            ("A2", 3.0, 4.0, 5.0)
-        );
+        let base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(3.0, 4.0, 5.0) },
+            ]
+        };
 
         let mut conf = SubstrateConfEntry {
             name: "Test".to_string(),
