@@ -10,6 +10,7 @@ extern crate serde_json;
 extern crate serde_derive;
 
 mod config;
+mod error;
 mod database;
 mod output;
 

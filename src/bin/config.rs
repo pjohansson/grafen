@@ -1,17 +1,13 @@
 //! Configure and run the program.
 
 use database::{read_database, write_database, DataBase, SubstrateConfEntry};
+use error::{GrafenCliError, Result};
 use output;
 
-use grafen::error::GrafenError;
 use grafen::substrate;
 use grafen::system::Coord;
 
-use ansi_term::Colour::{Yellow, Red};
 use clap;
-
-use std::error::Error;
-use std::fmt;
 use std::io;
 use std::io::Write;
 use std::result;
@@ -47,7 +43,7 @@ impl Config {
             _ => Ok(DataBase::new()),
         }?;
 
-        let substrate_entry = select_substrate(&database.substrate_confs)?;
+        let substrate_entry = select_substrate(&database.substrate_defs)?;
         let substrate_conf = substrate_entry.to_conf(size_x, size_y);
 
         Ok(Config {
@@ -64,76 +60,10 @@ impl Config {
     /// Returns an error if the substrate couldn't be constructed or output to disk.
     pub fn run(&self) -> Result<()> {
         substrate::create_substrate(&self.substrate_conf)
-            .map_err(|e| ConfigError::from(e))
+            .map_err(|e| GrafenCliError::from(e))
             .map(|system| system.translate(&Coord::new(0.0, 0.0, self.z0)))
             .and_then(|system| output::write_gromos(&system, &self.filename, &self.title, 2.0 * self.z0))?;
         Ok(())
-    }
-}
-
-/// A class for configuration or runtime errors.
-pub enum ConfigError {
-    /// No substrate was selected. The program should exit.
-    NoSubstrate,
-    /// Some command line arguments were bad or non-existant.
-    BadArgs(clap::Error),
-    /// Something went wrong when reading or writing.
-    IoError(io::Error),
-    /// Something went wrong when creating the system.
-    RunError(String),
-    /// Something went wrong when constructing a Residue.
-    ConstructError(String),
-}
-
-/// Shorthand for our `Result` class.
-pub type Result<T> = result::Result<T, ConfigError>;
-
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let red_error = Red.paint("error:");
-
-        match *self {
-            // Clap already colours the `error: ` in red so we do not repeat that
-            ConfigError::BadArgs(ref err) => {
-                write!(f, "{}", err)
-            },
-            ConfigError::IoError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
-            ConfigError::RunError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
-            ConfigError::ConstructError(ref err) => {
-                write!(f, "{}", Yellow.paint(err.as_str()))
-            },
-            ConfigError::NoSubstrate => {
-                write!(f, "{}", Yellow.paint("No substrate was selected."))
-            },
-        }
-    }
-}
-
-impl<'a> From<&'a str> for ConfigError {
-    fn from(err: &'a str) -> ConfigError {
-        ConfigError::ConstructError(err.to_string())
-    }
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(err: io::Error) -> ConfigError {
-        ConfigError::IoError(err)
-    }
-}
-
-impl From<clap::Error> for ConfigError {
-    fn from(err: clap::Error) -> ConfigError {
-        ConfigError::BadArgs(err)
-    }
-}
-
-impl From<GrafenError> for ConfigError {
-    fn from(err: GrafenError) -> ConfigError {
-        ConfigError::RunError(err.description().to_string())
     }
 }
 
@@ -145,7 +75,7 @@ enum BadSelection {
 }
 
 /// Parse the input for a positive number or a quit message.
-fn parse_selection<'a>(input: &'a str) -> ::std::result::Result<usize, BadSelection> {
+fn parse_selection<'a>(input: &'a str) -> result::Result<usize, BadSelection> {
     if let Ok(i) = input.parse::<usize>() {
         return Ok(i);
     }
@@ -187,7 +117,7 @@ fn select_substrate(substrates: &[SubstrateConfEntry]) -> Result<SubstrateConfEn
                 return Ok(i.clone());
             },
             Err(BadSelection::Quit) => {
-                return Err(ConfigError::NoSubstrate)
+                return Err(GrafenCliError::NoSubstrate)
             },
             Err(BadSelection::Invalid) => {
                 stdout.write(b"Not a valid option.\n")?;

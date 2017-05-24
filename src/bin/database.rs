@@ -20,11 +20,11 @@ pub struct DataBase {
 
     #[serde(rename = "residue_definitions")]
     /// Definitions of `ResidueBase` objects.
-    pub residues: Vec<ResidueBase>,
+    pub residue_defs: Vec<ResidueBase>,
 
     #[serde(rename = "substrate_definitions")]
     /// Definitions of `SubstrateConf` objects without their size.
-    pub substrate_confs: Vec<SubstrateConfEntry>,
+    pub substrate_defs: Vec<SubstrateConfEntry>,
 }
 
 impl DataBase {
@@ -32,8 +32,8 @@ impl DataBase {
     pub fn new() -> DataBase {
         DataBase {
             filename: None,
-            residues: Vec::new(),
-            substrate_confs: Vec::new(),
+            residue_defs: Vec::new(),
+            substrate_defs: Vec::new(),
         }
     }
 
@@ -199,8 +199,8 @@ mod tests {
 
         let database = DataBase {
             filename: Some(PathBuf::from("This/will/be/removed")),
-            residues: vec![base.clone()],
-            substrate_confs: vec![conf.clone()],
+            residue_defs: vec![base.clone()],
+            substrate_defs: vec![conf.clone()],
         };
 
         let mut serialized: Vec<u8> = Vec::new();
@@ -208,7 +208,7 @@ mod tests {
         let deserialized = DataBase::from_reader(serialized.as_slice()).unwrap();
 
         assert_eq!(None, deserialized.filename);
-        assert_eq!(database.residues, deserialized.residues);
-        assert_eq!(database.substrate_confs, deserialized.substrate_confs);
+        assert_eq!(database.residue_defs, deserialized.residue_defs);
+        assert_eq!(database.substrate_defs, deserialized.substrate_defs);
     }
 }

@@ -1,7 +1,6 @@
 //! Write systems to disk.
 
-//use error::Result;
-use config::Result;
+use error::Result;
 use grafen::system::System;
 
 use std::fs::File;
