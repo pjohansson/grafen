@@ -34,6 +34,28 @@ impl<'a> System<'a> {
     }
 }
 
+/// Join a list of `System`s into a single `System`. The output `System` dimensions
+/// is the maximum for all individual `System`s along all axes. `Residue`s are
+/// added in order to the list.
+pub fn join_systems<'a>(systems: Vec<System<'a>>) -> System<'a> {
+    systems.into_iter()
+        .fold(System { dimensions: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
+            |acc, system| {
+                let (x0, y0, z0) = acc.dimensions.to_tuple();
+                let (x1, y1, z1) = system.dimensions.to_tuple();
+
+                let dimensions = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
+
+                let mut residues = acc.residues;
+                for residue in system.residues {
+                    residues.push(residue);
+                }
+
+                System { dimensions, residues }
+            }
+        )
+}
+
 /// Every residue has a reference to their base and a position.
 pub struct Residue<'a> {
     /// Residue base.
@@ -160,6 +182,12 @@ impl Coord {
         Coord { x: x, y: y, z: z }
     }
 
+    /// Unpack the coordinate into a tuple.
+    pub fn to_tuple(&self) -> (f64, f64, f64) {
+        (self.x, self.y, self.z)
+    }
+
+    /// Calculate the absolute distance between two coordinates.
     pub fn distance(self, other: Coord) -> f64 {
         let dx = self - other;
 
@@ -228,6 +256,12 @@ mod tests {
 
         assert_eq!(3.0, Coord::distance(coord1, coord2));
         assert_eq!(3.0, coord1.distance(coord2));
+    }
+
+    #[test]
+    fn coord_to_tuple() {
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        assert_eq!((1.0, 2.0, 3.0), coord.to_tuple());
     }
 
     fn setup_residues() -> (ResidueBase, ResidueBase) {
@@ -323,5 +357,77 @@ mod tests {
         ];
 
         assert_eq!(expect, result);
+    }
+
+    #[test]
+    fn joined_system_dimensions() {
+        let systems = vec![
+            System { dimensions: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
+            System { dimensions: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
+            System { dimensions: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
+        ];
+
+        let joined_system = join_systems(systems);
+        assert_eq!(Coord::new(3.0, 2.0, 4.0), joined_system.dimensions);
+    }
+
+    #[test]
+    fn joined_system_residues() {
+        let (res_one, res_two) = setup_residues();
+
+        let systems = vec![
+            System {
+                dimensions: Coord::new(1.0, 0.0, 0.0),
+                residues: vec![
+                    Residue {
+                        base: &res_one,
+                        position: Coord::new(1.0, 0.0, 0.0),
+                    },
+                    Residue {
+                        base: &res_one,
+                        position: Coord::new(2.0, 0.0, 0.0),
+                    },
+                    Residue {
+                        base: &res_one,
+                        position: Coord::new(3.0, 0.0, 0.0),
+                    }
+                ]
+            },
+            System {
+                dimensions: Coord::new(0.0, 0.0, 0.0),
+                residues: vec![
+                    Residue {
+                        base: &res_two,
+                        position: Coord::new(0.0, 1.0, 0.0),
+                    },
+                    Residue {
+                        base: &res_two,
+                        position: Coord::new(0.0, 2.0, 0.0),
+                    }
+                ]
+            }
+        ];
+
+        let joined_system = join_systems(systems);
+        assert_eq!(5, joined_system.residues.len());
+
+        // The systems should be flattened in the correct order from above,
+        // check both ResidueBase and Coord.
+        let mut iter = joined_system.residues.iter();
+        assert_eq!(&res_one, iter.next().unwrap().base);
+        assert_eq!(&res_one, iter.next().unwrap().base);
+        assert_eq!(&res_one, iter.next().unwrap().base);
+        assert_eq!(&res_two, iter.next().unwrap().base);
+        assert_eq!(&res_two, iter.next().unwrap().base);
+        assert!(iter.next().is_none());
+
+        let mut iter = joined_system.residues.iter();
+        assert_eq!(Coord::new(1.0, 0.0, 0.0), iter.next().unwrap().position);
+        assert_eq!(Coord::new(2.0, 0.0, 0.0), iter.next().unwrap().position);
+        assert_eq!(Coord::new(3.0, 0.0, 0.0), iter.next().unwrap().position);
+        assert_eq!(Coord::new(0.0, 1.0, 0.0), iter.next().unwrap().position);
+        assert_eq!(Coord::new(0.0, 2.0, 0.0), iter.next().unwrap().position);
+        assert!(iter.next().is_none());
+
     }
 }

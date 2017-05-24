@@ -37,6 +37,7 @@ use substrate::distribution::PoissonDistribution;
 use substrate::lattice::Lattice;
 use system::*;
 
+#[derive(Debug, PartialEq)]
 /// Configuration for constructing a substrate.
 pub struct SubstrateConf {
     /// The type of lattice which will be generated.

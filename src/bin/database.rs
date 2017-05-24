@@ -39,7 +39,7 @@ impl DataBase {
 
     /// Parse a reader for a JSON formatted `DataBase`.
     ///
-    /// This and the `to_writer` method is defined to enable a unit
+    /// This and the `to_writer` method are defined to enable a unit
     /// test which ensures that the behaviour for reading and writing
     /// a `DataBase` is consistent.
     fn from_reader<R: Read>(reader: R) -> Result<DataBase, io::Error> {
@@ -76,7 +76,7 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 
     Err(io::Error::new(
         io::ErrorKind::Other,
-        "No filename was set when trying to write the DataBase")
+        "No filename was set when trying to write the database to disk")
     )
 }
 
@@ -89,11 +89,11 @@ pub struct SubstrateConfEntry {
     /// Definition name.
     pub name: String,
     /// Lattice constructor.
-    lattice: LatticeType,
+    pub lattice: LatticeType,
     /// Base residue.
-    residue: ResidueBase,
+    pub residue: ResidueBase,
     /// Optional distribution of positions along z.
-    std_z: Option<f64>,
+    pub std_z: Option<f64>,
 }
 
 impl SubstrateConfEntry {
