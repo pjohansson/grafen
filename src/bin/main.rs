@@ -68,7 +68,7 @@ fn main() {
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
-        (@arg output: <PATH> "Output GROMOS file)")
+        (@arg output: <PATH> "Output GROMOS file")
         (@arg title: -t --title [STR] +takes_value "Title of output system")
         (@arg database: -d --database [STR] +takes_value "Path to database")
     ).get_matches();

@@ -1,3 +1,8 @@
+0.6
+===
+* Substrate definitions are now read from a database at runtime. This database is JSON formatted and implemented using the `serde` framework.
+* The binary has been updated to construct systems as read from this database. This is an early implementation of the binary, it is in need of improvement.
+
 0.5
 ===
 * Substrate configurations are now user-defined instead of hard-coded in the library. They are made available through the `SubstrateConf` struct which is passed to the construction function.
