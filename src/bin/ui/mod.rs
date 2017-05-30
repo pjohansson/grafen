@@ -1,10 +1,10 @@
 mod edit_database;
 mod systemdefinition;
-mod uitools;
+mod tools;
 
 use database::{write_database, DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use self::uitools::{get_input, get_selection_and_tail, parse_tail, print_menu, CommandList};
+use ui::tools::{get_input, get_selection_and_tail, parse_tail, print_menu, CommandList};
 
 use grafen::substrate::SubstrateConf;
 use grafen::system::{Coord, System};

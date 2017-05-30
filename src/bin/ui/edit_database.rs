@@ -2,7 +2,7 @@
 
 use database::DataBase;
 use error::Result;
-use define::uitools::{get_selection, print_menu, CommandList};
+use ui::tools::{get_selection, print_menu, CommandList};
 
 #[derive(Clone, Copy, Debug)]
 enum Command {

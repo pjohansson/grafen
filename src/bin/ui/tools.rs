@@ -16,7 +16,7 @@ type CommandArg<'a, T> = (&'a str, T, &'a str);
 ///
 /// # Examples:
 /// ```
-/// # use define::uitools::CommandList;
+/// # use ui::tools::CommandList;
 /// // enum Command { First, Second }
 /// let commands: CommandList<'static, Command> = vec![
 ///     ("a", Command::First, "Select option `First` by inputting "a")

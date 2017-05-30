@@ -12,14 +12,14 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-mod define;
 mod error;
 mod database;
 mod output;
+mod ui;
 
 use database::{read_database, write_database, DataBase};
 use error::{GrafenCliError, Result};
-use define::SystemDefinition;
+use ui::SystemDefinition;
 
 use grafen::substrate;
 use grafen::system::{join_systems, Coord, Residue, System};
@@ -82,7 +82,7 @@ fn main() {
 
 /// Run the program with the set `Config`.
 fn run(config: &mut Config) -> Result<()> {
-    let system_defs = define::user_menu(&mut config.database)?;
+    let system_defs = ui::user_menu(&mut config.database)?;
     let system = construct_system(&system_defs)?;
     output::write_gromos(&system, &config.output_filename, &config.title)
 }
