@@ -1,6 +1,6 @@
 use database::{DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use super::{get_input, parse_selection_and_tail, SystemDefinition};
+use super::{get_input, SystemDefinition};
 
 use grafen::system::Coord;
 use std::error::Error;

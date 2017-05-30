@@ -16,7 +16,7 @@ use std::fs::File;
 pub struct DataBase {
     #[serde(skip_serializing, skip_deserializing)]
     /// A path to the `DataBase` location on the hard drive.
-    pub filename: Option<PathBuf>,
+    pub path: Option<PathBuf>,
 
     #[serde(rename = "residue_definitions")]
     /// Definitions of `ResidueBase` objects.
@@ -31,9 +31,29 @@ impl DataBase {
     /// Construct an empty `DataBase`.
     pub fn new() -> DataBase {
         DataBase {
-            filename: None,
+            path: None,
             residue_defs: Vec::new(),
             substrate_defs: Vec::new(),
+        }
+    }
+
+    /// Print the `DataBase` content to stdout.
+    pub fn describe(&self) {
+        let path = self.path.as_ref()
+            .map(|p| {
+                p.to_string_lossy().into_owned()
+            })
+            .unwrap_or("(None)".to_string());
+        println!("Database path: {}", path);
+
+        println!("Substrate definitions:");
+        for (i, def) in self.substrate_defs.iter().enumerate() {
+            println!("{:4}. {}", i, def.name);
+        }
+
+        println!("Residue definitions:");
+        for (i, def) in self.residue_defs.iter().enumerate() {
+            println!("{:4}. {}", i, def.code);
         }
     }
 
@@ -53,21 +73,21 @@ impl DataBase {
 }
 
 /// Read a `DataBase` from a JSON formatted file.
-/// The owned filename is set to the input path.
+/// The owned path is set to the input path.
 pub fn read_database<'a>(from_path: &'a str) -> Result<DataBase, io::Error> {
     let path = Path::new(from_path);
     let buffer = File::open(&path)?;
 
     let mut database = DataBase::from_reader(buffer)?;
-    database.filename = Some(PathBuf::from(&from_path));
+    database.path = Some(PathBuf::from(&from_path));
 
     Ok(database)
 }
 
 /// Write a `DataBase` as a JSON formatted file.
-/// The function writes to the filename owned by the object.
+/// The function writes to that owned by the object.
 pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
-    if let Some(ref path) = database.filename {
+    if let Some(ref path) = database.path {
         let mut buffer = File::create(&path)?;
         database.to_writer(&mut buffer)?;
 
@@ -76,7 +96,7 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 
     Err(io::Error::new(
         io::ErrorKind::Other,
-        "No filename was set when trying to write the database to disk")
+        "No path was set when trying to write the database to disk")
     )
 }
 
@@ -198,7 +218,7 @@ mod tests {
         };
 
         let database = DataBase {
-            filename: Some(PathBuf::from("This/will/be/removed")),
+            path: Some(PathBuf::from("This/will/be/removed")),
             residue_defs: vec![base.clone()],
             substrate_defs: vec![conf.clone()],
         };
@@ -207,7 +227,7 @@ mod tests {
         database.to_writer(&mut serialized).unwrap();
         let deserialized = DataBase::from_reader(serialized.as_slice()).unwrap();
 
-        assert_eq!(None, deserialized.filename);
+        assert_eq!(None, deserialized.path);
         assert_eq!(database.residue_defs, deserialized.residue_defs);
         assert_eq!(database.substrate_defs, deserialized.substrate_defs);
     }

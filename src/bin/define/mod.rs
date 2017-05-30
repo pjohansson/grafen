@@ -1,7 +1,10 @@
+mod edit_database;
 mod systemdefinition;
+mod uitools;
 
 use database::{write_database, DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
+use self::uitools::{get_input, get_selection_and_tail, parse_tail, print_menu, CommandList};
 
 use grafen::substrate::SubstrateConf;
 use grafen::system::{Coord, System};
@@ -11,6 +14,7 @@ use std::io::Write;
 use std::result;
 
 #[derive(Debug, PartialEq)]
+/// One system is defined by these attributes.
 pub struct SystemDefinition {
     pub config: SubstrateConfEntry,
     pub position: Coord,
@@ -18,60 +22,84 @@ pub struct SystemDefinition {
     pub finalized: SubstrateConf,
 }
 
+#[derive(Clone, Copy, Debug)]
+/// User commands for defining the system.
+enum Command {
+    DefineSystem,
+    RemoveSystem,
+    SwapSystems,
+    EditDatabase,
+    QuitAndConstruct,
+    QuitWithoutSaving,
+}
+
 /// Loop over a menu in which the user can define the system which will be created, etc.
 pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
     let mut system_defs: Vec<SystemDefinition> = Vec::new();
 
-    loop {
-        print_menu(&system_defs)?;
-        let input = get_input("Selection")?;
+    let commands: CommandList<'static, Command> = vec![
+        ("d", Command::DefineSystem, "Define a system to create"),
+        ("r", Command::RemoveSystem, "Remove a system from the list"),
+        ("s", Command::SwapSystems, "Swap the order of two systems"),
+        ("e", Command::EditDatabase, "Edit the substrate and residue database"),
+        ("f", Command::QuitAndConstruct, "Finalize and construct systems from list"),
+        ("a", Command::QuitWithoutSaving, "Abort and exit without saving")
+    ];
 
-        match parse_selection_and_tail(&input) {
-            Ok(('d', _)) => {
-                match systemdefinition::user_menu(&database) {
-                    Ok(def) => system_defs.push(def),
-                    Err(err) => println!("Could not create definition: {}", err.description()),
-                }
-            },
-            Ok(('r', tail)) => {
-                match remove_system(&mut system_defs, &tail) {
-                    Ok(i) => println!("Removed system at index {}.", i),
-                    Err(err) => println!("Could not remove system: {}", err.description()),
-                }
-            },
-            Ok(('s', tail)) => {
-                match swap_systems(&mut system_defs, &tail) {
-                    Ok((i, j)) => println!("Swapped system at index {} with system at {}.", i, j),
-                    Err(err) => println!("Could not swap systems: {}", err.description()),
-                }
-            },
-            Ok(('w', _)) => {
-                match write_database(&database) {
-                    Ok(_) => println!("Saved database to disk."),
-                    Err(err) => println!("Error: {}", err.description()),
-                }
-            },
-            Ok(('f', _)) => {
-                if system_defs.len() > 0 {
-                    return Ok(system_defs);
-                } else {
-                    println!("No systems are defined, cannot finalize.");
-                }
-            },
-            Ok(('a', _)) => {
-                return Err(GrafenCliError::QuitWithoutSaving);
-            },
-            _ => {
-                println!("Not a valid selection.");
-            },
+    loop {
+        describe_system_definitions(&system_defs);
+        print_menu(&commands);
+        let input = get_input("Selection")?;
+        println!("");
+
+        if let Some((cmd, tail)) = get_selection_and_tail(&input, &commands) {
+            match cmd {
+                Command::DefineSystem => {
+                    match systemdefinition::user_menu(&database) {
+                        Ok(def) => system_defs.push(def),
+                        Err(err) => println!("Could not create definition: {}", err.description()),
+                    }
+                },
+                Command::RemoveSystem => {
+                    match remove_system(&mut system_defs, &tail) {
+                        Ok(i) => println!("Removed system at index {}.", i),
+                        Err(err) => println!("Could not remove system: {}", err.description()),
+                    }
+                },
+                Command::SwapSystems => {
+                    match swap_systems(&mut system_defs, &tail) {
+                        Ok((i, j)) => println!("Swapped system at index {} with system at {}.",
+                                               i, j),
+                        Err(err) => println!("Could not swap systems: {}", err.description()),
+                    }
+                },
+                Command::EditDatabase => {
+                    match edit_database::user_menu(&mut database) {
+                        Ok(_) => println!("Finished editing database."),
+                        Err(err) => println!("Error: {}", err.description()),
+                    }
+                },
+                Command::QuitAndConstruct => {
+                    if system_defs.len() > 0 {
+                        return Ok(system_defs);
+                    } else {
+                        println!("No systems are defined, cannot finalize.");
+                    }
+                },
+                Command::QuitWithoutSaving => {
+                    return Err(GrafenCliError::QuitWithoutSaving);
+                },
+            }
+        } else {
+            println!("Not a valid selection.");
         }
 
         println!("");
     }
 }
 
-/// Print the user menu for system construction.
-fn print_menu(system_defs: &[SystemDefinition]) -> Result<()> {
+/// Print the current system definitions to stdout.
+fn describe_system_definitions(system_defs: &[SystemDefinition]) {
     if system_defs.is_empty() {
         println!("(No systems defined)");
     } else {
@@ -84,46 +112,6 @@ fn print_menu(system_defs: &[SystemDefinition]) -> Result<()> {
     }
 
     println!("");
-    println!("[D]efine system      [R]emove system                    [S]wap systems");
-    println!("[W]rite database     [F]inish and construct systems     [A]bort and exit");
-    println!();
-
-    Ok(())
-}
-
-/// Parse a string for the character selection and an optional tail.
-fn parse_selection_and_tail<'a>(input: &'a str) -> Result<(char, String)> {
-    let lowercase_input = input.to_lowercase();
-    let mut iter = lowercase_input.trim().splitn(2, ' ');
-
-    let selection = iter.next().and_then(|s| s.chars().next()).ok_or(UIErrorKind::NoSelection)?;
-    let tail = iter.next().map(|s| s.to_string()).unwrap_or(String::new());
-
-    Ok((selection, tail))
-}
-
-/// Parse an input tail for values. The input tail is a string with white space
-/// separated values. Return an Error if any value of the string could not be parsed.
-fn parse_tail<'a>(tail: &'a str) -> result::Result<Vec<usize>, UIErrorKind> {
-    // Note to self: This uses FromIterator to turn a Vec<Result> into Result<Vec>! Neat!
-    tail.split_whitespace()
-        .map(|s| s.parse::<usize>().map_err(|_| {
-            UIErrorKind::BadNumber(format!("'{}' is not a valid index", s))
-        }))
-        .collect()
-}
-
-/// Read and trim a string from stdin..
-pub fn get_input(query: &'static str) -> Result<String> {
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
-    let mut selection = String::new();
-
-    print!("{}: ", query);
-    stdout.flush()?;
-    stdin.read_line(&mut selection)?;
-
-    Ok(selection.trim().to_string())
 }
 
 /// Remove a system. The index is parsed from the input tail and returned as a result.
@@ -168,44 +156,8 @@ fn swap_systems<'a, T>(system_defs: &mut Vec<T>, tail: &'a str) -> Result<(usize
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
-
-    #[test]
-    fn parse_tail_for_usize() {
-        assert_eq!(vec![3, 2, 1, 100], parse_tail("3 2 1 100").unwrap());
-        assert_eq!(vec![3, 2, 1, 0], parse_tail("3\t2\t1 0").unwrap());
-        assert!(parse_tail("").unwrap().is_empty());
-    }
-
-    #[test]
-    fn parse_tail_for_usize_bad_numbers() {
-        assert!(parse_tail("3a").is_err());
-        assert!(parse_tail("3 1 2 a 3").is_err());
-    }
-
-    #[test]
-    fn parse_character_selection() {
-        assert_eq!(('a', String::new()), parse_selection_and_tail("a\n").unwrap());
-        assert_eq!(('a', String::new()), parse_selection_and_tail("a").unwrap());
-        assert_eq!(('a', String::new()), parse_selection_and_tail("\t   a").unwrap());
-        assert_eq!(('a', String::new()), parse_selection_and_tail("ABORT").unwrap());
-        assert_eq!(('a', String::new()), parse_selection_and_tail("\n\nABORT").unwrap());
-    }
-
-    #[test]
-    fn parse_character_empty_string() {
-        assert!(parse_selection_and_tail("").is_err());
-        assert!(parse_selection_and_tail(" ").is_err());
-        assert!(parse_selection_and_tail("\n").is_err());
-    }
-
-    #[test]
-    fn parse_character_selection_and_option() {
-        assert_eq!(('a', "option".to_string()), parse_selection_and_tail("a option\n").unwrap());
-        assert_eq!(('a', "first second".to_string()),
-                   parse_selection_and_tail("abort first second\n").unwrap());
-    }
 
     #[test]
     fn swap_parsed_systems() {
