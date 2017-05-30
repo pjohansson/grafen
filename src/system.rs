@@ -101,9 +101,8 @@ pub struct ResidueBase {
 /// # Examples
 /// ```
 /// # #[macro_use] extern crate grafen;
-/// use grafen::system::{Atom, Coord, ResidueBase};
+/// # use grafen::system::{Atom, Coord, ResidueBase};
 /// # fn main() {
-///
 /// let expect = ResidueBase {
 ///     code: "RES".to_string(),
 ///     atoms: vec![
@@ -160,8 +159,7 @@ impl ResidueBase {
 ///
 /// # Examples
 /// ```
-/// use grafen::system::Coord;
-///
+/// # use grafen::system::Coord;
 /// let coord1 = Coord::new(1.0, 0.0, 1.0);
 /// let coord2 = Coord::new(0.5, 0.5, 0.5);
 ///
