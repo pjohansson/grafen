@@ -16,7 +16,7 @@ enum Command {
 }
 
 pub fn user_menu(database: &mut DataBase) -> Result<()> {
-    let commands: CommandList<'static, Command> = vec![
+    let commands: CommandList<Command> = vec![
         ("ra", Command::AddResidue, "Add a residue definition"),
         ("rr", Command::RemoveResidue, "Remove a residue definition"),
         ("sa", Command::AddSubstrate, "Add a substrate definition"),

@@ -37,7 +37,7 @@ enum Command {
 pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
     let mut system_defs: Vec<SystemDefinition> = Vec::new();
 
-    let commands: CommandList<'static, Command> = vec![
+    let commands: CommandList<Command> = vec![
         ("d", Command::DefineSystem, "Define a system to create"),
         ("r", Command::RemoveSystem, "Remove a system from the list"),
         ("s", Command::SwapSystems, "Swap the order of two systems"),
@@ -80,10 +80,10 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
                     }
                 },
                 Command::QuitAndConstruct => {
-                    if system_defs.len() > 0 {
-                        return Ok(system_defs);
-                    } else {
+                    if system_defs.is_empty() {
                         println!("No systems are defined, cannot finalize.");
+                    } else {
+                        return Ok(system_defs);
                     }
                 },
                 Command::QuitWithoutSaving => {

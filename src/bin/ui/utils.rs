@@ -8,16 +8,16 @@ use std::result;
 use std::str::FromStr;
 
 /// Define commands with a selection string, enum and information string.
-type CommandArg<'a, T> = (&'a str, T, &'a str);
+type CommandArg<T> = (&'static str, T, &'static str);
 
 /// These are put into a list. Unfortunately it is difficult to use
 /// a const array for this since we need to send a Sized type to functions.
 ///
 /// # Examples:
 /// ```
-/// # use ui::tools::CommandList;
+/// # use ui::utils::CommandList;
 /// // enum Command { First, Second }
-/// let commands: CommandList<'static, Command> = vec![
+/// let commands: CommandList<Command> = vec![
 ///     ("a", Command::First, "Select option `First` by inputting "a")
 ///     ("bad", Command::Second, "and `Second` by inputting "bad")
 /// ];
@@ -27,7 +27,7 @@ type CommandArg<'a, T> = (&'a str, T, &'a str);
 ///     // Do something
 /// }
 /// ```
-pub type CommandList<'a, T> = Vec<CommandArg<'a, T>>;
+pub type CommandList<T> = Vec<CommandArg<T>>;
 
 /// Read and trim a string from stdin.
 pub fn get_input(query: &'static str) -> Result<String> {
@@ -43,7 +43,7 @@ pub fn get_input(query: &'static str) -> Result<String> {
 }
 
 /// Parse a string for a command from the input list.
-pub fn get_selection<'a, 'b, T: Copy>(input: &'a str, commands: &CommandList<'b, T>) -> Option<T> {
+pub fn get_selection<'a, T: Copy>(input: &'a str, commands: &CommandList<T>) -> Option<T> {
     if let Some(needle) = input.trim().to_lowercase().split_whitespace().next() {
         for &(ident, cmd, _) in commands.iter() {
             if needle == ident {
@@ -56,7 +56,7 @@ pub fn get_selection<'a, 'b, T: Copy>(input: &'a str, commands: &CommandList<'b,
 }
 
 /// Parse a string for a command from the input list and return along with the remaining string.
-pub fn get_selection_and_tail<'a, 'b, T: Copy>(input: &'a str, commands: &CommandList<'b, T>)
+pub fn get_selection_and_tail<'a, T: Copy>(input: &'a str, commands: &CommandList<T>)
         -> Option<(T, String)> {
     let mut iter = input.split_whitespace();
 
@@ -80,7 +80,7 @@ pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIE
 }
 
 /// Print a menu for the input commands.
-pub fn print_menu<'a, T>(commands: &CommandList<'a, T>) {
+pub fn print_menu<T>(commands: &CommandList<T>) {
     println!("Commands:");
     for &(ref c, _, ref info) in commands.iter() {
         println!("{:>4}{:4}{}", c, ' ', info);
