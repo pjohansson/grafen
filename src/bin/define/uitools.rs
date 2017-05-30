@@ -7,7 +7,26 @@ use std::io;
 use std::io::Write;
 use std::result;
 
+/// Define commands with a selection string, enum and information string.
 type CommandArg<'a, T> = (&'a str, T, &'a str);
+
+/// These are put into a list. Unfortunately it is difficult to use
+/// a const array for this since we need to send a Sized type to functions.
+///
+/// # Examples:
+/// ```
+/// # use define::uitools::CommandList;
+/// // enum Command { First, Second }
+/// let commands: CommandList<'static, Command> = vec![
+///     ("a", Command::First, "Select option `First` by inputting "a")
+///     ("bad", Command::Second, "and `Second` by inputting "bad")
+/// ];
+///
+/// print_menu(&commands);
+/// if let Some(cmd) = get_selection("bad", &commands) {
+///     // Do something
+/// }
+/// ```
 pub type CommandList<'a, T> = Vec<CommandArg<'a, T>>;
 
 /// Read and trim a string from stdin.
