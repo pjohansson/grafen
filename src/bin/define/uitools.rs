@@ -6,6 +6,7 @@ use error::Result;
 use std::io;
 use std::io::Write;
 use std::result;
+use std::str::FromStr;
 
 /// Define commands with a selection string, enum and information string.
 type CommandArg<'a, T> = (&'a str, T, &'a str);
@@ -70,10 +71,10 @@ pub fn get_selection_and_tail<'a, 'b, T: Copy>(input: &'a str, commands: &Comman
 
 /// Parse an input tail for values. The input tail is a string with white space
 /// separated values. Return an Error if any value of the string could not be parsed.
-pub fn parse_tail<'a>(tail: &'a str) -> result::Result<Vec<usize>, UIErrorKind> {
+pub fn parse_tail<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIErrorKind> {
     // Note to self: This uses `FromIterator` to turn a Vec<Result> into Result<Vec>. Neat!
     tail.split_whitespace()
-        .map(|s| s.parse::<usize>().map_err(|_| {
+        .map(|s| s.parse::<T>().map_err(|_| {
             UIErrorKind::BadNumber(format!("'{}' is not a valid index", s))
         }))
         .collect()
@@ -167,14 +168,14 @@ mod tests {
 
     #[test]
     fn parse_tail_for_usize() {
-        assert_eq!(vec![3, 2, 1, 100], parse_tail("3 2 1 100").unwrap());
-        assert_eq!(vec![3, 2, 1, 0], parse_tail("3\t2\t1 0").unwrap());
-        assert!(parse_tail("").unwrap().is_empty());
+        assert_eq!(vec![3, 2, 1, 100], parse_tail::<usize>("3 2 1 100").unwrap());
+        assert_eq!(vec![3, 2, 1, 0], parse_tail::<usize>("3\t2\t1 0").unwrap());
+        assert!(parse_tail::<usize>("").unwrap().is_empty());
     }
 
     #[test]
     fn parse_tail_for_usize_bad_numbers() {
-        assert!(parse_tail("3a").is_err());
-        assert!(parse_tail("3 1 2 a 3").is_err());
+        assert!(parse_tail::<usize>("3a").is_err());
+        assert!(parse_tail::<usize>("3 1 2 a 3").is_err());
     }
 }
