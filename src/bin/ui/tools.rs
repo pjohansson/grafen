@@ -1,8 +1,7 @@
 //! Tools for the user interface.
 
-use error::UIErrorKind;
+use error::{GrafenCliError, Result, UIErrorKind};
 
-use error::Result;
 use std::io;
 use std::io::Write;
 use std::result;
@@ -69,9 +68,9 @@ pub fn get_selection_and_tail<'a, 'b, T: Copy>(input: &'a str, commands: &Comman
         })
 }
 
-/// Parse an input tail for values. The input tail is a string with white space
-/// separated values. Return an Error if any value of the string could not be parsed.
-pub fn parse_tail<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIErrorKind> {
+/// Parse an input string for values. Values are whitespace separated.
+/// Return an Error if any value of the string could not be parsed.
+pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIErrorKind> {
     // Note to self: This uses `FromIterator` to turn a Vec<Result> into Result<Vec>. Neat!
     tail.split_whitespace()
         .map(|s| s.parse::<T>().map_err(|_| {
@@ -83,17 +82,57 @@ pub fn parse_tail<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIErr
 /// Print a menu for the input commands.
 pub fn print_menu<'a, T>(commands: &CommandList<'a, T>) {
     println!("Commands:");
-
     for &(ref c, _, ref info) in commands.iter() {
         println!("{:>4}{:4}{}", c, ' ', info);
     }
-
     println!("");
+}
+
+/// Remove an item from a list. The index is parsed from the input tail and returned as a result.
+pub fn remove_item<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<usize> {
+    let parsed = parse_string(tail)?;
+
+    match parsed.get(0) {
+        Some(&i) if i < item_list.len() => {
+            item_list.remove(i);
+            Ok(i)
+        },
+        Some(&i) => {
+            Err(GrafenCliError::UIError(format!("No system with index {} exists", i)))
+        },
+        None => {
+            Err(GrafenCliError::UIError("An index to remove is required".to_string()))
+        },
+    }
+}
+
+/// Swap two items of a list in-place. The indices are parsed from the input string
+/// and returned as the result.
+pub fn swap_items<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<(usize, usize)> {
+    let parsed = parse_string(tail)?;
+    let max_len = item_list.len();
+
+    match (parsed.get(0), parsed.get(1)) {
+        // Assert that neither index is out of bounds with this pattern guard.
+        (Some(&i), _) | (_, Some(&i)) if i >= max_len => {
+            Err(GrafenCliError::UIError(format!("No system with index {} exists", i)))
+        },
+
+        (Some(&i), Some(&j)) => {
+            item_list.swap(i, j);
+            Ok((i, j))
+        },
+
+        _ => {
+            Err(GrafenCliError::UIError("Two indices to swap order for are required".to_string()))
+        },
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
 
     #[derive(Clone, Copy, Debug, PartialEq)]
     enum TestCommands {
@@ -167,15 +206,91 @@ mod tests {
     }
 
     #[test]
-    fn parse_tail_for_usize() {
-        assert_eq!(vec![3, 2, 1, 100], parse_tail::<usize>("3 2 1 100").unwrap());
-        assert_eq!(vec![3, 2, 1, 0], parse_tail::<usize>("3\t2\t1 0").unwrap());
-        assert!(parse_tail::<usize>("").unwrap().is_empty());
+    fn parse_string_for_usize() {
+        assert_eq!(vec![3, 2, 1, 100], parse_string::<usize>("3 2 1 100").unwrap());
+        assert_eq!(vec![3, 2, 1, 0], parse_string::<usize>("3\t2\t1 0").unwrap());
+        assert!(parse_string::<usize>("").unwrap().is_empty());
     }
 
     #[test]
-    fn parse_tail_for_usize_bad_numbers() {
-        assert!(parse_tail::<usize>("3a").is_err());
-        assert!(parse_tail::<usize>("3 1 2 a 3").is_err());
+    fn parse_string_for_usize_bad_numbers() {
+        assert!(parse_string::<usize>("3a").is_err());
+        assert!(parse_string::<usize>("3 1 2 a 3").is_err());
+    }
+
+    #[test]
+    fn parse_and_swap_vector_order() {
+        let mut vec = vec![0, 1, 2, 3];
+        assert_eq!((1, 2), swap_items(&mut vec, "1 2").unwrap());
+        assert_eq!(vec![0, 2, 1, 3], vec);
+        assert_eq!((3, 0), swap_items(&mut vec, "3 0").unwrap());
+        assert_eq!(vec![3, 2, 1, 0], vec);
+        assert_eq!((1, 1), swap_items(&mut vec, "1 1").unwrap());
+        assert_eq!(vec![3, 2, 1, 0], vec);
+        assert_eq!((1, 2), swap_items(&mut vec, "1 2 5").unwrap()); // The extra digit is discarded
+        assert_eq!(vec![3, 1, 2, 0], vec);
+    }
+
+    #[test]
+    fn parse_and_swap_out_of_bounds_is_error() {
+        let mut vec = vec![0, 1];
+        assert!(swap_items(&mut vec, "0 2").is_err());
+        assert!(swap_items(&mut vec, "2 1").is_err());
+        assert!(swap_items(&mut vec, "-1 1").is_err());
+        assert!(swap_items(&mut vec, "a 1").is_err());
+        assert!(swap_items(&mut vec, "0 a").is_err());
+    }
+
+    #[test]
+    fn parse_and_swap_error_messages_are_correct() {
+        let mut vec = vec![0, 1, 2];
+
+        // Invalid characters
+        let err = swap_items(&mut vec, "a 0").unwrap_err().description().to_string();
+        assert!(err.contains("'a' is not a valid index"));
+        let err = swap_items(&mut vec, "-1 0").unwrap_err().description().to_string();
+        assert!(err.contains("'-1' is not a valid index"));
+
+        // Too few indices
+        let err = swap_items(&mut vec, "0").unwrap_err().description().to_string();
+        assert!(err.contains("Two indices to swap order for are required"));
+
+        // First index is out of bounds
+        let err = swap_items(&mut vec, "3 0").unwrap_err().description().to_string();
+        assert!(err.contains("No system with index 3 exists"));
+
+        // Second index
+        let err = swap_items(&mut vec, "0 4").unwrap_err().description().to_string();
+        assert!(err.contains("No system with index 4 exists"));
+
+    }
+
+    #[test]
+    fn parse_and_remove_vector_item() {
+        let mut vec = vec![1, 2, 3, 4];
+        assert_eq!(1, remove_item(&mut vec, "1").unwrap());
+        assert_eq!(vec![1, 3, 4], vec);
+        assert_eq!(2, remove_item(&mut vec, "2").unwrap());
+        assert_eq!(vec![1, 3], vec);
+        assert_eq!(0, remove_item(&mut vec, "0").unwrap());
+        assert_eq!(vec![3], vec);
+        assert_eq!(0, remove_item(&mut vec, "0").unwrap());
+        assert!(vec.is_empty());
+    }
+
+    #[test]
+    fn parse_and_remove_vector_out_of_bounds_is_error() {
+        let mut vec = vec![0, 1];
+        let err = remove_item(&mut vec, "2").unwrap_err().description().to_string();
+        assert!(err.contains("No system with index 2 exists"));
+        let err = remove_item(&mut vec, "-1").unwrap_err().description().to_string();
+        assert!(err.contains("'-1' is not a valid index"));
+    }
+
+    #[test]
+    fn parse_and_remove_vector_without_input_is_error() {
+        let mut vec = vec![1];
+        let err = remove_item(&mut vec, "\t").unwrap_err().description().to_string();
+        assert!(err.contains("An index to remove is required"))
     }
 }

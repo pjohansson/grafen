@@ -1,7 +1,7 @@
 use database::{DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::SystemDefinition;
-use ui::tools::get_input;
+use ui::tools::{get_input, parse_string};
 
 use grafen::system::Coord;
 use std::error::Error;
@@ -49,15 +49,7 @@ fn select_position() -> Result<Coord> {
         return Ok(Coord::new(0.0, 0.0, 0.0));
     }
 
-    let coords: Vec<f64> = selection
-        .split_whitespace()
-        .take(3)
-        .map(|s| {
-            s.parse::<f64>()
-             .map_err(|_| UIErrorKind::BadNumber("'{}' not a valid number".to_string()))
-        })
-        .collect::<result::Result<Vec<f64>, UIErrorKind>>()?;
-
+    let coords = parse_string(&selection)?;
     let &x = coords.get(0).ok_or(UIErrorKind::BadNumber("3 positions are required".to_string()))?;
     let &y = coords.get(1).ok_or(UIErrorKind::BadNumber("3 positions are required".to_string()))?;
     let &z = coords.get(2).ok_or(UIErrorKind::BadNumber("3 positions are required".to_string()))?;
@@ -68,15 +60,7 @@ fn select_position() -> Result<Coord> {
 fn select_size() -> Result<(f64, f64)> {
     let selection = get_input("Set size")?;
 
-    let size: Vec<f64> = selection
-        .split_whitespace()
-        .take(2)
-        .map(|s| {
-            s.parse::<f64>()
-             .map_err(|_| UIErrorKind::BadNumber("'{}' not a valid number".to_string()))
-        })
-        .collect::<result::Result<Vec<f64>, UIErrorKind>>()?;
-
+    let size = parse_string(&selection)?;
     let &dx = size.get(0).ok_or(UIErrorKind::BadNumber("2 values are required".to_string()))?;
     let &dy = size.get(1).ok_or(UIErrorKind::BadNumber("2 values are required".to_string()))?;
 
