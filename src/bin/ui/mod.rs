@@ -1,10 +1,10 @@
 mod edit_database;
 mod systemdefinition;
-mod tools;
+mod utils;
 
 use database::{write_database, DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use ui::tools::{get_input, get_selection_and_tail, print_menu, CommandList};
+use ui::utils::{get_input, get_selection_and_tail, print_menu, CommandList};
 
 use grafen::substrate::SubstrateConf;
 use grafen::system::{Coord, System};
@@ -61,13 +61,13 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
                     }
                 },
                 Command::RemoveSystem => {
-                    match tools::remove_item(&mut system_defs, &tail) {
+                    match utils::remove_item(&mut system_defs, &tail) {
                         Ok(i) => println!("Removed system at index {}.", i),
                         Err(err) => println!("Could not remove system: {}", err.description()),
                     }
                 },
                 Command::SwapSystems => {
-                    match tools::swap_items(&mut system_defs, &tail) {
+                    match utils::swap_items(&mut system_defs, &tail) {
                         Ok((i, j)) => println!("Swapped system at index {} with system at {}.",
                                                i, j),
                         Err(err) => println!("Could not swap systems: {}", err.description()),
