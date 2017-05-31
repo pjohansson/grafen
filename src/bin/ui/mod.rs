@@ -1,5 +1,5 @@
 mod edit_database;
-mod systemdefinition;
+mod define_system;
 mod utils;
 
 use database::{DataBase, SubstrateConfEntry};
@@ -53,7 +53,7 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
         if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
             match cmd {
                 Command::DefineSystem => {
-                    match systemdefinition::user_menu(&database) {
+                    match define_system::user_menu(&database) {
                         Ok(def) => system_defs.push(def),
                         Err(err) => println!("Could not create definition: {}", err.description()),
                     }
