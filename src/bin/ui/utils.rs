@@ -97,27 +97,39 @@ pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIE
     // Note to self: This uses `FromIterator` to turn a Vec<Result> into Result<Vec>. Neat!
     tail.split_whitespace()
         .map(|s| s.parse::<T>().map_err(|_| {
-            UIErrorKind::BadValue(format!("'{}' is not a valid index", s))
+            UIErrorKind::BadValue(format!("'{}' is not a valid value", s))
         }))
         .collect()
 }
 
+/// Parse an input string for one value. Return an Error if a value could not be parsed.
+pub fn parse_string_single<'a, T: FromStr>(tail: &'a str) -> result::Result<T, UIErrorKind> {
+    let string = tail.split_whitespace().next()
+        .ok_or(UIErrorKind::BadValue("Could not parse a value".to_string()))?;
+
+    string.parse::<T>().map_err(|_| {
+            UIErrorKind::BadValue(format!("'{}' is not a valid value", string))
+        })
+}
+
+pub fn parse_string_for_index<T>(input: &str, list: &Vec<T>) -> Result<usize> {
+    parse_string_single::<usize>(input)
+        .and_then(|i| {
+            if i < list.len() {
+                Ok(i)
+            } else {
+                Err(UIErrorKind::BadValue(format!("No item with index {} exists", i)))
+            }
+        })
+        .map_err(|err| GrafenCliError::from(err))
+}
+
 /// Remove an item from a list. The index is parsed from the input tail and returned as a result.
 pub fn remove_item<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<usize> {
-    let parsed = parse_string(tail)?;
+    let index = parse_string_for_index(&tail, &item_list)?;
+    item_list.remove(index);
 
-    match parsed.get(0) {
-        Some(&i) if i < item_list.len() => {
-            item_list.remove(i);
-            Ok(i)
-        },
-        Some(&i) => {
-            Err(GrafenCliError::UIError(format!("No system with index {} exists", i)))
-        },
-        None => {
-            Err(GrafenCliError::UIError("An index to remove is required".to_string()))
-        },
-    }
+    Ok(index)
 }
 
 /// Swap two items of a list in-place. The indices are parsed from the input string
@@ -238,6 +250,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_string_for_one_value() {
+        assert_eq!(0, parse_string_single::<usize>("0").unwrap());
+        assert_eq!(0, parse_string_single::<usize>("\t0\n").unwrap());
+        assert_eq!(0, parse_string_single::<usize>("0 1").unwrap());
+        assert!(parse_string_single::<usize>("a").is_err());
+    }
+
+    #[test]
     fn parse_and_swap_vector_order() {
         let mut vec = vec![0, 1, 2, 3];
         assert_eq!((1, 2), swap_items(&mut vec, "1 2").unwrap());
@@ -266,9 +286,9 @@ mod tests {
 
         // Invalid characters
         let err = swap_items(&mut vec, "a 0").unwrap_err().description().to_string();
-        assert!(err.contains("'a' is not a valid index"));
+        assert!(err.contains("'a' is not a valid value"));
         let err = swap_items(&mut vec, "-1 0").unwrap_err().description().to_string();
-        assert!(err.contains("'-1' is not a valid index"));
+        assert!(err.contains("'-1' is not a valid value"));
 
         // Too few indices
         let err = swap_items(&mut vec, "0").unwrap_err().description().to_string();
@@ -301,15 +321,23 @@ mod tests {
     fn parse_and_remove_vector_out_of_bounds_is_error() {
         let mut vec = vec![0, 1];
         let err = remove_item(&mut vec, "2").unwrap_err().description().to_string();
-        assert!(err.contains("No system with index 2 exists"));
+        assert!(err.contains("No item with index 2 exists"));
         let err = remove_item(&mut vec, "-1").unwrap_err().description().to_string();
-        assert!(err.contains("'-1' is not a valid index"));
+        assert!(err.contains("'-1' is not a valid value"));
     }
 
     #[test]
     fn parse_and_remove_vector_without_input_is_error() {
         let mut vec = vec![1];
-        let err = remove_item(&mut vec, "\t").unwrap_err().description().to_string();
-        assert!(err.contains("An index to remove is required"))
+        assert!(remove_item(&mut vec, "\t").is_err());
+    }
+
+    #[test]
+    fn parse_index_inside_vector() {
+        assert_eq!(2, parse_string_for_index("2", &vec![0, 1, 2]).unwrap());
+        assert_eq!(0, parse_string_for_index("0", &vec![2, 1, 0]).unwrap());
+        assert!(parse_string_for_index("1", &vec![0]).is_err());
+        assert!(parse_string_for_index("a", &vec![0]).is_err());
+        assert!(parse_string_for_index("\n", &vec![0]).is_err());
     }
 }
