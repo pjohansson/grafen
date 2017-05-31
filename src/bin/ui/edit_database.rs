@@ -64,7 +64,14 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
                     }
                 },
                 Command::AddSubstrate => {
-                    println!("Unimplemented!");
+                    match define_substrate::user_menu(&database.residue_defs) {
+                        Ok(substrate) => {
+                            println!("Added substrate definition '{}' to database.",
+                                     substrate.name);
+                            database.substrate_defs.push(substrate);
+                        },
+                        Err(err) => println!("Could not create substrate: {}", err.description()),
+                    }
                 },
                 Command::RemoveSubstrate => {
                     match utils::remove_item(&mut database.substrate_defs, &tail) {
@@ -111,7 +118,7 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
 }
 
 mod define_residue {
-    use error::{Result, GrafenCliError, UIErrorKind};
+    use error::{GrafenCliError, Result, UIErrorKind};
     use ui::utils;
     use ui::utils::{CommandList, CommandParser};
 
@@ -270,5 +277,122 @@ mod define_residue {
 }
 
 mod define_substrate {
+    use database::SubstrateConfEntry;
+    use error::{GrafenCliError, Result};
+    use ui::utils;
 
+    use grafen::substrate::LatticeType;
+    use grafen::system::ResidueBase;
+
+    #[derive(Clone, Copy, Debug)]
+    /// Available lattices to construct from. Each of these require
+    /// a separate constructor since they have different qualities in
+    /// their corresponding `LatticeType` unit.
+    enum LatticeCommand {
+        Triclinic,
+        Hexagonal,
+        PoissonDisc,
+    }
+
+    pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<SubstrateConfEntry> {
+        let name = utils::get_input_string("Substrate name")
+            .and_then(|string| {
+                if string.is_empty() {
+                    Err(GrafenCliError::UIError("No name was entered".to_string()))
+                } else {
+                    Ok(string)
+                }
+            })
+            .map_err(|err| GrafenCliError::from(err))?;
+        println!("");
+
+        let residue = select_residue(&residue_list)?;
+        println!("");
+
+        let lattice = select_lattice()?;
+        println!("");
+
+        let std_z = select_deviation_along_z()?;
+        println!("");
+
+        Ok(SubstrateConfEntry { name, lattice, residue, std_z })
+    }
+
+    fn select_residue(residue_list: &Vec<ResidueBase>) -> Result<ResidueBase> {
+        println!("Available residues:");
+        for (i, residue) in residue_list.iter().enumerate() {
+            println!("{:4}. {}", i, residue.code);
+        }
+        println!("");
+
+        let input = utils::get_input_string("Selection")?;
+        let index = utils::parse_string_for_index(&input, &residue_list)?;
+
+        Ok(residue_list[index].clone())
+    }
+
+    fn select_lattice() -> Result<LatticeType> {
+        let lattice_list = vec![
+            (LatticeCommand::Triclinic, "Triclinic lattice: two base vector lengths and an angle in-between"),
+            (LatticeCommand::Hexagonal, "Hexagonal lattice: a honeycomb grid with a spacing"),
+            (LatticeCommand::PoissonDisc, "Poisson disc: Randomly generated points with a density")
+        ];
+
+        println!("Available lattices:");
+        for (i, lattice) in lattice_list.iter().enumerate() {
+            println!("{:4}. {}", i, lattice.1);
+        }
+        println!("");
+
+        let input = utils::get_input_string("Selection")?;
+        let index = utils::parse_string_for_index(&input, &lattice_list)?;
+
+        match lattice_list[index].0 {
+            LatticeCommand::Triclinic => {
+                println!("A triclinic lattice is constructed from two base ");
+                println!("vectors of length a and b, separated by an angle γ.");
+                println!("");
+
+                let input = utils::get_input_string("Input length 'a'")?;
+                let a = utils::parse_string_single(&input)?;
+                let input = utils::get_input_string("Input length 'b'")?;
+                let b = utils::parse_string_single(&input)?;
+                let input = utils::get_input_string("Input angle 'γ'")?;
+                let gamma = utils::parse_string_single(&input)?;
+
+                Ok(LatticeType::Triclinic { a, b, gamma })
+            },
+
+            LatticeCommand::Hexagonal => {
+                println!("A hexagonal lattice is a honeycomb grid with an input side length.");
+                println!("");
+
+                let input = utils::get_input_string("Input side length")?;
+                let a = utils::parse_string_single(&input)?;
+
+                Ok(LatticeType::Hexagonal { a })
+            },
+
+            LatticeCommand::PoissonDisc => {
+                println!("A Poisson disc is a generated set of points with an even distribution.");
+                println!("They are generated with an input density in points per area.");
+                println!("");
+
+                let input = utils::get_input_string("Input density")?;
+                let density = utils::parse_string_single(&input)?;
+
+                Ok(LatticeType::PoissonDisc { density })
+            },
+        }
+    }
+
+    fn select_deviation_along_z() -> Result<Option<f64>> {
+        let query = "Distribute residue positions along z with this deviation (default: No)";
+        let selection = utils::get_input_string(query)?;
+
+        match utils::parse_string_single(&selection) {
+            Ok(value) => Ok(Some(value)),
+            _ => Ok(None),
+        }
+    }
 }
