@@ -1,12 +1,9 @@
 use database::{DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::SystemDefinition;
-use ui::utils::{get_input, parse_string};
+use ui::utils::{get_input_string, parse_string};
 
 use grafen::system::Coord;
-use std::error::Error;
-use std::io;
-use std::io::Write;
 
 pub fn user_menu(database: &DataBase) -> Result<SystemDefinition> {
     let config = select_substrate(&database)?;
@@ -22,8 +19,6 @@ pub fn user_menu(database: &DataBase) -> Result<SystemDefinition> {
     })
 }
 
-use std::result;
-
 fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SubstrateConfEntry> {
     println!("Available substrates:");
     for (i, sub) in database.substrate_defs.iter().enumerate() {
@@ -31,7 +26,7 @@ fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SubstrateConfEntry
     }
     println!("");
 
-    let selection = get_input("Select substrate")?;
+    let selection = get_input_string("Select substrate")?;
     selection
         .parse::<usize>()
         .map_err(|_| UIErrorKind::BadNumber(format!("'{}' is not a valid index", &selection)))
@@ -44,7 +39,7 @@ fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SubstrateConfEntry
 }
 
 fn select_position() -> Result<Coord> {
-    let selection = get_input("Change position (default: (0.0, 0.0, 0.0))")?;
+    let selection = get_input_string("Change position (default: (0.0, 0.0, 0.0))")?;
     if selection.is_empty() {
         return Ok(Coord::new(0.0, 0.0, 0.0));
     }
@@ -58,7 +53,7 @@ fn select_position() -> Result<Coord> {
 }
 
 fn select_size() -> Result<(f64, f64)> {
-    let selection = get_input("Set size")?;
+    let selection = get_input_string("Set size")?;
 
     let size = parse_string(&selection)?;
     let &dx = size.get(0).ok_or(UIErrorKind::BadNumber("2 values are required".to_string()))?;

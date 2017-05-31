@@ -2,16 +2,13 @@ mod edit_database;
 mod systemdefinition;
 mod utils;
 
-use database::{write_database, DataBase, SubstrateConfEntry};
-use error::{GrafenCliError, Result, UIErrorKind};
-use ui::utils::{get_input, CommandList, CommandParser};
+use database::{DataBase, SubstrateConfEntry};
+use error::{GrafenCliError, Result};
+use ui::utils::{get_input_string, CommandList, CommandParser};
 
 use grafen::substrate::SubstrateConf;
-use grafen::system::{Coord, System};
+use grafen::system::Coord;
 use std::error::Error;
-use std::io;
-use std::io::Write;
-use std::result;
 
 #[derive(Debug, PartialEq)]
 /// One system is defined by these attributes.
@@ -50,7 +47,7 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
     loop {
         describe_system_definitions(&system_defs);
         commands.print_menu();
-        let input = get_input("Selection")?;
+        let input = get_input_string("Selection")?;
         println!("");
 
         if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {

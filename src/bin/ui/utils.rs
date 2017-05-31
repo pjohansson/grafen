@@ -79,7 +79,7 @@ impl<T: Copy> CommandParser<T> {
 }
 
 /// Read and trim a string from stdin.
-pub fn get_input(query: &'static str) -> Result<String> {
+pub fn get_input_string(query: &'static str) -> Result<String> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut selection = String::new();
