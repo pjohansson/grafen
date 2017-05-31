@@ -29,23 +29,19 @@ pub fn write_gromos(system: &System, output_file: &Path, title: &str) -> Result<
             let atom_number = (j + 1) % 100_000;
 
             let position = residue.position + atom.position;
+            let (x, y, z) = position.to_tuple();
 
             writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
                                         residue_number,
                                         residue.base.code,
                                         atom.code,
                                         atom_number,
-                                        position.x,
-                                        position.y,
-                                        position.z))?;
-
+                                        x, y, z))?;
         }
     }
 
-    writer.write_fmt(format_args!("{:12.8} {:12.8} {:12.8}\n",
-                                system.dimensions.x,
-                                system.dimensions.y,
-                                system.dimensions.z))?;
+    let (dx, dy, dz) = system.dimensions.to_tuple();
+    writer.write_fmt(format_args!("{:12.8} {:12.8} {:12.8}\n", dx, dy, dz))?;
 
     Ok(())
 }
