@@ -90,7 +90,7 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
                 },
                 Command::SetLocation => {
                     match database.set_path(&tail) {
-                        Ok(_) => println!("Database path set to '{}'.",
+                        Ok(_) => println!("Database path set to {}.",
                                           database.get_path_pretty()),
                         Err(err) => println!("Could not change database path: {}",
                                              err.description()),
