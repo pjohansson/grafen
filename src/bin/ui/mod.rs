@@ -1,3 +1,11 @@
+//! The main user interface from which the user will define systems to create.
+//! They can also access and modify the `DataBase` of components to use in their
+//! systems.
+//!
+//! This is implemented as a *very* basic text interface. This could be improved
+//! greatly by knowing more about human interface design. In particular the systems
+//! for creating `SubstrateConfEntry` and `SystemDefinition` are in need of improvement.
+
 mod edit_database;
 mod define_system;
 mod utils;

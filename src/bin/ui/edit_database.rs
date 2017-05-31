@@ -8,6 +8,7 @@ use ui::utils::{CommandList, CommandParser};
 use std::error::Error;
 
 #[derive(Clone, Copy, Debug)]
+/// Editing commands.
 enum Command {
     AddResidue,
     RemoveResidue,
@@ -20,6 +21,7 @@ enum Command {
     QuitWithoutSaving,
 }
 
+/// The main user menu.
 pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
     let command_list: CommandList<Command> = vec![
         ("ra", Command::AddResidue, "Add a residue definition"),
@@ -118,6 +120,8 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
 }
 
 mod define_residue {
+    //! Define a new `ResidueBase`.
+
     use error::{GrafenCliError, Result, UIErrorKind};
     use ui::utils;
     use ui::utils::{CommandList, CommandParser};
@@ -277,6 +281,8 @@ mod define_residue {
 }
 
 mod define_substrate {
+    //! Define a new `SubstrateConfEntry`.
+
     use database::SubstrateConfEntry;
     use error::{GrafenCliError, Result};
     use ui::utils;

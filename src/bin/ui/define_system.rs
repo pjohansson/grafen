@@ -1,3 +1,7 @@
+//! Define a `SystemDefinition` entry.
+//!
+//! This interface could use a lot of improvement.
+
 use database::{DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::SystemDefinition;

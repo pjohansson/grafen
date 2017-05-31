@@ -112,6 +112,8 @@ pub fn parse_string_single<'a, T: FromStr>(tail: &'a str) -> result::Result<T, U
         })
 }
 
+/// Parse an input string for an index and ensure that it exists in the input list.
+/// An error is raised if it is out of bounds.
 pub fn parse_string_for_index<T>(input: &str, list: &Vec<T>) -> Result<usize> {
     parse_string_single::<usize>(input)
         .and_then(|i| {
