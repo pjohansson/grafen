@@ -74,7 +74,7 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
                 Command::EditDatabase => {
                     match edit_database::user_menu(&mut database) {
                         Ok(msg) => println!("{}", msg),
-                        Err(err) => println!("Error: {}", err.description()),
+                        Err(err) => println!("Error when editing database: {}", err.description()),
                     }
                 },
                 Command::QuitAndConstruct => {
@@ -104,7 +104,7 @@ fn describe_system_definitions(system_defs: &[SystemDefinition]) {
         for (i, def) in system_defs.iter().enumerate() {
             let (dx, dy) = def.size;
             let (x, y, z) = def.position.to_tuple();
-            println!("{}. {} of size {:.1} x {:.1} nm^2 at position ({:.1}, {:.1}, {:.1})",
+            println!("{}. {} of size ({:.1}, {:.1}) at position ({:.1}, {:.1}, {:.1})",
                      i, def.config.name, dx, dy, x, y, z);
         }
     }
