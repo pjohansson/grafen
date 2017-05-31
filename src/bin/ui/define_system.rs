@@ -1,7 +1,7 @@
 use database::{DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::SystemDefinition;
-use ui::utils::{get_input_string, parse_string};
+use ui::utils;
 
 use grafen::system::Coord;
 
@@ -26,38 +26,38 @@ fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SubstrateConfEntry
     }
     println!("");
 
-    let selection = get_input_string("Select substrate")?;
+    let selection = utils::get_input_string("Select substrate")?;
     selection
         .parse::<usize>()
-        .map_err(|_| UIErrorKind::BadNumber(format!("'{}' is not a valid index", &selection)))
+        .map_err(|_| UIErrorKind::BadValue(format!("'{}' is not a valid index", &selection)))
         .and_then(|n| {
             database.substrate_defs
                 .get(n)
-                .ok_or(UIErrorKind::BadNumber(format!("No substrate with index {} exists", n)))
+                .ok_or(UIErrorKind::BadValue(format!("No substrate with index {} exists", n)))
         })
         .map_err(|err| GrafenCliError::from(err))
 }
 
 fn select_position() -> Result<Coord> {
-    let selection = get_input_string("Change position (default: (0.0, 0.0, 0.0))")?;
+    let selection = utils::get_input_string("Change position (default: (0.0, 0.0, 0.0))")?;
     if selection.is_empty() {
         return Ok(Coord::new(0.0, 0.0, 0.0));
     }
 
-    let coords = parse_string(&selection)?;
-    let &x = coords.get(0).ok_or(UIErrorKind::BadNumber("3 positions are required".to_string()))?;
-    let &y = coords.get(1).ok_or(UIErrorKind::BadNumber("3 positions are required".to_string()))?;
-    let &z = coords.get(2).ok_or(UIErrorKind::BadNumber("3 positions are required".to_string()))?;
+    let coords = utils::parse_string(&selection)?;
+    let &x = coords.get(0).ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
+    let &y = coords.get(1).ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
+    let &z = coords.get(2).ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
 
     Ok(Coord::new(x, y, z))
 }
 
 fn select_size() -> Result<(f64, f64)> {
-    let selection = get_input_string("Set size")?;
+    let selection = utils::get_input_string("Set size")?;
 
-    let size = parse_string(&selection)?;
-    let &dx = size.get(0).ok_or(UIErrorKind::BadNumber("2 values are required".to_string()))?;
-    let &dy = size.get(1).ok_or(UIErrorKind::BadNumber("2 values are required".to_string()))?;
+    let size = utils::parse_string(&selection)?;
+    let &dx = size.get(0).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
+    let &dy = size.get(1).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
 
     Ok((dx, dy))
 }

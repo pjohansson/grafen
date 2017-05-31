@@ -4,7 +4,7 @@ mod utils;
 
 use database::{DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result};
-use ui::utils::{get_input_string, CommandList, CommandParser};
+use ui::utils::{CommandList, CommandParser};
 
 use grafen::substrate::SubstrateConf;
 use grafen::system::Coord;
@@ -47,7 +47,7 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
     loop {
         describe_system_definitions(&system_defs);
         commands.print_menu();
-        let input = get_input_string("Selection")?;
+        let input = utils::get_input_string("Selection")?;
         println!("");
 
         if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
@@ -73,7 +73,7 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
                 },
                 Command::EditDatabase => {
                     match edit_database::user_menu(&mut database) {
-                        Ok(_) => println!("Finished editing database."),
+                        Ok(msg) => println!("{}", msg),
                         Err(err) => println!("Error: {}", err.description()),
                     }
                 },

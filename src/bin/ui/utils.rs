@@ -97,7 +97,7 @@ pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIE
     // Note to self: This uses `FromIterator` to turn a Vec<Result> into Result<Vec>. Neat!
     tail.split_whitespace()
         .map(|s| s.parse::<T>().map_err(|_| {
-            UIErrorKind::BadNumber(format!("'{}' is not a valid index", s))
+            UIErrorKind::BadValue(format!("'{}' is not a valid index", s))
         }))
         .collect()
 }

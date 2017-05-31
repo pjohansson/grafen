@@ -18,8 +18,9 @@ pub type Result<T> = result::Result<T, GrafenCliError>;
 pub enum UIErrorKind {
     /// No selection was made when one was requested.
     NoSelection,
-    /// An input number which was requested could not be parsed.
-    BadNumber(String),
+    /// An input value which was requested could not be parsed.
+    BadValue(String),
+    Abort,
 }
 
 #[derive(Debug)]
@@ -109,7 +110,8 @@ impl From<UIErrorKind> for GrafenCliError {
     fn from(err: UIErrorKind) -> GrafenCliError {
         match err {
             UIErrorKind::NoSelection => GrafenCliError::UIError("No selection".to_string()),
-            UIErrorKind::BadNumber(err) => GrafenCliError::UIError(err),
+            UIErrorKind::BadValue(err) => GrafenCliError::UIError(err),
+            UIErrorKind::Abort => GrafenCliError::UIError("Discarding changes".to_string()),
         }
     }
 }
