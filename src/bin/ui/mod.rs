@@ -4,7 +4,7 @@ mod utils;
 
 use database::{write_database, DataBase, SubstrateConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use ui::utils::{get_input, get_selection_and_tail, print_menu, CommandList};
+use ui::utils::{get_input, CommandList, CommandParser};
 
 use grafen::substrate::SubstrateConf;
 use grafen::system::{Coord, System};
@@ -37,7 +37,7 @@ enum Command {
 pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
     let mut system_defs: Vec<SystemDefinition> = Vec::new();
 
-    let commands: CommandList<Command> = vec![
+    let command_list: CommandList<Command> = vec![
         ("d", Command::DefineSystem, "Define a system to create"),
         ("r", Command::RemoveSystem, "Remove a system from the list"),
         ("s", Command::SwapSystems, "Swap the order of two systems"),
@@ -45,14 +45,15 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
         ("f", Command::QuitAndConstruct, "Finalize and construct systems from list"),
         ("a", Command::QuitWithoutSaving, "Abort and exit without saving")
     ];
+    let commands = CommandParser::from_list(command_list);
 
     loop {
         describe_system_definitions(&system_defs);
-        print_menu(&commands);
+        commands.print_menu();
         let input = get_input("Selection")?;
         println!("");
 
-        if let Some((cmd, tail)) = get_selection_and_tail(&input, &commands) {
+        if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
             match cmd {
                 Command::DefineSystem => {
                     match systemdefinition::user_menu(&database) {

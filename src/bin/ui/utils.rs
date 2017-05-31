@@ -12,22 +12,71 @@ type CommandArg<T> = (&'static str, T, &'static str);
 
 /// These are put into a list. Unfortunately it is difficult to use
 /// a const array for this since we need to send a Sized type to functions.
+pub type CommandList<T> = Vec<CommandArg<T>>;
+
+/// Finally a `CommandParser` is used to parse input strings for commands.
+/// Commands are any unit type which implements `Copy`.
 ///
 /// # Examples:
 /// ```
-/// # use ui::utils::CommandList;
+/// # use ui::utils::{CommandList, CommandParser};
 /// // enum Command { First, Second }
-/// let commands: CommandList<Command> = vec![
+/// let command_list: CommandList<Command> = vec![
 ///     ("a", Command::First, "Select option `First` by inputting "a")
 ///     ("bad", Command::Second, "and `Second` by inputting "bad")
 /// ];
+/// let commands = CommandParser::from_list(command_list);
 ///
-/// print_menu(&commands);
-/// if let Some(cmd) = get_selection("bad", &commands) {
+/// commands.print_menu();
+/// if let Some(cmd) = commands.get_selection("bad") {
 ///     // Do something
 /// }
 /// ```
-pub type CommandList<T> = Vec<CommandArg<T>>;
+pub struct CommandParser<T: Copy> {
+    commands: CommandList<T>,
+}
+
+impl<T: Copy> CommandParser<T> {
+    /// Create a `CommandParser` from an input `CommandList`.
+    pub fn from_list(commands: CommandList<T>) -> CommandParser<T> {
+        CommandParser { commands }
+    }
+
+    /// Parse a string for a command from the input list.
+    pub fn get_selection<'a>(&self, input: &'a str) -> Option<T> {
+        if let Some(needle) = input.trim().to_lowercase().split_whitespace().next() {
+            for &(ident, cmd, _) in self.commands.iter() {
+                if needle == ident {
+                    return Some(cmd);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Parse a string for a command from the input list and return along
+    /// with the remaining string ("tail").
+    pub fn get_selection_and_tail<'a>(&self, input: &'a str) -> Option<(T, String)> {
+        let mut iter = input.split_whitespace();
+
+        iter.next()
+            .and_then(|needle| self.get_selection(needle))
+            .and_then(|cmd| {
+                let tail = iter.collect::<Vec<&str>>().join(" ");
+                Some((cmd, tail))
+            })
+    }
+
+    /// Print a menu of the available commands.
+    pub fn print_menu(&self) {
+        println!("Commands:");
+        for &(ref c, _, ref info) in self.commands.iter() {
+            println!("{:>4}{:4}{}", c, ' ', info);
+        }
+        println!("");
+    }
+}
 
 /// Read and trim a string from stdin.
 pub fn get_input(query: &'static str) -> Result<String> {
@@ -42,32 +91,6 @@ pub fn get_input(query: &'static str) -> Result<String> {
     Ok(selection.trim().to_string())
 }
 
-/// Parse a string for a command from the input list.
-pub fn get_selection<'a, T: Copy>(input: &'a str, commands: &CommandList<T>) -> Option<T> {
-    if let Some(needle) = input.trim().to_lowercase().split_whitespace().next() {
-        for &(ident, cmd, _) in commands.iter() {
-            if needle == ident {
-                return Some(cmd);
-            }
-        }
-    }
-
-    None
-}
-
-/// Parse a string for a command from the input list and return along with the remaining string.
-pub fn get_selection_and_tail<'a, T: Copy>(input: &'a str, commands: &CommandList<T>)
-        -> Option<(T, String)> {
-    let mut iter = input.split_whitespace();
-
-    iter.next()
-        .and_then(|needle| get_selection(needle, &commands))
-        .and_then(|cmd| {
-            let tail = iter.collect::<Vec<&str>>().join(" ");
-            Some((cmd, tail))
-        })
-}
-
 /// Parse an input string for values. Values are whitespace separated.
 /// Return an Error if any value of the string could not be parsed.
 pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIErrorKind> {
@@ -77,15 +100,6 @@ pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIE
             UIErrorKind::BadNumber(format!("'{}' is not a valid index", s))
         }))
         .collect()
-}
-
-/// Print a menu for the input commands.
-pub fn print_menu<T>(commands: &CommandList<T>) {
-    println!("Commands:");
-    for &(ref c, _, ref info) in commands.iter() {
-        println!("{:>4}{:4}{}", c, ' ', info);
-    }
-    println!("");
 }
 
 /// Remove an item from a list. The index is parsed from the input tail and returned as a result.
@@ -146,10 +160,11 @@ mod tests {
             ("a", TestCommands::One, "one"),
             ("b", TestCommands::Two, "two")
         ];
+        let commands = CommandParser::from_list(command_list);
 
-        assert_eq!(Some(TestCommands::One), get_selection("a", &command_list));
-        assert_eq!(Some(TestCommands::Two), get_selection("b", &command_list));
-        assert_eq!(None, get_selection("nope", &command_list));
+        assert_eq!(Some(TestCommands::One), commands.get_selection("a"));
+        assert_eq!(Some(TestCommands::Two), commands.get_selection("b"));
+        assert_eq!(None, commands.get_selection("nope"));
     }
 
     #[test]
@@ -158,9 +173,10 @@ mod tests {
             ("a", TestCommands::One, "one"),
             ("b", TestCommands::Two, "two")
         ];
+        let commands = CommandParser::from_list(command_list);
 
-        assert_eq!(Some(TestCommands::One), get_selection("\n\ta\n", &command_list));
-        assert_eq!(Some(TestCommands::Two), get_selection("  B  ", &command_list));
+        assert_eq!(Some(TestCommands::One), commands.get_selection("\n\ta\n"));
+        assert_eq!(Some(TestCommands::Two), commands.get_selection("  B  "));
     }
 
     #[test]
@@ -169,9 +185,10 @@ mod tests {
             ("a", TestCommands::One, "one"),
             ("b", TestCommands::Two, "two")
         ];
+        let commands = CommandParser::from_list(command_list);
 
-        assert_eq!(Some(TestCommands::One), get_selection("a ignore", &command_list));
-        assert_eq!(None, get_selection("aignore", &command_list));
+        assert_eq!(Some(TestCommands::One), commands.get_selection("a ignore"));
+        assert_eq!(None, commands.get_selection("aignore"));
     }
 
     #[test]
@@ -180,10 +197,11 @@ mod tests {
             ("at", TestCommands::One, "one"),
             ("ar", TestCommands::Two, "two")
         ];
+        let commands = CommandParser::from_list(command_list);
 
-        assert_eq!(None, get_selection("a", &command_list));
-        assert_eq!(Some(TestCommands::One), get_selection("at", &command_list));
-        assert_eq!(Some(TestCommands::Two), get_selection("ar", &command_list));
+        assert_eq!(None, commands.get_selection("a"));
+        assert_eq!(Some(TestCommands::One), commands.get_selection("at"));
+        assert_eq!(Some(TestCommands::Two), commands.get_selection("ar"));
     }
 
     #[test]
@@ -192,17 +210,18 @@ mod tests {
             ("a", TestCommands::One, "one"),
             ("b", TestCommands::Two, "two")
         ];
+        let commands = CommandParser::from_list(command_list);
 
-        let (cmd, tail) = get_selection_and_tail("a and a tail", &command_list).unwrap();
+        let (cmd, tail) = commands.get_selection_and_tail("a and a tail").unwrap();
         assert_eq!(TestCommands::One, cmd);
         assert_eq!("and a tail", &tail);
 
-        let (cmd, tail) = get_selection_and_tail("b\twith trimming\n", &command_list).unwrap();
+        let (cmd, tail) = commands.get_selection_and_tail("b\twith trimming\n").unwrap();
         assert_eq!(TestCommands::Two, cmd);
         assert_eq!("with trimming", &tail);
 
-        assert_eq!(None, get_selection_and_tail("", &command_list));
-        assert_eq!(None, get_selection_and_tail("tail", &command_list));
+        assert_eq!(None, commands.get_selection_and_tail(""));
+        assert_eq!(None, commands.get_selection_and_tail("tail"));
     }
 
     #[test]
