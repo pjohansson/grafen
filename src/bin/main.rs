@@ -1,7 +1,4 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
 
 extern crate ansi_term;
 #[macro_use]
@@ -12,19 +9,17 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-mod define;
 mod error;
 mod database;
 mod output;
+mod ui;
 
-use database::{read_database, write_database, DataBase};
+use database::{read_database, DataBase};
 use error::{GrafenCliError, Result};
-use define::SystemDefinition;
+use ui::SystemDefinition;
 
 use grafen::substrate;
-use grafen::system::{join_systems, Coord, Residue, System};
-use std::cmp;
-use std::error::Error;
+use grafen::system::{join_systems, System};
 use std::io;
 use std::io::Write;
 use std::process;
@@ -83,7 +78,7 @@ fn main() {
 
 /// Run the program with the set `Config`.
 fn run(config: &mut Config) -> Result<()> {
-    let system_defs = define::user_menu(&mut config.database)?;
+    let system_defs = ui::user_menu(&mut config.database)?;
     let system = construct_system(&system_defs)?;
     output::write_gromos(&system, &config.output_path, &config.title)
 }
@@ -91,7 +86,6 @@ fn run(config: &mut Config) -> Result<()> {
 /// After the systems have been defined we create them one by one and join them.
 fn construct_system(system_defs: &Vec<SystemDefinition>) -> Result<System> {
     let systems = system_defs.iter().map(|def| {
-        let (x, y) = def.size;
         substrate::create_substrate(&def.finalized)
             .map(|system| system.translate(&def.position))
             .map_err(|err| GrafenCliError::from(err))

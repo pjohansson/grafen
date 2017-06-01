@@ -1,14 +1,17 @@
 //! Collect definitions for `ResidueBase` and `SubstrateConf` objects
 //! into a `DataBase` which can be read from or saved to disk.
 
+use error::{GrafenCliError, Result};
+
 use grafen::substrate::{LatticeType, SubstrateConf};
 use grafen::system::ResidueBase;
 use serde_json;
-
 use std::io;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
 use std::fs::File;
+use std::result;
 
 #[derive(Deserialize, Serialize)]
 /// A collection of residues and substrate configurations
@@ -16,7 +19,7 @@ use std::fs::File;
 pub struct DataBase {
     #[serde(skip_serializing, skip_deserializing)]
     /// A path to the `DataBase` location on the hard drive.
-    pub filename: Option<PathBuf>,
+    pub path: Option<PathBuf>,
 
     #[serde(rename = "residue_definitions")]
     /// Definitions of `ResidueBase` objects.
@@ -31,9 +34,50 @@ impl DataBase {
     /// Construct an empty `DataBase`.
     pub fn new() -> DataBase {
         DataBase {
-            filename: None,
+            path: None,
             residue_defs: Vec::new(),
             substrate_defs: Vec::new(),
+        }
+    }
+
+    /// Print the `DataBase` content to stdout.
+    pub fn describe(&self) {
+        println!("Database path: {}", self.get_path_pretty());
+
+        println!("Substrate definitions:");
+        for (i, def) in self.substrate_defs.iter().enumerate() {
+            println!("{:4}. {}", i, def.name);
+        }
+
+        println!("Residue definitions:");
+        for (i, def) in self.residue_defs.iter().enumerate() {
+            println!("{:4}. {}", i, def.code);
+        }
+    }
+
+    /// Get the database path enclosed in single quotes if it exists,
+    /// otherwise the unenclosed string "None".
+    pub fn get_path_pretty(&self) -> String {
+        self.path.as_ref()
+            .map(|path| path.to_string_lossy().to_owned())
+            .map(|path| format!("'{}'", path))
+            .unwrap_or("None".to_string())
+    }
+
+    /// Set a new path for the `DataBase`. The input path is asserted to
+    /// be a non-empty file and the extension is set to 'json'.
+    pub fn set_path<'a, T>(&mut self, new_path: &'a T) -> Result<()>
+            where T: ?Sized + AsRef<OsStr> {
+        let mut path = PathBuf::from(new_path);
+
+        if path.file_stem().is_some() {
+            path.set_extension("json");
+            self.path = Some(path);
+            Ok(())
+        } else {
+            Err(GrafenCliError::IoError(
+                io::Error::new(io::ErrorKind::NotFound, "Input path is not a filename")
+            ))
         }
     }
 
@@ -42,32 +86,32 @@ impl DataBase {
     /// This and the `to_writer` method are defined to enable a unit
     /// test which ensures that the behaviour for reading and writing
     /// a `DataBase` is consistent.
-    fn from_reader<R: Read>(reader: R) -> Result<DataBase, io::Error> {
+    fn from_reader<R: Read>(reader: R) -> result::Result<DataBase, io::Error> {
         serde_json::from_reader(reader).map_err(|e| io::Error::from(e))
     }
 
     /// Write a `DataBase` as a JSON formatted object to an input writer.
-    fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+    fn to_writer<W: Write>(&self, writer: &mut W) -> result::Result<(), io::Error> {
         serde_json::to_writer_pretty(writer, self).map_err(|e| io::Error::from(e))
     }
 }
 
 /// Read a `DataBase` from a JSON formatted file.
-/// The owned filename is set to the input path.
-pub fn read_database<'a>(from_path: &'a str) -> Result<DataBase, io::Error> {
+/// The owned path is set to the input path.
+pub fn read_database<'a>(from_path: &'a str) -> result::Result<DataBase, io::Error> {
     let path = Path::new(from_path);
     let buffer = File::open(&path)?;
 
     let mut database = DataBase::from_reader(buffer)?;
-    database.filename = Some(PathBuf::from(&from_path));
+    database.path = Some(PathBuf::from(&from_path));
 
     Ok(database)
 }
 
 /// Write a `DataBase` as a JSON formatted file.
-/// The function writes to the filename owned by the object.
-pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
-    if let Some(ref path) = database.filename {
+/// The function writes to that owned by the object.
+pub fn write_database(database: &DataBase) -> result::Result<(), io::Error> {
+    if let Some(ref path) = database.path {
         let mut buffer = File::create(&path)?;
         database.to_writer(&mut buffer)?;
 
@@ -76,7 +120,7 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 
     Err(io::Error::new(
         io::ErrorKind::Other,
-        "No filename was set when trying to write the database to disk")
+        "No path was set when trying to write the database to disk")
     )
 }
 
@@ -198,7 +242,7 @@ mod tests {
         };
 
         let database = DataBase {
-            filename: Some(PathBuf::from("This/will/be/removed")),
+            path: Some(PathBuf::from("This/will/be/removed")),
             residue_defs: vec![base.clone()],
             substrate_defs: vec![conf.clone()],
         };
@@ -207,8 +251,32 @@ mod tests {
         database.to_writer(&mut serialized).unwrap();
         let deserialized = DataBase::from_reader(serialized.as_slice()).unwrap();
 
-        assert_eq!(None, deserialized.filename);
+        assert_eq!(None, deserialized.path);
         assert_eq!(database.residue_defs, deserialized.residue_defs);
         assert_eq!(database.substrate_defs, deserialized.substrate_defs);
+    }
+
+    #[test]
+    fn set_database_path() {
+        let mut database = DataBase::new();
+        assert!(database.set_path("test").is_ok());
+        assert_eq!("test.json", database.path.unwrap().to_str().unwrap());
+    }
+
+    #[test]
+    fn set_database_to_empty_path_is_error() {
+        let mut database = DataBase::new();
+        database.path = Some(PathBuf::from("unchanged.json"));
+        assert!(database.set_path("").is_err());
+        assert_eq!("unchanged.json", database.path.unwrap().to_str().unwrap());
+    }
+
+    #[test]
+    fn get_database_path() {
+        let mut database = DataBase::new();
+        assert_eq!("None", &database.get_path_pretty());
+
+        database.set_path("/a/file.json").unwrap();
+        assert_eq!("'/a/file.json'", &database.get_path_pretty());
     }
 }

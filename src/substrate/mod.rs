@@ -4,9 +4,8 @@
 //! Construct a triclinic lattice of hydrogen molecules.
 //!
 //! ```
-//! use grafen::substrate::{create_substrate, LatticeType, SubstrateConf};
-//! use grafen::system::{Atom, Coord, ResidueBase};
-//!
+//! # use grafen::substrate::{create_substrate, LatticeType, SubstrateConf};
+//! # use grafen::system::{Atom, Coord, ResidueBase};
 //! // Define the molecule as a Residue.
 //! let residue_base = ResidueBase {
 //!     code: "HMOL".to_string(),

@@ -7,6 +7,7 @@
 
 # Output files
 *.gro
+*.json
 
 # Git
 .git
