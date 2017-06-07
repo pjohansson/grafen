@@ -109,6 +109,7 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<Component> {
     };
 
     Ok(Component {
+        origin: Coord::new(0.0, 0.0, 0.0),
         dimensions: points.box_size,
         residues: points.broadcast_residue(&conf.residue),
     })

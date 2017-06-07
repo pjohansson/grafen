@@ -14,6 +14,8 @@
 /// A system component which consists of a list of residues,
 /// each of which contains some atoms.
 pub struct Component<'a> {
+    /// Component origin position.
+    pub origin: Coord,
     /// Component dimensions.
     pub dimensions: Coord,
     /// List of residues.
@@ -29,6 +31,7 @@ impl<'a> Component<'a> {
     /// Translate all residues within the component and return a copy.
     pub fn translate(&self, add: &Coord) -> Component<'a> {
         Component {
+            origin: self.origin + *add,
             dimensions: self.dimensions,
             residues: self.residues.iter().map(|r| r.translate(*add)).collect(),
         }
@@ -40,7 +43,7 @@ impl<'a> Component<'a> {
 /// added in order to the list.
 pub fn join_components<'a>(components: Vec<Component<'a>>) -> Component<'a> {
     components.into_iter()
-        .fold(Component { dimensions: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
+        .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), dimensions: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
             |acc, comp| {
                 let (x0, y0, z0) = acc.dimensions.to_tuple();
                 let (x1, y1, z1) = comp.dimensions.to_tuple();
@@ -52,7 +55,7 @@ pub fn join_components<'a>(components: Vec<Component<'a>>) -> Component<'a> {
                     residues.push(residue);
                 }
 
-                Component { dimensions, residues }
+                Component { origin: Coord::new(0.0, 0.0, 0.0), dimensions, residues }
             }
         )
 }
@@ -225,6 +228,9 @@ impl PartialEq for Coord {
 mod tests {
     use super::*;
 
+    #[allow(non_upper_case_globals)]
+    const origin: Coord = Coord { x: 0.0, y: 0.0, z: 0.0 };
+
     #[test]
     fn coord_addition_and_subtraction() {
         let coord = Coord::new(0.0, 1.0, 2.0);
@@ -296,6 +302,7 @@ mod tests {
         };
 
         Component {
+            origin: Coord::new(0.0, 0.0, 0.0),
             dimensions: Coord::new(0.0, 0.0, 0.0),
             residues: vec![
                 residue_one,
@@ -321,6 +328,7 @@ mod tests {
         for (orig, updated) in component.residues.iter().zip(trans_component.residues.iter()) {
             assert_eq!(orig.position + shift, updated.position);
         }
+        assert_eq!(shift, trans_component.origin);
     }
 
     #[test]
@@ -361,9 +369,9 @@ mod tests {
     #[test]
     fn joined_system_dimensions() {
         let components = vec![
-            Component { dimensions: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
-            Component { dimensions: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
-            Component { dimensions: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
+            Component { origin, dimensions: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
+            Component { origin, dimensions: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
+            Component { origin, dimensions: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
         ];
 
         let system = join_components(components);
@@ -376,6 +384,7 @@ mod tests {
 
         let components = vec![
             Component {
+                origin,
                 dimensions: Coord::new(1.0, 0.0, 0.0),
                 residues: vec![
                     Residue {
@@ -393,6 +402,7 @@ mod tests {
                 ]
             },
             Component {
+                origin,
                 dimensions: Coord::new(0.0, 0.0, 0.0),
                 residues: vec![
                     Residue {
