@@ -1,8 +1,9 @@
-//! Contains the basic structures of an atomic `System`.
+//! Contains the basic structures of an atomic system.
 //!
-//! A final `System` consists of a set of `Residue`s, which
+//! A final system consists of a set of `Component`s. Each `Component`
+//! in turn consists of a collection of `Residue`s, which
 //! can be moved around and translated with ease. Each `Residue`
-//! in turn consists of some `Atom`s. These atoms have positions
+//! consists of some `Atom`s. These atoms have positions
 //! relative to their parent.
 //!
 //! This somewhat convoluted structure is inherited from molecular
@@ -10,48 +11,48 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
-/// A finalized atomic system which consists of a list of residues,
+/// A system component which consists of a list of residues,
 /// each of which contains some atoms.
-pub struct System<'a> {
-    /// System dimensions.
+pub struct Component<'a> {
+    /// Component dimensions.
     pub dimensions: Coord,
     /// List of residues.
     pub residues: Vec<Residue<'a>>,
 }
 
-impl<'a> System<'a> {
-    /// Count and return the number of atoms in the system.
+impl<'a> Component<'a> {
+    /// Count and return the number of atoms in the component.
     pub fn num_atoms(&self) -> usize {
         self.residues.iter().map(|r| r.base.atoms.len()).sum()
     }
 
-    /// Translate all residues within the system and return a copy.
-    pub fn translate(&self, add: &Coord) -> System<'a> {
-        System {
+    /// Translate all residues within the component and return a copy.
+    pub fn translate(&self, add: &Coord) -> Component<'a> {
+        Component {
             dimensions: self.dimensions,
             residues: self.residues.iter().map(|r| r.translate(*add)).collect(),
         }
     }
 }
 
-/// Join a list of `System`s into a single `System`. The output `System` dimensions
-/// is the maximum for all individual `System`s along all axes. `Residue`s are
+/// Join a list of `Component`s into a single `Component`. The output `Component` dimensions
+/// is the maximum for all individual `Component`s along all axes. `Residue`s are
 /// added in order to the list.
-pub fn join_systems<'a>(systems: Vec<System<'a>>) -> System<'a> {
-    systems.into_iter()
-        .fold(System { dimensions: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
-            |acc, system| {
+pub fn join_components<'a>(components: Vec<Component<'a>>) -> Component<'a> {
+    components.into_iter()
+        .fold(Component { dimensions: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
+            |acc, comp| {
                 let (x0, y0, z0) = acc.dimensions.to_tuple();
-                let (x1, y1, z1) = system.dimensions.to_tuple();
+                let (x1, y1, z1) = comp.dimensions.to_tuple();
 
                 let dimensions = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
 
                 let mut residues = acc.residues;
-                for residue in system.residues {
+                for residue in comp.residues {
                     residues.push(residue);
                 }
 
-                System { dimensions, residues }
+                Component { dimensions, residues }
             }
         )
 }
@@ -60,7 +61,7 @@ pub fn join_systems<'a>(systems: Vec<System<'a>>) -> System<'a> {
 pub struct Residue<'a> {
     /// Residue base.
     pub base: &'a ResidueBase,
-    /// Position of residue in system.
+    /// Absolute position of residue in system.
     pub position: Coord,
 }
 
@@ -283,8 +284,8 @@ mod tests {
         (residue_one, residue_two)
     }
 
-    // A simple system with two different residues and five atoms
-    fn setup_system<'a>(base_one: &'a ResidueBase, base_two: &'a ResidueBase) -> System<'a> {
+    // A simple component with two different residues and five atoms
+    fn setup_component<'a>(base_one: &'a ResidueBase, base_two: &'a ResidueBase) -> Component<'a> {
         let residue_one = Residue {
             base: &base_one,
             position: Coord::new(0.0, 0.0, 0.0),
@@ -294,7 +295,7 @@ mod tests {
             position: Coord::new(1.0, 1.0, 1.0),
         };
 
-        System {
+        Component {
             dimensions: Coord::new(0.0, 0.0, 0.0),
             residues: vec![
                 residue_one,
@@ -304,21 +305,21 @@ mod tests {
     }
 
     #[test]
-    fn count_atoms_in_system() {
+    fn count_atoms_in_component() {
         let (res_one, res_two) = setup_residues();
-        let system = setup_system(&res_one, &res_two);
-        assert_eq!(5, system.num_atoms());
+        let component = setup_component(&res_one, &res_two);
+        assert_eq!(5, component.num_atoms());
     }
 
     #[test]
-    fn translate_a_system() {
+    fn translate_a_component() {
         let (res_one, res_two) = setup_residues();
-        let system = setup_system(&res_one, &res_two);
-        let translate = Coord::new(0.0, 1.0, 2.0);
+        let component = setup_component(&res_one, &res_two);
+        let shift = Coord::new(0.0, 1.0, 2.0);
 
-        let translated_system = system.translate(&translate);
-        for (orig, updated) in system.residues.iter().zip(translated_system.residues.iter()) {
-            assert_eq!(orig.position + translate, updated.position);
+        let trans_component = component.translate(&shift);
+        for (orig, updated) in component.residues.iter().zip(trans_component.residues.iter()) {
+            assert_eq!(orig.position + shift, updated.position);
         }
     }
 
@@ -359,22 +360,22 @@ mod tests {
 
     #[test]
     fn joined_system_dimensions() {
-        let systems = vec![
-            System { dimensions: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
-            System { dimensions: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
-            System { dimensions: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
+        let components = vec![
+            Component { dimensions: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
+            Component { dimensions: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
+            Component { dimensions: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
         ];
 
-        let joined_system = join_systems(systems);
-        assert_eq!(Coord::new(3.0, 2.0, 4.0), joined_system.dimensions);
+        let system = join_components(components);
+        assert_eq!(Coord::new(3.0, 2.0, 4.0), system.dimensions);
     }
 
     #[test]
     fn joined_system_residues() {
         let (res_one, res_two) = setup_residues();
 
-        let systems = vec![
-            System {
+        let components = vec![
+            Component {
                 dimensions: Coord::new(1.0, 0.0, 0.0),
                 residues: vec![
                     Residue {
@@ -391,7 +392,7 @@ mod tests {
                     }
                 ]
             },
-            System {
+            Component {
                 dimensions: Coord::new(0.0, 0.0, 0.0),
                 residues: vec![
                     Residue {
@@ -406,12 +407,12 @@ mod tests {
             }
         ];
 
-        let joined_system = join_systems(systems);
-        assert_eq!(5, joined_system.residues.len());
+        let system = join_components(components);
+        assert_eq!(5, system.residues.len());
 
-        // The systems should be flattened in the correct order from above,
+        // The components should be flattened in the correct order from above,
         // check both ResidueBase and Coord.
-        let mut iter = joined_system.residues.iter();
+        let mut iter = system.residues.iter();
         assert_eq!(&res_one, iter.next().unwrap().base);
         assert_eq!(&res_one, iter.next().unwrap().base);
         assert_eq!(&res_one, iter.next().unwrap().base);
@@ -419,13 +420,12 @@ mod tests {
         assert_eq!(&res_two, iter.next().unwrap().base);
         assert!(iter.next().is_none());
 
-        let mut iter = joined_system.residues.iter();
+        let mut iter = system.residues.iter();
         assert_eq!(Coord::new(1.0, 0.0, 0.0), iter.next().unwrap().position);
         assert_eq!(Coord::new(2.0, 0.0, 0.0), iter.next().unwrap().position);
         assert_eq!(Coord::new(3.0, 0.0, 0.0), iter.next().unwrap().position);
         assert_eq!(Coord::new(0.0, 1.0, 0.0), iter.next().unwrap().position);
         assert_eq!(Coord::new(0.0, 2.0, 0.0), iter.next().unwrap().position);
         assert!(iter.next().is_none());
-
     }
 }

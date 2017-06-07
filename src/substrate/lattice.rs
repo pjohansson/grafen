@@ -34,7 +34,7 @@ pub struct LatticeBuilder {
 impl LatticeBuilder {
     /// Set the desired size of the Lattice. The final size is adjusted
     /// along both directions to the closest multiple of the calculated
-    /// crystal spacing. As such the system is prepared to be periodically
+    /// crystal spacing. As such the component is prepared to be periodically
     /// replicated.
     pub fn with_size(self, size_x: f64, size_y: f64) -> LatticeBuilder {
         let Spacing(dx, dy, _) = self.crystal.spacing();
@@ -98,7 +98,7 @@ impl LatticeBuilder {
     /// Every third grid point is the middle point of a cell and removed.
     /// This cell is shifted by one step in every row.
     ///
-    /// To ensure that the system is perfectly periodic the number of column
+    /// To ensure that the component is perfectly periodic the number of column
     /// and rows are set to the closest multiple of 3 and 2 respectively,
     /// rounding up.
     fn hexagonal(&mut self) -> Vec<Coord> {
@@ -254,7 +254,7 @@ mod tests {
         // which removes every third point. We require that the final
         // nx is evenly divided by 3 and ny by 2.
 
-        // The final shape of this system should be (6, 2).
+        // The final shape of this component should be (6, 2).
         let lattice = Lattice::hexagonal(1.0).with_bins(4, 1).finalize();
         let expected = Lattice::hexagonal(1.0).with_bins(6, 2).finalize();
 

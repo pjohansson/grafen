@@ -1,7 +1,7 @@
 //! Write systems to disk.
 
 use error::Result;
-use grafen::system::System;
+use grafen::system::Component;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -12,7 +12,7 @@ use std::path::Path;
 ///
 /// # Errors
 /// Returns an error if the file could not be written to.
-pub fn write_gromos(system: &System, output_file: &Path, title: &str) -> Result<()> {
+pub fn write_gromos(system: &Component, output_file: &Path, title: &str) -> Result<()> {
     let path = output_file.with_extension("gro");
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);

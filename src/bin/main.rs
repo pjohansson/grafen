@@ -19,7 +19,7 @@ use error::{GrafenCliError, Result};
 use ui::SystemDefinition;
 
 use grafen::substrate;
-use grafen::system::{join_systems, System};
+use grafen::system::{join_components, Component};
 use std::io;
 use std::io::Write;
 use std::process;
@@ -83,13 +83,13 @@ fn run(config: &mut Config) -> Result<()> {
 }
 
 /// After the systems have been defined we create them one by one and join them.
-fn construct_system(system_defs: &Vec<SystemDefinition>) -> Result<System> {
-    let systems = system_defs.iter().map(|def| {
+fn construct_system(system_defs: &Vec<SystemDefinition>) -> Result<Component> {
+    let components = system_defs.iter().map(|def| {
         substrate::create_substrate(&def.finalized)
-            .map(|system| system.translate(&def.position))
+            .map(|comp| comp.translate(&def.position))
             .map_err(|err| GrafenCliError::from(err))
     })
-    .collect::<result::Result<Vec<System>, GrafenCliError>>()?;
+    .collect::<result::Result<Vec<Component>, GrafenCliError>>()?;
 
-    Ok(join_systems(systems))
+    Ok(join_components(components))
 }

@@ -72,15 +72,15 @@ pub enum LatticeType {
     PoissonDisc { density: f64 },
 }
 
-/// Create a substrate of input configuration and return as a `System`.
+/// Create a substrate of input configuration and return as a `Component`.
 ///
-/// The returned system's size will be adjusted to a multiple of the
-/// substrate spacing along both directions. Thus the system can be
+/// The returned component's size will be adjusted to a multiple of the
+/// substrate spacing along both directions. Thus the substrate can be
 /// periodically replicated along x and y.
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(conf: &SubstrateConf) -> Result<System> {
+pub fn create_substrate(conf: &SubstrateConf) -> Result<Component> {
     let (dx, dy) = conf.size;
     if dx <= 0.0 || dy <= 0.0 {
         return Err(
@@ -108,7 +108,7 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<System> {
         points = points.uniform_distribution(std);
     };
 
-    Ok(System {
+    Ok(Component {
         dimensions: points.box_size,
         residues: points.broadcast_residue(&conf.residue),
     })
