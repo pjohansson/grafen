@@ -4,6 +4,7 @@ extern crate rand;
 #[macro_use]
 extern crate serde_derive;
 
+pub mod cylinder;
 pub mod error;
 pub mod substrate;
 pub mod system;
