@@ -2,7 +2,7 @@
 extern crate grafen;
 
 use grafen::system::{Atom, Coord, ResidueBase};
-use grafen::substrate::{LatticeType, SubstrateConf};
+use grafen::substrate::{LatticeType, SheetConf};
 
 #[test]
 fn define_and_create_a_substrate() {
@@ -23,7 +23,7 @@ fn define_and_create_a_substrate() {
     // means that we should expect a 2-by-2 lattice point system to be
     // returned: The size is rounded to the closest multiple and PBC's
     // are taken into account.
-    let conf = SubstrateConf {
+    let conf = SheetConf {
         lattice: LatticeType::Triclinic { a: 1.0, b: 0.5, gamma: 90.0 },
         residue: residue,
         size: (2.1, 0.9),

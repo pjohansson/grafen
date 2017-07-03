@@ -281,9 +281,9 @@ mod define_residue {
 }
 
 mod define_substrate {
-    //! Define a new `SubstrateConfEntry`.
+    //! Define a new `SheetConfEntry`.
 
-    use database::SubstrateConfEntry;
+    use database::SheetConfEntry;
     use error::{GrafenCliError, Result};
     use ui::utils;
 
@@ -300,7 +300,7 @@ mod define_substrate {
         PoissonDisc,
     }
 
-    pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<SubstrateConfEntry> {
+    pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<SheetConfEntry> {
         let name = utils::get_input_string("Substrate name")
             .and_then(|string| {
                 if string.is_empty() {
@@ -321,7 +321,7 @@ mod define_substrate {
         let std_z = select_deviation_along_z()?;
         println!("");
 
-        Ok(SubstrateConfEntry { name, lattice, residue, std_z })
+        Ok(SheetConfEntry { name, lattice, residue, std_z })
     }
 
     fn select_residue(residue_list: &Vec<ResidueBase>) -> Result<ResidueBase> {

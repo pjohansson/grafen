@@ -4,7 +4,7 @@
 //! Construct a triclinic lattice of hydrogen molecules.
 //!
 //! ```
-//! # use grafen::substrate::{create_substrate, LatticeType, SubstrateConf};
+//! # use grafen::substrate::{create_substrate, LatticeType, SheetConf};
 //! # use grafen::system::{Atom, Coord, ResidueBase};
 //! // Define the molecule as a Residue.
 //! let residue_base = ResidueBase {
@@ -16,7 +16,7 @@
 //! };
 //!
 //! // Define the substrate
-//! let conf = SubstrateConf {
+//! let conf = SheetConf {
 //!     lattice: LatticeType::Triclinic { a: 1.0, b: 0.5, gamma: 60.0 },
 //!     residue: residue_base,
 //!     size: (5.0, 10.0),
@@ -38,7 +38,7 @@ use system::*;
 
 #[derive(Debug, PartialEq)]
 /// Configuration for constructing a substrate.
-pub struct SubstrateConf {
+pub struct SheetConf {
     /// The type of lattice which will be generated.
     pub lattice: LatticeType,
     /// Base residue to generate coordinates for.
@@ -96,7 +96,7 @@ impl<'a> IntoComponent<'a> for Sheet<'a> {
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(conf: &SubstrateConf) -> Result<Sheet> {
+pub fn create_substrate(conf: &SheetConf) -> Result<Sheet> {
     let (dx, dy) = conf.size;
     if dx <= 0.0 || dy <= 0.0 {
         return Err(
@@ -135,8 +135,8 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<Sheet> {
 mod tests {
     use super::*;
 
-    fn setup_conf() -> SubstrateConf {
-        SubstrateConf {
+    fn setup_conf() -> SheetConf {
+        SheetConf {
             lattice: LatticeType::Hexagonal { a: 1.0 },
             residue: ResidueBase {
                 code: "GRPH".to_string(),

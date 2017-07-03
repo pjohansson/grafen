@@ -1,9 +1,9 @@
-//! Collect definitions for `ResidueBase` and `SubstrateConf` objects
+//! Collect definitions for `ResidueBase` and `SheetConf` objects
 //! into a `DataBase` which can be read from or saved to disk.
 
 use error::{GrafenCliError, Result};
 
-use grafen::substrate::{LatticeType, SubstrateConf};
+use grafen::substrate::{LatticeType, SheetConf};
 use grafen::system::ResidueBase;
 use serde_json;
 use std::io;
@@ -26,8 +26,8 @@ pub struct DataBase {
     pub residue_defs: Vec<ResidueBase>,
 
     #[serde(rename = "substrate_definitions")]
-    /// Definitions of `SubstrateConf` objects without their size.
-    pub substrate_defs: Vec<SubstrateConfEntry>,
+    /// Definitions of `SheetConf` objects without their size.
+    pub substrate_defs: Vec<SheetConfEntry>,
 }
 
 impl DataBase {
@@ -125,11 +125,11 @@ pub fn write_database(database: &DataBase) -> result::Result<(), io::Error> {
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-/// A definition (catalog entry) for a `SubstrateConf`.
+/// A definition (catalog entry) for a `SheetConf`.
 ///
-/// See `SubstrateConf` for more information. The final configuration
+/// See `SheetConf` for more information. The final configuration
 /// requires a size, which is not kept in the definition.
-pub struct SubstrateConfEntry {
+pub struct SheetConfEntry {
     /// Definition name.
     pub name: String,
     /// Lattice constructor.
@@ -140,10 +140,10 @@ pub struct SubstrateConfEntry {
     pub std_z: Option<f64>,
 }
 
-impl SubstrateConfEntry {
-    /// Supply a size to construct a `SubstrateConf` definition.
-    pub fn to_conf(&self, size_x: f64, size_y: f64) -> SubstrateConf {
-        SubstrateConf {
+impl SheetConfEntry {
+    /// Supply a size to construct a `SheetConf` definition.
+    pub fn to_conf(&self, size_x: f64, size_y: f64) -> SheetConf {
+        SheetConf {
             lattice: self.lattice.clone(),
             residue: self.residue.clone(),
             size: (size_x, size_y),
@@ -167,7 +167,7 @@ mod tests {
         };
         let (size_x, size_y) = (2.0, 3.0);
 
-        let conf = SubstrateConfEntry {
+        let conf = SheetConfEntry {
                     name: "".to_string(),
                     lattice: LatticeType::Hexagonal { a: 1.0 },
                     residue: base.clone(),
@@ -206,7 +206,7 @@ mod tests {
             ]
         };
 
-        let mut conf = SubstrateConfEntry {
+        let mut conf = SheetConfEntry {
             name: "Test".to_string(),
             lattice: LatticeType::PoissonDisc { density: 1.0 },
             residue: base,
@@ -214,13 +214,13 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&conf).unwrap();
-        let deserialized: SubstrateConfEntry = serde_json::from_str(&serialized).unwrap();
+        let deserialized: SheetConfEntry = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(conf, deserialized);
 
         conf.std_z = Some(1.0);
         let serialized = serde_json::to_string(&conf).unwrap();
-        let deserialized: SubstrateConfEntry = serde_json::from_str(&serialized).unwrap();
+        let deserialized: SheetConfEntry = serde_json::from_str(&serialized).unwrap();
         assert_eq!(conf, deserialized);
     }
 
@@ -234,7 +234,7 @@ mod tests {
             ]
         };
 
-        let conf = SubstrateConfEntry {
+        let conf = SheetConfEntry {
             name: "Test".to_string(),
             lattice: LatticeType::PoissonDisc { density: 1.0 },
             residue: base.clone(),

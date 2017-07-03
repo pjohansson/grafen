@@ -4,27 +4,27 @@
 //!
 //! This is implemented as a *very* basic text interface. This could be improved
 //! greatly by knowing more about human interface design. In particular the systems
-//! for creating `SubstrateConfEntry` and `SystemDefinition` are in need of improvement.
+//! for creating `SheetConfEntry` and `SystemDefinition` are in need of improvement.
 
 mod edit_database;
 mod define_system;
 mod utils;
 
-use database::{DataBase, SubstrateConfEntry};
+use database::{DataBase, SheetConfEntry};
 use error::{GrafenCliError, Result};
 use ui::utils::{CommandList, CommandParser};
 
-use grafen::substrate::SubstrateConf;
+use grafen::substrate::SheetConf;
 use grafen::system::Coord;
 use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 /// One system is defined by these attributes.
 pub struct SystemDefinition {
-    pub config: SubstrateConfEntry,
+    pub config: SheetConfEntry,
     pub position: Coord,
     pub size: (f64, f64),
-    pub finalized: SubstrateConf,
+    pub finalized: SheetConf,
 }
 
 #[derive(Clone, Copy, Debug)]

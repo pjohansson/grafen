@@ -2,7 +2,7 @@
 //!
 //! This interface could use a lot of improvement.
 
-use database::{DataBase, SubstrateConfEntry};
+use database::{DataBase, SheetConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::SystemDefinition;
 use ui::utils;
@@ -23,7 +23,7 @@ pub fn user_menu(database: &DataBase) -> Result<SystemDefinition> {
     })
 }
 
-fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SubstrateConfEntry> {
+fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SheetConfEntry> {
     println!("Available substrates:");
     for (i, sub) in database.substrate_defs.iter().enumerate() {
         println!("{}. {}", i, sub.name);
