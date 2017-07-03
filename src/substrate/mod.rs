@@ -72,6 +72,22 @@ pub enum LatticeType {
     PoissonDisc { density: f64 },
 }
 
+pub struct Sheet<'a> {
+    pub origin: Coord,
+    pub size: Coord,
+    pub residues: Vec<Residue<'a>>,
+}
+
+impl<'a> IntoComponent<'a> for Sheet<'a> {
+    fn into_component(self) -> Component<'a> {
+        Component {
+            origin: self.origin,
+            dimensions: self.size,
+            residues: self.residues,
+        }
+    }
+}
+
 /// Create a substrate of input configuration and return as a `Component`.
 ///
 /// The returned component's size will be adjusted to a multiple of the
@@ -80,7 +96,7 @@ pub enum LatticeType {
 ///
 /// # Errors
 /// Returns an Error if the either of the input size are non-positive.
-pub fn create_substrate(conf: &SubstrateConf) -> Result<Component> {
+pub fn create_substrate(conf: &SubstrateConf) -> Result<Sheet> {
     let (dx, dy) = conf.size;
     if dx <= 0.0 || dy <= 0.0 {
         return Err(
@@ -108,9 +124,9 @@ pub fn create_substrate(conf: &SubstrateConf) -> Result<Component> {
         points = points.uniform_distribution(std);
     };
 
-    Ok(Component {
+    Ok(Sheet {
         origin: Coord::new(0.0, 0.0, 0.0),
-        dimensions: points.box_size,
+        size: points.box_size,
         residues: points.broadcast_residue(&conf.residue),
     })
 }
@@ -162,5 +178,19 @@ mod tests {
 
         // No positions should exceed the input distribution max
         assert!(uniform.residues.iter().all(|r| r.position.z.abs() <= std_z));
+    }
+
+    #[test]
+    fn sheet_into_component() {
+        let origin = Coord::new(0.0, 0.0, 0.0);
+        let size = Coord::new(1.0, 2.0, 3.0);
+        let residues = vec![];
+
+        let sheet = Sheet { origin, size, residues };
+        let component = sheet.into_component();
+
+        assert_eq!(origin, component.origin);
+        assert_eq!(size, component.dimensions);
+        assert!(component.residues.is_empty());
     }
 }

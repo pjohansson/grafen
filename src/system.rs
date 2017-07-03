@@ -38,6 +38,10 @@ impl<'a> Component<'a> {
     }
 }
 
+pub trait IntoComponent<'a> {
+    fn into_component(self) -> Component<'a>;
+}
+
 /// Join a list of `Component`s into a single `Component`. The output `Component` dimensions
 /// is the maximum for all individual `Component`s along all axes. `Residue`s are
 /// added in order to the list.

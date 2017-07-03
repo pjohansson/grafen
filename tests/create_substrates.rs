@@ -32,7 +32,7 @@ fn define_and_create_a_substrate() {
 
     let substrate = grafen::substrate::create_substrate(&conf).unwrap();
 
-    assert_eq!(Coord::new(2.0, 1.0, 0.0), substrate.dimensions);
+    assert_eq!(Coord::new(2.0, 1.0, 0.0), substrate.size);
 
     // We should get the correct residue base positions
     let residues = substrate.residues;
