@@ -29,6 +29,7 @@ impl<'a> Component<'a> {
     }
 
     /// Translate all residues within the component and return a copy.
+    /// TODO: Use relative coordinates.
     pub fn translate(&self, add: &Coord) -> Component<'a> {
         Component {
             origin: self.origin + *add,
@@ -38,8 +39,19 @@ impl<'a> Component<'a> {
     }
 }
 
+/// Components (eg. `Sheet`, `Cylinder`) use this trait to define
+/// common behaviour and conversion into a proper `Component` object.
 pub trait IntoComponent<'a> {
+    /// Transform the sub-component into a `Component`.
     fn into_component(self) -> Component<'a>;
+
+    /// Return the number of atoms of component.
+    fn num_atoms(&self) -> usize;
+}
+
+/// Trait denoting the ability to `Translate` an object with a `Coord`.
+pub trait Translate {
+    fn translate(self, &Coord) -> Self;
 }
 
 /// Join a list of `Component`s into a single `Component`. The output `Component` dimensions

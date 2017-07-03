@@ -72,9 +72,13 @@ pub enum LatticeType {
     PoissonDisc { density: f64 },
 }
 
+/// A `Sheet` of `Residue`s in some points.
 pub struct Sheet<'a> {
+    /// Sheet origin position. Residue coordinates are relative to this.
     pub origin: Coord,
+    /// Sheet size.
     pub size: Coord,
+    /// `Residue`s belonging to the sheet.
     pub residues: Vec<Residue<'a>>,
 }
 
@@ -83,6 +87,20 @@ impl<'a> IntoComponent<'a> for Sheet<'a> {
         Component {
             origin: self.origin,
             dimensions: self.size,
+            residues: self.residues,
+        }
+    }
+
+    fn num_atoms(&self) -> usize {
+        self.residues.iter().map(|r| r.base.atoms.len()).sum()
+    }
+}
+
+impl<'a> Translate for Sheet<'a> {
+    fn translate(self, trans: &Coord) -> Sheet<'a> {
+        Sheet {
+            origin: self.origin + *trans,
+            size: self.size,
             residues: self.residues,
         }
     }
@@ -192,5 +210,27 @@ mod tests {
         assert_eq!(origin, component.origin);
         assert_eq!(size, component.dimensions);
         assert!(component.residues.is_empty());
+    }
+
+    #[test]
+    fn translate_a_sheet() {
+        let base = ResidueBase {
+            code: "GRPH".to_string(),
+            atoms: vec![Atom {
+                code: "C".to_string(),
+                position: Coord::new(0.0, 0.0, 0.0) }],
+        };
+        let origin = Coord::new(-1.0, 0.0, 1.0);
+        let size = Coord::new(1.0, 2.0, 1.0);
+        let residues = vec![base.to_residue(&Coord::new(0.0, 0.0, 0.0))];
+
+        let translate = Coord::new(1.0, 2.0, 3.0);
+
+        let sheet = Sheet { origin, size, residues }
+            .translate(&Coord::new(1.0, 2.0, 3.0));
+
+        assert_eq!(size, sheet.size);
+        assert_eq!(origin + translate, sheet.origin);
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), sheet.residues[0].position);
     }
 }

@@ -1,42 +1,84 @@
-//! Create a cylinder from a sheet.
+//! A cylinder structure.
 
-use system::*;
+use substrate::Sheet;
+use system::{Coord, Component, IntoComponent, Residue, Translate};
 
-struct Cylinder;
+/// A `Cylinder` of some `Residue`s.
+struct Cylinder<'a> {
+    /// `Cylinder` origin, positioned in the middle point of one of the cylinder edges.
+    /// `Residue` positions are relative to this.
+    origin: Coord,
+    /// Cylinder radius.
+    radius: f64,
+    /// Cylinder height.
+    height: f64,
+    /// `Residue`s belonging to the `Cylinder`.
+    residues: Vec<Residue<'a>>,
+}
 
-impl Cylinder {
-    pub fn from_sheet<'a>(sheet: &'a Component) -> Component<'a> {
-        let length = sheet.dimensions.x;
+impl<'a> Cylinder<'a> {
+    /// Fold a `Sheet` into a `Cylinder`.
+    ///
+    /// The `Sheet` is folded along the x axis using its `size` as the full length.
+    /// Its length along y becomes the cylinder height and its radius calculated from
+    /// the length along x.
+    ///
+    /// # Bugs:
+    /// It is assumed that the `Sheet` consists of a single layer only. All information
+    /// of positions along z is discarded to create the cylinder. It would be preferable
+    /// for this to be accounted for in some way, but it would require knowledge of the
+    /// number of layers.
+    pub fn from_sheet(sheet: &'a Sheet) -> Cylinder<'a> {
+        let (length, height, _) = sheet.size.to_tuple();
+
         let radius = length / (2.0 * ::std::f64::consts::PI);
         let origin = sheet.origin;
-        let (x0, _, z0) = origin.to_tuple();
 
         let residues = sheet.residues
             .iter()
             .map(|res| {
                 let (x, y, _) = res.position.to_tuple();
-                let angle = ((x - x0) * 360.0 / length).to_radians();
+                let angle = (x * 360.0 / length).to_radians();
 
                 let x = radius * angle.sin();
                 let z = -radius * angle.cos();
 
                 Residue {
                     base: res.base,
-                    position: Coord::new(x + x0, y, z + z0),
+                    position: Coord::new(x, y, z),
                 }
             }).collect();
 
+        Cylinder { origin, radius, height, residues }
+    }
+}
+
+impl<'a> IntoComponent<'a> for Cylinder<'a> {
+    fn into_component(self) -> Component<'a> {
         Component {
-            origin: origin,
-            dimensions: sheet.dimensions,
-            residues: residues,
+            origin: self.origin,
+            dimensions: Coord::new(0.0, 0.0, 0.0),
+            residues: self.residues,
         }
+    }
+
+    fn num_atoms(&self) -> usize {
+        self.residues.iter().map(|r| r.base.atoms.len()).sum()
+    }
+}
+
+impl<'a> Translate for Cylinder<'a> {
+    fn translate(mut self, trans: &Coord) -> Self {
+        self.origin = self.origin + *trans;
+        self
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::f64::consts::PI;
+    use substrate::Sheet;
+    use system::*;
     use super::*;
 
     fn setup_residue() -> ResidueBase {
@@ -48,13 +90,13 @@ mod tests {
         }
     }
 
-    fn setup_sheet<'a>(residue: &'a ResidueBase) -> Component<'a> {
+    fn setup_sheet<'a>(residue: &'a ResidueBase) -> Sheet<'a> {
         // A sheet with four positions along x will result in a cylinder in the x-z plane
         // with points at 0, 90, 180 and 270 degrees and its center at the first position.
         // Positions along y will be unchanged.
-        Component {
+        Sheet {
             origin: Coord::new(0.0, 0.0, 0.0),
-            dimensions: Coord::new(4.0, 0.0, 0.0),
+            size: Coord::new(4.0, 1.0, 0.0),
             residues: vec![
                 Residue { base: &residue, position: Coord::new(0.0, 0.0, 0.0) },
                 Residue { base: &residue, position: Coord::new(1.0, 0.5, 0.0) },
@@ -74,6 +116,9 @@ mod tests {
         assert_eq!(cylinder.origin, sheet.origin);
 
         let radius = 4.0 / (2.0 * PI);
+        assert_eq!(radius, cylinder.radius);
+        assert_eq!(1.0, cylinder.height); // The size along y
+
         assert_eq!(Coord::new(0.0, 0.0, -radius), cylinder.residues[0].position);
         assert_eq!(Coord::new(radius, 0.5, 0.0), cylinder.residues[1].position);
         assert_eq!(Coord::new(0.0, 1.0, radius), cylinder.residues[2].position);
@@ -90,17 +135,17 @@ mod tests {
         assert_eq!(cylinder.origin, sheet.origin);
 
         let radius = 4.0 / (2.0 * PI);
-        assert_eq!(Coord::new(0.0, 0.0, -radius) + shift, cylinder.residues[0].position);
-        assert_eq!(Coord::new(radius, 0.5, 0.0) + shift, cylinder.residues[1].position);
-        assert_eq!(Coord::new(0.0, 1.0, radius) + shift, cylinder.residues[2].position);
-        assert_eq!(Coord::new(-radius, 1.5, 0.0) + shift, cylinder.residues[3].position);
+        assert_eq!(Coord::new(0.0, 0.0, -radius), cylinder.residues[0].position);
+        assert_eq!(Coord::new(radius, 0.5, 0.0), cylinder.residues[1].position);
+        assert_eq!(Coord::new(0.0, 1.0, radius), cylinder.residues[2].position);
+        assert_eq!(Coord::new(-radius, 1.5, 0.0), cylinder.residues[3].position);
     }
 
     #[test]
     fn cylinder_from_empty_sheet_works() {
-        let sheet = Component {
+        let sheet = Sheet {
             origin: Coord::new(0.0, 0.0, 0.0),
-            dimensions: Coord::new(1.0, 2.0, 3.0),
+            size: Coord::new(1.0, 2.0, 3.0),
             residues: vec![],
         };
 
