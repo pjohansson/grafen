@@ -16,8 +16,8 @@
 pub struct Component<'a> {
     /// Component origin position.
     pub origin: Coord,
-    /// Component dimensions.
-    pub dimensions: Coord,
+    /// Component boundary box size.
+    pub box_size: Coord,
     /// List of residues.
     pub residues: Vec<Residue<'a>>,
 }
@@ -33,7 +33,7 @@ impl<'a> Component<'a> {
     pub fn translate(&self, add: &Coord) -> Component<'a> {
         Component {
             origin: self.origin + *add,
-            dimensions: self.dimensions,
+            box_size: self.box_size,
             residues: self.residues.iter().map(|r| r.translate(*add)).collect(),
         }
     }
@@ -54,24 +54,24 @@ pub trait Translate {
     fn translate(self, &Coord) -> Self;
 }
 
-/// Join a list of `Component`s into a single `Component`. The output `Component` dimensions
+/// Join a list of `Component`s into a single `Component`. The output `Component` box
 /// is the maximum for all individual `Component`s along all axes. `Residue`s are
 /// added in order to the list.
 pub fn join_components<'a>(components: Vec<Component<'a>>) -> Component<'a> {
     components.into_iter()
-        .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), dimensions: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
+        .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), box_size: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
             |acc, comp| {
-                let (x0, y0, z0) = acc.dimensions.to_tuple();
-                let (x1, y1, z1) = comp.dimensions.to_tuple();
+                let (x0, y0, z0) = acc.box_size.to_tuple();
+                let (x1, y1, z1) = comp.box_size.to_tuple();
 
-                let dimensions = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
+                let box_size = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
 
                 let mut residues = acc.residues;
                 for residue in comp.residues {
                     residues.push(residue);
                 }
 
-                Component { origin: Coord::new(0.0, 0.0, 0.0), dimensions, residues }
+                Component { origin: Coord::new(0.0, 0.0, 0.0), box_size, residues }
             }
         )
 }
@@ -319,7 +319,7 @@ mod tests {
 
         Component {
             origin: Coord::new(0.0, 0.0, 0.0),
-            dimensions: Coord::new(0.0, 0.0, 0.0),
+            box_size: Coord::new(0.0, 0.0, 0.0),
             residues: vec![
                 residue_one,
                 residue_two
@@ -385,13 +385,13 @@ mod tests {
     #[test]
     fn joined_system_dimensions() {
         let components = vec![
-            Component { origin, dimensions: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
-            Component { origin, dimensions: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
-            Component { origin, dimensions: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
+            Component { origin, box_size: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
+            Component { origin, box_size: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
+            Component { origin, box_size: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
         ];
 
         let system = join_components(components);
-        assert_eq!(Coord::new(3.0, 2.0, 4.0), system.dimensions);
+        assert_eq!(Coord::new(3.0, 2.0, 4.0), system.box_size);
     }
 
     #[test]
@@ -401,7 +401,7 @@ mod tests {
         let components = vec![
             Component {
                 origin,
-                dimensions: Coord::new(1.0, 0.0, 0.0),
+                box_size: Coord::new(1.0, 0.0, 0.0),
                 residues: vec![
                     Residue {
                         base: &res_one,
@@ -419,7 +419,7 @@ mod tests {
             },
             Component {
                 origin,
-                dimensions: Coord::new(0.0, 0.0, 0.0),
+                box_size: Coord::new(0.0, 0.0, 0.0),
                 residues: vec![
                     Residue {
                         base: &res_two,

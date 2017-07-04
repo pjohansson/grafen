@@ -46,7 +46,7 @@ pub fn write_gromos(system: &Component, output_file: &Path, title: &str) -> Resu
         }
     }
 
-    let (dx, dy, dz) = system.dimensions.to_tuple();
+    let (dx, dy, dz) = system.box_size.to_tuple();
     writer.write_fmt(format_args!("{:12.8} {:12.8} {:12.8}\n", dx, dy, dz))?;
 
     Ok(())

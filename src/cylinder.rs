@@ -3,17 +3,17 @@
 use substrate::Sheet;
 use system::{Coord, Component, IntoComponent, Residue, Translate};
 
-/// A `Cylinder` of some `Residue`s.
-struct Cylinder<'a> {
+/// A cylinder of some `Residue`s.
+pub struct Cylinder<'a> {
     /// `Cylinder` origin, positioned in the middle point of one of the cylinder edges.
     /// `Residue` positions are relative to this.
-    origin: Coord,
+    pub origin: Coord,
     /// Cylinder radius.
-    radius: f64,
+    pub radius: f64,
     /// Cylinder height.
-    height: f64,
+    pub height: f64,
     /// `Residue`s belonging to the `Cylinder`.
-    residues: Vec<Residue<'a>>,
+    pub residues: Vec<Residue<'a>>,
 }
 
 impl<'a> Cylinder<'a> {
@@ -55,9 +55,12 @@ impl<'a> Cylinder<'a> {
 
 impl<'a> IntoComponent<'a> for Cylinder<'a> {
     fn into_component(self) -> Component<'a> {
+        let radius = self.radius;
+        let height = self.height;
+
         Component {
             origin: self.origin,
-            dimensions: Coord::new(0.0, 0.0, 0.0),
+            box_size: Coord::new(2.0 * radius, height, 2.0 * radius),
             residues: self.residues,
         }
     }
@@ -151,5 +154,21 @@ mod tests {
 
         let cylinder = Cylinder::from_sheet(&sheet);
         assert_eq!(0, cylinder.num_atoms());
+    }
+
+    #[test]
+    fn cylinder_into_component_gives_correct_dimensions() {
+        let residue = setup_residue();
+        let sheet = setup_sheet(&residue);
+
+        let cylinder = Cylinder::from_sheet(&sheet);
+        let radius = cylinder.radius;
+        let height = cylinder.height;
+
+        // The cylinder is still directed along the y axis.
+        let size = Coord::new(2.0 * radius, height, 2.0 * radius);
+
+        let component = cylinder.into_component();
+        assert_eq!(size, component.box_size);
     }
 }

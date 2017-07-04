@@ -86,7 +86,7 @@ impl<'a> IntoComponent<'a> for Sheet<'a> {
     fn into_component(self) -> Component<'a> {
         Component {
             origin: self.origin,
-            dimensions: self.size,
+            box_size: self.size,
             residues: self.residues,
         }
     }
@@ -208,7 +208,7 @@ mod tests {
         let component = sheet.into_component();
 
         assert_eq!(origin, component.origin);
-        assert_eq!(size, component.dimensions);
+        assert_eq!(size, component.box_size);
         assert!(component.residues.is_empty());
     }
 
