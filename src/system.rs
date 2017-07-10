@@ -11,6 +11,7 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
+#[derive(Clone, Debug)]
 /// A system component which consists of a list of residues,
 /// each of which contains some atoms.
 pub struct Component<'a> {
@@ -41,7 +42,10 @@ impl<'a> Component<'a> {
 
 /// Components (eg. `Sheet`, `Cylinder`) use this trait to define
 /// common behaviour and conversion into a proper `Component` object.
-pub trait IntoComponent<'a> {
+pub trait IntoComponent<'a, T>: Translate<T> {
+    /// Copy residues to create a `Component` from the sub-component.
+    fn to_component(&self) -> Component<'a>;
+
     /// Transform the sub-component into a `Component`.
     fn into_component(self) -> Component<'a>;
 
@@ -50,32 +54,31 @@ pub trait IntoComponent<'a> {
 }
 
 /// Trait denoting the ability to `Translate` an object with a `Coord`.
-pub trait Translate {
-    fn translate(self, &Coord) -> Self;
+pub trait Translate<T> {
+    fn translate(self, &Coord) -> T;
 }
 
 /// Join a list of `Component`s into a single `Component`. The output `Component` box
 /// is the maximum for all individual `Component`s along all axes. `Residue`s are
 /// added in order to the list.
-pub fn join_components<'a>(components: Vec<Component<'a>>) -> Component<'a> {
+pub fn merge_components<'a>(components: &[Component<'a>]) -> Component<'a> {
     components.into_iter()
         .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), box_size: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
-            |acc, comp| {
+            |acc, add_comp| {
                 let (x0, y0, z0) = acc.box_size.to_tuple();
-                let (x1, y1, z1) = comp.box_size.to_tuple();
+                let (x1, y1, z1) = add_comp.box_size.to_tuple();
 
                 let box_size = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
 
                 let mut residues = acc.residues;
-                for residue in comp.residues {
-                    residues.push(residue);
-                }
+                residues.extend_from_slice(&add_comp.residues);
 
                 Component { origin: Coord::new(0.0, 0.0, 0.0), box_size, residues }
             }
         )
 }
 
+#[derive(Clone, Copy, Debug)]
 /// Every residue has a reference to their base and a position.
 pub struct Residue<'a> {
     /// Residue base.
@@ -390,7 +393,7 @@ mod tests {
             Component { origin, box_size: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
         ];
 
-        let system = join_components(components);
+        let system = merge_components(&components);
         assert_eq!(Coord::new(3.0, 2.0, 4.0), system.box_size);
     }
 
@@ -433,7 +436,7 @@ mod tests {
             }
         ];
 
-        let system = join_components(components);
+        let system = merge_components(&components);
         assert_eq!(5, system.residues.len());
 
         // The components should be flattened in the correct order from above,

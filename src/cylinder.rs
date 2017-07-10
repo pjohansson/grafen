@@ -3,7 +3,10 @@
 use substrate::Sheet;
 use system::{Coord, Component, IntoComponent, Residue, Translate};
 
+#[derive(Clone, Debug)]
 /// A cylinder of some `Residue`s.
+///
+/// This should be created using
 pub struct Cylinder<'a> {
     /// `Cylinder` origin, positioned in the middle point of one of the cylinder edges.
     /// `Residue` positions are relative to this.
@@ -54,6 +57,17 @@ impl<'a> Cylinder<'a> {
 }
 
 impl<'a> IntoComponent<'a> for Cylinder<'a> {
+    fn to_component(&self) -> Component<'a> {
+        let radius = self.radius;
+        let height = self.height;
+
+        Component {
+            origin: self.origin,
+            box_size: Coord::new(2.0 * radius, height, 2.0 * radius),
+            residues: self.residues.clone(),
+        }
+    }
+
     fn into_component(self) -> Component<'a> {
         let radius = self.radius;
         let height = self.height;

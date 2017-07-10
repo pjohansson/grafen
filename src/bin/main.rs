@@ -15,15 +15,11 @@ mod output;
 mod ui;
 
 use database::{read_database, DataBase};
-use error::{GrafenCliError, Result};
-use ui::SystemDefinition;
+use error::Result;
 
-use grafen::substrate;
-use grafen::system::{join_components, Component, IntoComponent};
 use std::io;
 use std::io::Write;
 use std::process;
-use std::result;
 use std::path::PathBuf;
 
 /// The program run configuration.
@@ -69,21 +65,24 @@ fn main() {
         (@arg database: -d --database [PATH] +takes_value "Path to database")
     ).get_matches();
 
-    if let Err(err) = Config::from_matches(matches).and_then(|mut conf| run(&mut conf)) {
+    if let Err(err) = Config::from_matches(matches).and_then(|mut conf| ui::user_menu(&mut conf)) {
         let mut stderr = io::stderr();
         writeln!(&mut stderr, "{}", err).expect("could not write to stderr");
         process::exit(1);
     }
 }
 
-/// Run the program with the set `Config`.
+// Run the program with the set `Config`.
+/*
 fn run(config: &mut Config) -> Result<()> {
     let system_defs = ui::user_menu(&mut config.database)?;
     let system = construct_system(&system_defs)?;
     output::write_gromos(&system, &config.output_path, &config.title)
 }
+*/
 
-/// After the systems have been defined we create them one by one and join them.
+/*
+// After the systems have been defined we create them one by one and join them.
 fn construct_system(system_defs: &Vec<SystemDefinition>) -> Result<Component> {
     let components = system_defs.iter().map(|def| {
         substrate::create_substrate(&def.finalized)
@@ -95,3 +94,4 @@ fn construct_system(system_defs: &Vec<SystemDefinition>) -> Result<Component> {
 
     Ok(join_components(components))
 }
+*/

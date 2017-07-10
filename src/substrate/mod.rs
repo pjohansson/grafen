@@ -36,7 +36,7 @@ use substrate::distribution::PoissonDistribution;
 use substrate::lattice::Lattice;
 use system::*;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 /// Configuration for constructing a substrate.
 pub struct SheetConf {
     /// The type of lattice which will be generated.
@@ -72,6 +72,7 @@ pub enum LatticeType {
     PoissonDisc { density: f64 },
 }
 
+#[derive(Clone, Debug)]
 /// A `Sheet` of `Residue`s in some points.
 pub struct Sheet<'a> {
     /// Sheet origin position. Residue coordinates are relative to this.
@@ -83,6 +84,14 @@ pub struct Sheet<'a> {
 }
 
 impl<'a> IntoComponent<'a> for Sheet<'a> {
+    fn to_component(&self) -> Component<'a> {
+        Component {
+            origin: self.origin,
+            box_size: self.size,
+            residues: self.residues.clone(),
+        }
+    }
+
     fn into_component(self) -> Component<'a> {
         Component {
             origin: self.origin,
@@ -96,7 +105,7 @@ impl<'a> IntoComponent<'a> for Sheet<'a> {
     }
 }
 
-impl<'a> Translate for Sheet<'a> {
+impl<'a> Translate<Sheet<'a>> for Sheet<'a> {
     fn translate(self, trans: &Coord) -> Sheet<'a> {
         Sheet {
             origin: self.origin + *trans,
