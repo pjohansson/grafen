@@ -31,30 +31,31 @@ pub struct Config {
     /// Title of output system.
     pub title: String,
     /// Path to output file.
-    pub output_filename: PathBuf,
+    pub output_path: PathBuf,
     /// Database of residue and substrate definitions.
     pub database: DataBase,
 }
 
 impl Config {
-    /// Parse the input command line arguments, ask the user to select
-    /// a substrate and return the run configuration.
+    /// Parse the input command line arguments and read the `DataBase`.
     ///
     /// # Errors
-    /// Returns an error if any of the required arguments are missing or invalid,
-    /// or if the user did not select a substrate. In the latter case the program
-    /// should exit.
+    /// Returns an error if any of the arguments could not be properly parsed
+    /// or the `DataBase` (if input) not opened.
     pub fn from_matches(matches: clap::ArgMatches) -> Result<Config> {
-        let output_filename = value_t!(matches, "output", String).map(|s| PathBuf::from(s))?;
+        let output_path = PathBuf::from(
+            value_t!(matches, "output", String).unwrap_or("conf.gro".to_string())
+        );
         let title = value_t!(matches, "title", String)
-            .unwrap_or("System created by grafen".to_string());
+            .unwrap_or("System created by grafen".to_string()
+        );
 
         let database = match value_t!(matches, "database", String) {
             Ok(path) => read_database(&path),
-            _ => Ok(DataBase::new()),
+            Err(_) => Ok(DataBase::new()),
         }?;
 
-        Ok(Config { title, output_filename, database })
+        Ok(Config { title, output_path, database })
     }
 }
 
@@ -63,9 +64,9 @@ fn main() {
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
-        (@arg output: <PATH> "Output GROMOS file")
+        (@arg output: -o --output [PATH] +takes_value "Output GROMOS configuration file (conf.gro)")
         (@arg title: -t --title [STR] +takes_value "Title of output system")
-        (@arg database: -d --database [STR] +takes_value "Path to database")
+        (@arg database: -d --database [PATH] +takes_value "Path to database")
     ).get_matches();
 
     if let Err(err) = Config::from_matches(matches).and_then(|mut conf| run(&mut conf)) {
@@ -79,7 +80,7 @@ fn main() {
 fn run(config: &mut Config) -> Result<()> {
     let system_defs = ui::user_menu(&mut config.database)?;
     let system = construct_system(&system_defs)?;
-    output::write_gromos(&system, &config.output_filename, &config.title)
+    output::write_gromos(&system, &config.output_path, &config.title)
 }
 
 /// After the systems have been defined we create them one by one and join them.
