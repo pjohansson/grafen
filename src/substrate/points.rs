@@ -4,7 +4,7 @@
 //! of the points belong in this module.
 
 use rand;
-use system::{Coord, Residue, ResidueBase};
+use system::Coord;
 
 /// A collection of points to broadcast residues onto.
 pub struct Points {
@@ -15,11 +15,6 @@ pub struct Points {
 }
 
 impl Points {
-    /// Broadcast an input residue base onto all coordinates.
-    pub fn broadcast_residue<'a>(&self, residue: &'a ResidueBase) -> Vec<Residue<'a>> {
-        self.coords.iter().map(|&coord| residue.to_residue(&coord)).collect()
-    }
-
     /// Get a copy of the `Points` in which the positions along z
     /// have been shifted by a uniform random distribution.
     /// The positions are shifted on a range of (-std_z, +std_z)

@@ -13,6 +13,7 @@ use std::path::Path;
 /// # Errors
 /// Returns an error if the file could not be written to.
 pub fn write_gromos(system: &Component, output_file: &Path, title: &str) -> Result<()> {
+    unimplemented!();
     let path = output_file.with_extension("gro");
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
@@ -23,23 +24,23 @@ pub fn write_gromos(system: &Component, output_file: &Path, title: &str) -> Resu
     // Absolute atom numbering.
     let mut j = 0;
 
-    for (i, residue) in system.residues.iter().enumerate() {
+    for (i, &residue) in system.residue_coords.iter().enumerate() {
         // GROMOS files wrap atom and residue numbering after five digits
         // so we must output at most that. We also switch to indexing the
         // numbers from 1 instead of from 0.
         let residue_number = (i + 1) % 100_000;
 
-        for atom in residue.base.atoms.iter() {
+        for atom in system.residue_base.atoms.iter() {
             // Ibid.
             let atom_number = (j + 1) % 100_000;
             j += 1;
 
-            let position = residue.position + atom.position;
+            let position = residue + atom.position;
             let (x, y, z) = position.to_tuple();
 
             writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
                                         residue_number,
-                                        residue.base.code,
+                                        system.residue_base.code,
                                         atom.code,
                                         atom_number,
                                         x, y, z))?;

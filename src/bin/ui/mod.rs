@@ -17,24 +17,52 @@ use output;
 use ui::utils::{CommandList, CommandParser};
 
 use grafen::cylinder::Cylinder;
-use grafen::substrate::{Sheet, SheetConf};
-use grafen::system::{merge_components, Component, Coord, IntoComponent};
+use grafen::substrate::{create_substrate, Sheet, SheetConf};
+use grafen::system::{Component, Coord, IntoComponent};
 use std::error::Error;
-use std::borrow::Borrow;
+
+#[derive(Clone, Debug, PartialEq)]
+/// List of components that can be constructed.
+pub enum AvailableComponents {
+    Sheet { conf: SheetConfEntry, size: (f64, f64) },
+}
 
 #[derive(Clone, Debug, PartialEq)]
 /// One system is defined by these attributes.
-pub struct SystemDefinition {
-    pub config: SheetConfEntry,
+pub struct ComponentDefinition {
+    pub definition: AvailableComponents,
     pub position: Coord,
-    pub size: (f64, f64),
-    pub finalized: SheetConf,
+    //pub finalized: SheetConf,
+}
+
+impl ComponentDefinition {
+    fn describe(&self) -> String {
+        let (x0, y0, z0) = self.position.to_tuple();
+
+        match self.definition {
+            AvailableComponents::Sheet { conf: ref conf, size: (dx, dy) } => {
+                format!("Sheet of {} and size ({:.2}, {:.2}) at position ({:.2}, {:.2}, {:.2})",
+                        conf.residue.code, dx, dy, x0, y0, z0)
+            }
+        }
+    }
+
+    fn into_component(self) -> Result<Component> {
+        match self.definition {
+            AvailableComponents::Sheet { conf: ref conf, size: (dx, dy) } => {
+                let sheet = conf.to_conf(dx, dy);
+                let component = create_substrate(&sheet)?;
+                Ok(component.into_component())
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 /// User commands for defining the system.
 enum Command {
-    DefineSystem,
+    DefineComponents,
+    ConstructComponents,
     EditDatabase,
     SaveSystem,
     Quit,
@@ -56,17 +84,17 @@ enum Command {
 /// This menu should also allow the user to save the system to disk, set its name
 /// and file path and any other possible options.
 pub fn user_menu(mut config: &mut Config) -> Result<()> {
-    let mut system_defs: Vec<SystemDefinition> = Vec::new();
+    let mut system_defs: Vec<ComponentDefinition> = Vec::new();
     let mut system_components: Vec<Box<IntoComponent>> = Vec::new();
 
     let command_list: CommandList<Command> = vec![
-        ("define", Command::DefineSystem, "Define the list of objects to construct"),
+        ("define", Command::DefineComponents, "Define the list of components to construct"),
+        ("construct", Command::ConstructComponents, "Construct components from all definitions"),
         ("db", Command::EditDatabase, "Edit the database of residue and object definitions"),
-        ("save", Command::SaveSystem, "Save the constructed components to disk"),
+        ("save", Command::SaveSystem, "Save the constructed components to disk as a system"),
         ("quit", Command::Quit, "Quit the program"),
     ];
     let commands = CommandParser::from_list(command_list);
-
 
     loop {
         define_system::describe_system_definitions(&system_defs);
@@ -77,11 +105,14 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
 
         if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
             match cmd {
-                Command::DefineSystem => {
+                Command::DefineComponents => {
                     match define_system::user_menu(&config.database, &mut system_defs) {
                         Ok(_) => println!("Finished editing list of definitions."),
                         Err(err) => println!("Could not create definition: {}", err.description()),
                     }
+                },
+                Command::ConstructComponents => {
+                    //match construct_components()
                 },
                 Command::EditDatabase => {
                     match edit_database::user_menu(&mut config.database) {
@@ -107,8 +138,8 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     }
 }
 
-fn save_system<'a>(sub_components: Vec<Box<IntoComponent<'a>>>, config: &Config) -> Result<()> {
-    // Unwrap the `Box`ed sub-components and copy them into proper `Component`s for output.§
+fn save_system(sub_components: Vec<Box<IntoComponent>>, config: &Config) -> Result<()> {
+    // Unwrap the `Box`ed sub-components and copy them into proper `Component`s for output.
     // This means that a clone is made of every `Residue` vec, which is inefficient since
     // they are later again copied in `merge_components`. I need a better grasp of using
     // `Box`es to fix this. One method would be that `merge_components` takes a vector
@@ -119,11 +150,13 @@ fn save_system<'a>(sub_components: Vec<Box<IntoComponent<'a>>>, config: &Config)
     //
     // IDEA: `merge_components` could take Vec<Box<IntoComponent>> and perform the clone directly.
     // Somewhat ugly to have several so similar functions though.
-    let finished_components = sub_components
-        .iter()
-        .map(|sub| sub.to_component())
-        .collect::<Vec<_>>();
+    //let finished_components = sub_components
+        //.iter()
+        //.map(|sub| sub.to_component())
+        //.collect::<Vec<_>>();
 
-    let system = merge_components(&finished_components);
-    output::write_gromos(&system, &config.output_filename, &config.title)
+    // TODO: Merge in output!!!
+    unimplemented!();
+    //let system = merge_components(&finished_components);
+    //output::write_gromos(&system, &config.output_path, &config.title)
 }

@@ -74,44 +74,45 @@ pub enum LatticeType {
 
 #[derive(Clone, Debug)]
 /// A `Sheet` of `Residue`s in some points.
-pub struct Sheet<'a> {
+pub struct Sheet {
     /// Sheet origin position. Residue coordinates are relative to this.
     pub origin: Coord,
     /// Sheet size.
     pub size: Coord,
+    /// Residue base.
+    pub residue_base: ResidueBase,
     /// `Residue`s belonging to the sheet.
-    pub residues: Vec<Residue<'a>>,
+    pub residue_coords: Vec<Coord>,
 }
 
-impl<'a> IntoComponent<'a> for Sheet<'a> {
-    fn to_component(&self) -> Component<'a> {
+impl IntoComponent for Sheet {
+    fn to_component(&self) -> Component {
         Component {
             origin: self.origin,
             box_size: self.size,
-            residues: self.residues.clone(),
+            residue_base: self.residue_base.clone(),
+            residue_coords: self.residue_coords.clone(),
         }
     }
 
-    fn into_component(self) -> Component<'a> {
+    fn into_component(self) -> Component {
         Component {
             origin: self.origin,
             box_size: self.size,
-            residues: self.residues,
+            residue_base: self.residue_base,
+            residue_coords: self.residue_coords,
         }
     }
 
     fn num_atoms(&self) -> usize {
-        self.residues.iter().map(|r| r.base.atoms.len()).sum()
+        self.residue_base.atoms.len() * self.residue_coords.len()
     }
 }
 
-impl<'a> Translate<Sheet<'a>> for Sheet<'a> {
-    fn translate(self, trans: &Coord) -> Sheet<'a> {
-        Sheet {
-            origin: self.origin + *trans,
-            size: self.size,
-            residues: self.residues,
-        }
+impl Translate for Sheet {
+    fn translate(mut self, trans: &Coord) -> Sheet {
+        self.origin = self.origin + *trans;
+        self
     }
 }
 
@@ -154,7 +155,8 @@ pub fn create_substrate(conf: &SheetConf) -> Result<Sheet> {
     Ok(Sheet {
         origin: Coord::new(0.0, 0.0, 0.0),
         size: points.box_size,
-        residues: points.broadcast_residue(&conf.residue),
+        residue_base: conf.residue.clone(),
+        residue_coords: points.coords,
     })
 }
 
@@ -192,7 +194,7 @@ mod tests {
         let mut conf = setup_conf();
         {
             let regular = create_substrate(&conf).unwrap();
-            assert!(regular.residues.iter().any(|r| r.position.z != 0.0) == false);
+            assert!(regular.residue_coords.iter().any(|r| r.z != 0.0) == false);
         }
 
         let std_z = 1.0;
@@ -201,29 +203,35 @@ mod tests {
 
         // Non-zero variance: This *can* fail, but it should not be common!
         // How else to assert that a distribution has been applied, though?
-        assert!(uniform.residues.iter().map(|r| r.position.z).any(|z| z != 0.0));
+        assert!(uniform.residue_coords.iter().map(|r| r.z).any(|z| z != 0.0));
 
         // No positions should exceed the input distribution max
-        assert!(uniform.residues.iter().all(|r| r.position.z.abs() <= std_z));
+        assert!(uniform.residue_coords.iter().all(|r| r.z.abs() <= std_z));
     }
 
     #[test]
     fn sheet_into_component() {
         let origin = Coord::new(0.0, 0.0, 0.0);
         let size = Coord::new(1.0, 2.0, 3.0);
-        let residues = vec![];
+        let residue_base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+            ],
+        };
+        let residue_coords = vec![Coord::new(0.0, 0.0, 0.0), Coord::new(1.0, 0.0, 0.0)];
 
-        let sheet = Sheet { origin, size, residues };
+        let sheet = Sheet { origin, size, residue_base, residue_coords: residue_coords.clone() };
         let component = sheet.into_component();
 
         assert_eq!(origin, component.origin);
         assert_eq!(size, component.box_size);
-        assert!(component.residues.is_empty());
+        assert_eq!(residue_coords, component.residue_coords);
     }
 
     #[test]
     fn translate_a_sheet() {
-        let base = ResidueBase {
+        let residue_base = ResidueBase {
             code: "GRPH".to_string(),
             atoms: vec![Atom {
                 code: "C".to_string(),
@@ -231,15 +239,15 @@ mod tests {
         };
         let origin = Coord::new(-1.0, 0.0, 1.0);
         let size = Coord::new(1.0, 2.0, 1.0);
-        let residues = vec![base.to_residue(&Coord::new(0.0, 0.0, 0.0))];
+        let residue_coords = vec![Coord::new(0.0, 0.0, 0.0)];
 
         let translate = Coord::new(1.0, 2.0, 3.0);
 
-        let sheet = Sheet { origin, size, residues }
+        let sheet = Sheet { origin, size, residue_base, residue_coords }
             .translate(&Coord::new(1.0, 2.0, 3.0));
 
         assert_eq!(size, sheet.size);
         assert_eq!(origin + translate, sheet.origin);
-        assert_eq!(Coord::new(0.0, 0.0, 0.0), sheet.residues[0].position);
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), sheet.residue_coords[0]);
     }
 }

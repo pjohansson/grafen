@@ -4,7 +4,7 @@
 
 use database::{DataBase, SheetConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use ui::SystemDefinition;
+use ui::{AvailableComponents, ComponentDefinition};
 use ui::utils;
 use ui::utils::{CommandList, CommandParser};
 
@@ -22,7 +22,7 @@ enum Command {
 }
 
 /// Edit the list of system definitions to construct from.
-pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<SystemDefinition>)
+pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinition>)
         -> Result<()> {
     let command_list: CommandList<Command> = vec![
         ("d", Command::DefineSystem, "Define a system to create"),
@@ -81,32 +81,28 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<SystemDefinition
 }
 
 /// Print the current system definitions to stdout.
-pub fn describe_system_definitions(system_defs: &[SystemDefinition]) {
+pub fn describe_system_definitions(system_defs: &[ComponentDefinition]) {
     if system_defs.is_empty() {
         println!("(No systems defined)");
     } else {
         for (i, def) in system_defs.iter().enumerate() {
-            let (dx, dy) = def.size;
-            let (x, y, z) = def.position.to_tuple();
-            println!("{}. {} of size ({:.1}, {:.1}) at position ({:.1}, {:.1}, {:.1})",
-                     i, def.config.name, dx, dy, x, y, z);
+            println!("{}. {}", i, def.describe());
         }
     }
 
     println!("");
 }
 
-fn create_definition(database: &DataBase) -> Result<SystemDefinition> {
-    let config = select_substrate(&database)?;
+fn create_definition(database: &DataBase) -> Result<ComponentDefinition> {
+    let definition = select_substrate(&database)?;
     let position = select_position()?;
     let size = select_size()?;
-    let (x, y) = size;
 
-    Ok(SystemDefinition {
-        config: config.clone(),
+    Ok(ComponentDefinition {
+        definition: AvailableComponents::Sheet{ conf: definition.clone(), size: size },
         position: position,
-        size: size,
-        finalized: config.to_conf(x, y),
+        //size: size,
+        //finalized: config.to_conf(x, y),
     })
 }
 

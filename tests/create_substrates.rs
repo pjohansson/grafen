@@ -25,7 +25,7 @@ fn define_and_create_a_substrate() {
     // are taken into account.
     let conf = SheetConf {
         lattice: LatticeType::Triclinic { a: 1.0, b: 0.5, gamma: 90.0 },
-        residue: residue,
+        residue: residue.clone(),
         size: (2.1, 0.9),
         std_z: None,
     };
@@ -34,21 +34,16 @@ fn define_and_create_a_substrate() {
 
     assert_eq!(Coord::new(2.0, 1.0, 0.0), substrate.size);
 
-    // We should get the correct residue base positions
-    let residues = substrate.residues;
-    assert_eq!(4, residues.len());
-    assert_eq!(Coord::new(0.0, 0.0, 0.0), residues[0].position);
-    assert_eq!(Coord::new(1.0, 0.0, 0.0), residues[1].position);
-    assert_eq!(Coord::new(0.0, 0.5, 0.0), residues[2].position);
-    assert_eq!(Coord::new(1.0, 0.5, 0.0), residues[3].position);
+    // The residue should be correct
+    assert_eq!(residue, substrate.residue_base);
 
-    // ... and each residue should be correct
-    for residue in residues {
-        assert_eq!("RES", residue.base.code);
-        assert_eq!(2, residue.base.atoms.len());
-        assert_eq!(residue_atom_one, residue.base.atoms[0]);
-        assert_eq!(residue_atom_two, residue.base.atoms[1]);
-    }
+    // We should get the correct residue base positions
+    let residues = substrate.residue_coords;
+    assert_eq!(4, residues.len());
+    assert_eq!(Coord::new(0.0, 0.0, 0.0), residues[0]);
+    assert_eq!(Coord::new(1.0, 0.0, 0.0), residues[1]);
+    assert_eq!(Coord::new(0.0, 0.5, 0.0), residues[2]);
+    assert_eq!(Coord::new(1.0, 0.5, 0.0), residues[3]);
 }
 
 // Ensure that the macro is exported
