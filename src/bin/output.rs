@@ -1,7 +1,9 @@
 //! Write systems to disk.
 
 use error::Result;
-use grafen::system::Component;
+//use grafen::system::Component;
+use super::Config;
+use ui::ConstructedComponent;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -12,14 +14,16 @@ use std::path::Path;
 ///
 /// # Errors
 /// Returns an error if the file could not be written to.
-pub fn write_gromos(system: &Component, output_file: &Path, title: &str) -> Result<()> {
+pub fn write_gromos(components: &[ConstructedComponent], config: &Config) -> Result<()> {
     unimplemented!();
-    let path = output_file.with_extension("gro");
+    /*
+    let path = config.output_path.with_extension("gro");
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
 
-    writer.write_fmt(format_args!("{}\n", title))?;
-    writer.write_fmt(format_args!("{}\n", system.num_atoms()))?;
+    let num_atoms: usize = components.iter().map(|comp| comp.component.num_atoms()).sum();
+    writer.write_fmt(format_args!("{}\n", config.title))?;
+    writer.write_fmt(format_args!("{}\n", num_atoms))?;
 
     // Absolute atom numbering.
     let mut j = 0;
@@ -51,4 +55,5 @@ pub fn write_gromos(system: &Component, output_file: &Path, title: &str) -> Resu
     writer.write_fmt(format_args!("{:12.8} {:12.8} {:12.8}\n", dx, dy, dz))?;
 
     Ok(())
+    */
 }

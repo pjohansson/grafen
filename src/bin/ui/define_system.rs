@@ -83,8 +83,9 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinit
 /// Print the current system definitions to stdout.
 pub fn describe_system_definitions(system_defs: &[ComponentDefinition]) {
     if system_defs.is_empty() {
-        println!("(No systems defined)");
+        println!("(No systems have been defined)");
     } else {
+        println!("System definitions:");
         for (i, def) in system_defs.iter().enumerate() {
             println!("{}. {}", i, def.describe());
         }
@@ -101,8 +102,6 @@ fn create_definition(database: &DataBase) -> Result<ComponentDefinition> {
     Ok(ComponentDefinition {
         definition: AvailableComponents::Sheet{ conf: definition.clone(), size: size },
         position: position,
-        //size: size,
-        //finalized: config.to_conf(x, y),
     })
 }
 

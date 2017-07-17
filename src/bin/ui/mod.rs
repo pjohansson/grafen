@@ -32,10 +32,39 @@ pub enum AvailableComponents {
 pub struct ComponentDefinition {
     pub definition: AvailableComponents,
     pub position: Coord,
-    //pub finalized: SheetConf,
+}
+
+#[derive(Debug)]
+pub struct ConstructedComponent {
+    description: String,
+    pub component: Component,
+}
+
+#[derive(Debug)]
+pub struct System {
+    /// System box size. Either set by the user or calculated from the components.
+    box_size: Option<Coord>,
+    /// All components belonging to the system.
+    components: Vec<ConstructedComponent>,
+}
+
+impl System {
+    /// Calculate the box size from the system components. The largest extension along each
+    /// direction is used for the final box size.
+    ///
+    /// Returns None if no components exist in the system.
+    fn calc_box_size(&self) -> Option<Coord> {
+        unimplemented!();
+    }
+
+    /// Calculate the number of atoms in the system.
+    fn num_atoms(&self) -> usize {
+        unimplemented!();
+    }
 }
 
 impl ComponentDefinition {
+    /// Return a description of the component that is to be created.
     fn describe(&self) -> String {
         let (x0, y0, z0) = self.position.to_tuple();
 
@@ -47,6 +76,7 @@ impl ComponentDefinition {
         }
     }
 
+    /// Construct the component from the definition.
     fn into_component(self) -> Result<Component> {
         match self.definition {
             AvailableComponents::Sheet { conf: ref conf, size: (dx, dy) } => {
@@ -85,11 +115,12 @@ enum Command {
 /// and file path and any other possible options.
 pub fn user_menu(mut config: &mut Config) -> Result<()> {
     let mut system_defs: Vec<ComponentDefinition> = Vec::new();
-    let mut system_components: Vec<Box<IntoComponent>> = Vec::new();
+    let mut system_components: Vec<ConstructedComponent> = Vec::new();
+    //let mut system_components: Vec<Box<IntoComponent>> = Vec::new();
 
     let command_list: CommandList<Command> = vec![
-        ("define", Command::DefineComponents, "Define the list of components to construct"),
-        ("construct", Command::ConstructComponents, "Construct components from all definitions"),
+        ("de", Command::DefineComponents, "Define the list of components to construct"),
+        ("co", Command::ConstructComponents, "Construct components from all definitions"),
         ("db", Command::EditDatabase, "Edit the database of residue and object definitions"),
         ("save", Command::SaveSystem, "Save the constructed components to disk as a system"),
         ("quit", Command::Quit, "Quit the program"),
@@ -98,7 +129,8 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
 
     loop {
         define_system::describe_system_definitions(&system_defs);
-        //describe_created_components(&system_components);
+        describe_created_components(&system_components);
+
         commands.print_menu();
         let input = utils::get_input_string("Selection")?;
         println!("");
@@ -112,7 +144,10 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
                     }
                 },
                 Command::ConstructComponents => {
-                    //match construct_components()
+                    match construct_components(&mut system_defs, &mut system_components) {
+                        Ok(_) => println!("Successfully constructed all components."),
+                        Err(err) => println!("Could not construct all components: {}", err.description()),
+                    }
                 },
                 Command::EditDatabase => {
                     match edit_database::user_menu(&mut config.database) {
@@ -121,7 +156,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
                     }
                 },
                 Command::SaveSystem => {
-                    match save_system(vec![], &config) {
+                    match output::write_gromos(&system_components, &config) {
                         Ok(()) => println!("Saved system to disk."),
                         Err(msg) => println!("Error when saving system: {}", msg),
                     }
@@ -138,25 +173,74 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     }
 }
 
-fn save_system(sub_components: Vec<Box<IntoComponent>>, config: &Config) -> Result<()> {
-    // Unwrap the `Box`ed sub-components and copy them into proper `Component`s for output.
-    // This means that a clone is made of every `Residue` vec, which is inefficient since
-    // they are later again copied in `merge_components`. I need a better grasp of using
-    // `Box`es to fix this. One method would be that `merge_components` takes a vector
-    // of references instead of the actual objects but this is all turning very ugly, very fast.
-    //
-    // TODO: Hopefully I will change the structure of how these components interlock sometime,
-    // this currently feels a bit too much like forcing square pegs into round holes.
-    //
-    // IDEA: `merge_components` could take Vec<Box<IntoComponent>> and perform the clone directly.
-    // Somewhat ugly to have several so similar functions though.
-    //let finished_components = sub_components
-        //.iter()
-        //.map(|sub| sub.to_component())
-        //.collect::<Vec<_>>();
+fn construct_components(definitions: &mut Vec<ComponentDefinition>, components: &mut Vec<ConstructedComponent>) -> Result<()> {
+    for def in definitions.drain(..) {
+        let description = def.describe();
+        let component = def.into_component()?;
+        components.push(ConstructedComponent{ description, component });
+    }
 
-    // TODO: Merge in output!!!
-    unimplemented!();
-    //let system = merge_components(&finished_components);
-    //output::write_gromos(&system, &config.output_path, &config.title)
+    Ok(())
+}
+
+fn describe_created_components(components: &Vec<ConstructedComponent>) {
+    if components.is_empty() {
+        println!("(No components have been created)");
+    } else {
+        println!("Constructed system components:");
+        for (i, def) in components.iter().enumerate() {
+            println!("{}. {}", i, &def.description);
+        }
+    }
+
+    println!("");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use grafen::system::{Atom, ResidueBase};
+
+    /// Setup a system of three components and in total seven atoms
+    fn setup_system() -> System {
+        let base_one = resbase!["R1", ("A1", 0.0, 1.0, 2.0), ("A2", 0.0, 2.0, 1.0)];
+
+        System {
+            box_size: None,
+            components: vec![
+                ConstructedComponent {
+                    description: "None".to_string(),
+                    component: Component {
+                        box_size: Coord::new(10.0, 1.0, 0.0),
+                        origin: Coord::new(0.0, 0.0, 0.0),
+                        residue_base: base_one.clone(),
+                        residue_coords: vec![],
+                    }
+                }
+            ]
+        }
+    }
+
+    #[test]
+    fn all_atoms_are_counted_in_system() {
+        let system = setup_system();
+
+        assert_eq!(7, system.num_atoms());
+    }
+
+    #[test]
+    fn box_size_is_largest_in_each_direction() {
+        let system = setup_system();
+        assert_eq!(Some(Coord::new(10.0, 5.0, 7.0)), system.calc_box_size());
+    }
+
+    #[test]
+    fn box_size_is_none_if_no_components() {
+        let system = System {
+            box_size: None,
+            components: vec![],
+        };
+
+        assert!(system.calc_box_size().is_none());
+    }
 }
