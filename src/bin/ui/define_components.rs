@@ -1,14 +1,13 @@
-//! Define a `SystemDefinition` entry.
+//! Define a system components to create.
 //!
 //! This interface could use a lot of improvement.
 
-use database::{DataBase, SheetConfEntry};
+use database::{AvailableComponents, DataBase, SheetConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use ui::{AvailableComponents, ComponentDefinition};
 use ui::utils;
 use ui::utils::{CommandList, CommandParser};
 
-use grafen::system::Coord;
+use grafen::system::{Coord, Component};
 use std::error::Error;
 
 #[derive(Clone, Copy, Debug)]
@@ -22,7 +21,7 @@ enum Command {
 }
 
 /// Edit the list of system definitions to construct from.
-pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinition>)
+pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableComponents>)
         -> Result<()> {
     let command_list: CommandList<Command> = vec![
         ("d", Command::DefineSystem, "Define a system to create"),
@@ -81,33 +80,43 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinit
 }
 
 /// Print the current system definitions to stdout.
-pub fn describe_system_definitions(system_defs: &[ComponentDefinition]) {
+pub fn describe_system_definitions(system_defs: &[AvailableComponents]) {
     if system_defs.is_empty() {
         println!("(No systems have been defined)");
     } else {
         println!("System definitions:");
         for (i, def) in system_defs.iter().enumerate() {
-            println!("{}. {}", i, def.describe());
+            println!("{}. {}", i, def.describe_long());
         }
     }
 
     println!("");
 }
 
-fn create_definition(database: &DataBase) -> Result<ComponentDefinition> {
-    let definition = select_substrate(&database)?;
+fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
+    let mut definition = select_substrate(&database).map(|def| def.clone())?;
     let position = select_position()?;
     let size = select_size()?;
 
-    Ok(ComponentDefinition {
-        definition: AvailableComponents::Sheet{ conf: definition.clone(), size: size },
-        position: position,
-    })
+    definition.position = Some(position);
+    definition.size = Some(size);
+
+    Ok(AvailableComponents::Sheet(definition))
 }
 
-fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SheetConfEntry> {
+fn select_substrate(database: &DataBase) -> Result<SheetConfEntry> {
+    let available_substrates: Vec<SheetConfEntry> = database.component_defs
+        .iter()
+        .filter_map(|ref def| {
+            match def {
+                &&AvailableComponents::Sheet(ref conf) => Some(conf.clone()),
+                _ => None,
+            }
+        })
+        .collect();
+
     println!("Available substrates:");
-    for (i, sub) in database.substrate_defs.iter().enumerate() {
+    for (i, sub) in available_substrates.iter().enumerate() {
         println!("{}. {}", i, sub.name);
     }
     println!("");
@@ -117,8 +126,9 @@ fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SheetConfEntry> {
         .parse::<usize>()
         .map_err(|_| UIErrorKind::BadValue(format!("'{}' is not a valid index", &selection)))
         .and_then(|n| {
-            database.substrate_defs
+            available_substrates
                 .get(n)
+                .map(|def| def.clone())
                 .ok_or(UIErrorKind::BadValue(format!("No substrate with index {} exists", n)))
         })
         .map_err(|err| GrafenCliError::from(err))

@@ -12,8 +12,8 @@ use std::error::Error;
 enum Command {
     AddResidue,
     RemoveResidue,
-    AddSubstrate,
-    RemoveSubstrate,
+    AddComponent,
+    RemoveComponent,
     WriteToDisk,
     SetLocation,
     ShowDatabase,
@@ -26,8 +26,8 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
     let command_list: CommandList<Command> = vec![
         ("ra", Command::AddResidue, "Add a residue definition"),
         ("rr", Command::RemoveResidue, "Remove a residue definition"),
-        ("sa", Command::AddSubstrate, "Add a substrate definition"),
-        ("sr", Command::RemoveSubstrate, "Remove a substrate definition"),
+        ("sa", Command::AddComponent, "Add a component definition"),
+        ("sr", Command::RemoveComponent, "Remove a component definition"),
         ("w", Command::WriteToDisk, "Write database to disk"),
         ("c", Command::SetLocation, "Change output location of database"),
         ("l", Command::ShowDatabase, "List database content"),
@@ -38,7 +38,7 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
 
     let path_backup = database.path.clone();
     let residues_backup = database.residue_defs.clone();
-    let substrates_backup = database.substrate_defs.clone();
+    let components_backup = database.component_defs.clone();
 
     println!("Editing the current database.\n");
     database.describe();
@@ -65,18 +65,18 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
                         Err(err) => println!("Could not remove residue: {}", err.description()),
                     }
                 },
-                Command::AddSubstrate => {
-                    match define_substrate::user_menu(&database.residue_defs) {
-                        Ok(substrate) => {
-                            println!("Added substrate definition '{}' to database.",
-                                     substrate.name);
-                            database.substrate_defs.push(substrate);
+                Command::AddComponent => {
+                    match define_component::user_menu(&database.residue_defs) {
+                        Ok(component) => {
+                            println!("Added component definition '{}' to database.",
+                                     component.name());
+                            database.component_defs.push(component);
                         },
-                        Err(err) => println!("Could not create substrate: {}", err.description()),
+                        Err(err) => println!("Could not create component: {}", err.description()),
                     }
                 },
-                Command::RemoveSubstrate => {
-                    match utils::remove_item(&mut database.substrate_defs, &tail) {
+                Command::RemoveComponent => {
+                    match utils::remove_item(&mut database.component_defs, &tail) {
                         Ok(i) => println!("Removed substrate with index {} from database.", i),
                         Err(err) => println!("Could not remove substrate: {}", err.description()),
                     }
@@ -106,7 +106,7 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
                 Command::QuitWithoutSaving => {
                     database.path = path_backup;
                     database.residue_defs = residues_backup;
-                    database.substrate_defs = substrates_backup;
+                    database.component_defs = components_backup;
 
                     return Ok("Discarding changes to database.");
                 },
@@ -280,10 +280,10 @@ mod define_residue {
     }
 }
 
-mod define_substrate {
+mod define_component {
     //! Define a new `SheetConfEntry`.
 
-    use database::SheetConfEntry;
+    use database::{AvailableComponents, SheetConfEntry};
     use error::{GrafenCliError, Result};
     use ui::utils;
 
@@ -300,7 +300,7 @@ mod define_substrate {
         PoissonDisc,
     }
 
-    pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<SheetConfEntry> {
+    pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<AvailableComponents> {
         let name = utils::get_input_string("Substrate name")
             .and_then(|string| {
                 if string.is_empty() {
@@ -321,7 +321,7 @@ mod define_substrate {
         let std_z = select_deviation_along_z()?;
         println!("");
 
-        Ok(SheetConfEntry { name, lattice, residue, std_z })
+        Ok(AvailableComponents::Sheet(SheetConfEntry { name, lattice, residue, std_z, size: None, position: None }))
     }
 
     fn select_residue(residue_list: &Vec<ResidueBase>) -> Result<ResidueBase> {
@@ -359,11 +359,11 @@ mod define_substrate {
                 println!("vectors of length a and b, separated by an angle γ.");
                 println!("");
 
-                let input = utils::get_input_string("Input length 'a'")?;
+                let input = utils::get_input_string("Input length 'a' (nm)")?;
                 let a = utils::parse_string_single(&input)?;
-                let input = utils::get_input_string("Input length 'b'")?;
+                let input = utils::get_input_string("Input length 'b' (nm)")?;
                 let b = utils::parse_string_single(&input)?;
-                let input = utils::get_input_string("Input angle 'γ'")?;
+                let input = utils::get_input_string("Input angle 'γ' (deg.)")?;
                 let gamma = utils::parse_string_single(&input)?;
 
                 Ok(LatticeType::Triclinic { a, b, gamma })
@@ -373,7 +373,7 @@ mod define_substrate {
                 println!("A hexagonal lattice is a honeycomb grid with an input side length.");
                 println!("");
 
-                let input = utils::get_input_string("Input side length")?;
+                let input = utils::get_input_string("Input side length (nm)")?;
                 let a = utils::parse_string_single(&input)?;
 
                 Ok(LatticeType::Hexagonal { a })
@@ -384,7 +384,7 @@ mod define_substrate {
                 println!("They are generated with an input density in points per area.");
                 println!("");
 
-                let input = utils::get_input_string("Input density")?;
+                let input = utils::get_input_string("Input density (1/nm^2)")?;
                 let density = utils::parse_string_single(&input)?;
 
                 Ok(LatticeType::PoissonDisc { density })
@@ -393,7 +393,7 @@ mod define_substrate {
     }
 
     fn select_deviation_along_z() -> Result<Option<f64>> {
-        let query = "Distribute residue positions along z with this deviation (default: No)";
+        let query = "Distribute residue positions along z with this deviation in nm (default: No)";
         let selection = utils::get_input_string(query)?;
 
         match utils::parse_string_single(&selection) {

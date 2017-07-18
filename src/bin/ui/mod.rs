@@ -7,11 +7,11 @@
 //! for creating `SheetConfEntry` and `SystemDefinition` are in need of improvement.
 
 mod edit_database;
-mod define_system;
+mod define_components;
 mod utils;
 
 use super::Config;
-use database::{CylinderConfEntry, SheetConfEntry};
+use database::{AvailableComponents, CylinderConfEntry, SheetConfEntry};
 use error::{GrafenCliError, Result};
 use output;
 use ui::utils::{CommandList, CommandParser};
@@ -20,62 +20,6 @@ use grafen::cylinder::Cylinder;
 use grafen::substrate::{create_substrate, SheetConf};
 use grafen::system::{Component, Coord, IntoComponent, Translate};
 use std::error::Error;
-
-#[derive(Clone, Debug, PartialEq)]
-/// List of components that can be constructed.
-pub enum AvailableComponents {
-    Sheet { conf: SheetConfEntry, size: (f64, f64) },
-    Cylinder { conf: CylinderConfEntry, radius: f64, height: f64 },
-}
-
-#[derive(Clone, Debug, PartialEq)]
-/// One system is defined by these attributes.
-pub struct ComponentDefinition {
-    /// The type of the system and its specific attributes.
-    pub definition: AvailableComponents,
-    /// A position in the system.
-    pub position: Coord,
-}
-
-impl ComponentDefinition {
-    /// Return a description of the component that is to be created.
-    fn describe(&self) -> String {
-        let (x0, y0, z0) = self.position.to_tuple();
-
-        match self.definition {
-            AvailableComponents::Sheet { ref conf, size: (dx, dy) } => {
-                format!("Sheet of {} and size ({:.2}, {:.2}) at position ({:.2}, {:.2}, {:.2})",
-                        conf.residue.code, dx, dy, x0, y0, z0)
-            },
-            AvailableComponents::Cylinder { ref conf, radius, height } => {
-                format!("Cylinder of {} with radius {:.2} and height {:.2} at position ({:.2}, {:.2}, {:.2})",
-                        conf.residue.code, radius, height, x0, y0, z0)
-            },
-        }
-    }
-
-    /// Construct the component from the definition.
-    fn into_component(self) -> Result<Component> {
-        match self.definition {
-            AvailableComponents::Sheet { ref conf, size: (dx, dy) } => {
-                let sheet = conf.to_conf(dx, dy);
-                let component = create_substrate(&sheet)?;
-                Ok(component.translate(&self.position).into_component())
-            },
-            AvailableComponents::Cylinder { ref conf, radius, height } => {
-                let sheet_conf = SheetConf {
-                    lattice: conf.lattice.clone(),
-                    residue: conf.residue.clone(),
-                    size: (2.0 * ::std::f64::consts::PI * radius, height),
-                    std_z: None,
-                };
-                let sheet = create_substrate(&sheet_conf)?;
-                let cylinder = Cylinder::from_sheet(&sheet).into_component();
-                Ok(cylinder.translate(&self.position))
-            },
-        }
-    }
-}
 
 #[derive(Debug)]
 /// A `Component` which has been constructed along with a descriptive string.
@@ -92,10 +36,10 @@ pub struct ConstructedComponent {
 pub struct System {
     /// System box size. Either set by the user or calculated from the components.
     pub box_size: Option<Coord>,
+    /// Component definitions.
+    pub definitions: Vec<AvailableComponents>,
     /// Components and their descriptions belonging to the system.
     pub constructed: Vec<ConstructedComponent>,
-    /// Component definitions.
-    pub definitions: Vec<ComponentDefinition>,
 }
 
 impl System {
@@ -166,7 +110,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     let commands = CommandParser::from_list(command_list);
 
     loop {
-        define_system::describe_system_definitions(&system.definitions);
+        define_components::describe_system_definitions(&system.definitions);
         describe_created_components(&system.constructed);
 
         commands.print_menu();
@@ -176,7 +120,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
         if let Some((cmd, _)) = commands.get_selection_and_tail(&input) {
             match cmd {
                 Command::DefineComponents => {
-                    match define_system::user_menu(&config.database, &mut system.definitions) {
+                    match define_components::user_menu(&config.database, &mut system.definitions) {
                         Ok(_) => println!("Finished editing list of definitions."),
                         Err(err) => println!("Could not create definition: {}", err.description()),
                     }
@@ -216,7 +160,7 @@ fn construct_components(system: &mut System) -> Result<()> {
     let ref mut components = system.constructed;
 
     for def in definitions.drain(..) {
-        let description = def.describe();
+        let description = def.describe_long();
         let component = def.into_component()?;
         components.push(ConstructedComponent{ description, component });
     }
