@@ -72,27 +72,3 @@ fn main() {
         process::exit(1);
     }
 }
-
-// Run the program with the set `Config`.
-/*
-fn run(config: &mut Config) -> Result<()> {
-    let system_defs = ui::user_menu(&mut config.database)?;
-    let system = construct_system(&system_defs)?;
-    output::write_gromos(&system, &config.output_path, &config.title)
-}
-*/
-
-/*
-// After the systems have been defined we create them one by one and join them.
-fn construct_system(system_defs: &Vec<SystemDefinition>) -> Result<Component> {
-    let components = system_defs.iter().map(|def| {
-        substrate::create_substrate(&def.finalized)
-            .map(|comp| comp.into_component())
-            .map(|comp| comp.translate(&def.position))
-            .map_err(|err| GrafenCliError::from(err))
-    })
-    .collect::<result::Result<Vec<Component>, GrafenCliError>>()?;
-
-    Ok(join_components(components))
-}
-*/
