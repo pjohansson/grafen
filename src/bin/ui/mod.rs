@@ -11,13 +11,13 @@ mod define_system;
 mod utils;
 
 use super::Config;
-use database::SheetConfEntry;
+use database::{CylinderConfEntry, SheetConfEntry};
 use error::{GrafenCliError, Result};
 use output;
 use ui::utils::{CommandList, CommandParser};
 
 use grafen::cylinder::Cylinder;
-use grafen::substrate::create_substrate;
+use grafen::substrate::{create_substrate, SheetConf};
 use grafen::system::{Component, Coord, IntoComponent, Translate};
 use std::error::Error;
 
@@ -25,6 +25,7 @@ use std::error::Error;
 /// List of components that can be constructed.
 pub enum AvailableComponents {
     Sheet { conf: SheetConfEntry, size: (f64, f64) },
+    Cylinder { conf: CylinderConfEntry, radius: f64, height: f64 },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -45,7 +46,11 @@ impl ComponentDefinition {
             AvailableComponents::Sheet { ref conf, size: (dx, dy) } => {
                 format!("Sheet of {} and size ({:.2}, {:.2}) at position ({:.2}, {:.2}, {:.2})",
                         conf.residue.code, dx, dy, x0, y0, z0)
-            }
+            },
+            AvailableComponents::Cylinder { ref conf, radius, height } => {
+                format!("Cylinder of {} with radius {:.2} and height {:.2} at position ({:.2}, {:.2}, {:.2})",
+                        conf.residue.code, radius, height, x0, y0, z0)
+            },
         }
     }
 
@@ -56,7 +61,18 @@ impl ComponentDefinition {
                 let sheet = conf.to_conf(dx, dy);
                 let component = create_substrate(&sheet)?;
                 Ok(component.translate(&self.position).into_component())
-            }
+            },
+            AvailableComponents::Cylinder { ref conf, radius, height } => {
+                let sheet_conf = SheetConf {
+                    lattice: conf.lattice.clone(),
+                    residue: conf.residue.clone(),
+                    size: (2.0 * ::std::f64::consts::PI * radius, height),
+                    std_z: None,
+                };
+                let sheet = create_substrate(&sheet_conf)?;
+                let cylinder = Cylinder::from_sheet(&sheet).into_component();
+                Ok(cylinder.translate(&self.position))
+            },
         }
     }
 }
@@ -228,8 +244,19 @@ mod tests {
 
     /// Setup a system of three components and in total seven atoms
     fn setup_system() -> System {
-        let base_one = resbase!["R1", ("A1", 0.0, 1.0, 2.0), ("A2", 0.0, 2.0, 1.0)];
-        let base_two = resbase!["R2", ("B", 0.0, 1.0, 2.0)];
+        let base_one = ResidueBase {
+            code: "R1".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(0.0, 2.0, 1.0) }
+                ],
+            };
+        let base_two = ResidueBase {
+            code: "R2".to_string(),
+            atoms: vec![
+                Atom { code: "B".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                ],
+            };
 
         System {
             box_size: None,

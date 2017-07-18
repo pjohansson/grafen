@@ -152,6 +152,19 @@ impl SheetConfEntry {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+/// A catalog entry for a `CylinderConf`.
+///
+/// The final configuration requires a radius and height, not stored in this. But should it be?
+pub struct CylinderConfEntry {
+    /// Definition name.
+    pub name: String,
+    /// Lattice constructor for the sheet.
+    pub lattice: LatticeType,
+    /// Base residue.
+    pub residue: ResidueBase,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
