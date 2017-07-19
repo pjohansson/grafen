@@ -78,6 +78,31 @@ impl<T: Copy> CommandParser<T> {
     }
 }
 
+/// Macro for creating a `CommandParser` object.
+///
+/// See the tests below for an up-to-date example of use. The general idea
+/// is to just do:
+/// ```
+/// #[derive(Clone, Copy)] enum Commands { One, Two }
+/// let commands = command_parser!(
+///     ("a", Commands::One, "Description"),
+///     ("b", Commands::Two, "Description")
+/// );
+/// ```
+macro_rules! command_parser {
+    (
+        $(($short:expr, $command:path, $description:expr)),+
+    ) => {
+        {
+            let mut temp_command_list = Vec::new();
+            $(
+                temp_command_list.push(($short, $command, $description));
+            )*
+            CommandParser::from_list(temp_command_list)
+        }
+    }
+}
+
 /// Read and trim a string from stdin.
 pub fn get_input_string(query: &'static str) -> Result<String> {
     let stdin = io::stdin();
@@ -341,5 +366,30 @@ mod tests {
         assert!(parse_string_for_index("1", &vec![0]).is_err());
         assert!(parse_string_for_index("a", &vec![0]).is_err());
         assert!(parse_string_for_index("\n", &vec![0]).is_err());
+    }
+
+    #[test]
+    fn command_list_macro_is_consistent() {
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        enum TestCommand { One, Two }
+
+        let commands_macro = command_parser!(
+            ("a", TestCommand::One, "First command"),
+            ("b", TestCommand::Two, "Second command")
+        );
+
+        let command_list_full: CommandList<TestCommand> = vec![
+            ("a", TestCommand::One, "First command"),
+            ("b", TestCommand::Two, "Second command")
+        ];
+        let commands_full = CommandParser::from_list(command_list_full);
+
+        assert_eq!(2, commands_macro.commands.len());
+
+        let mut iter_macro = commands_macro.commands.iter();
+        let mut iter_full = commands_full.commands.iter();
+        for (&cmd_macro, &cmd_full) in iter_macro.zip(iter_full) {
+            assert_eq!(cmd_macro, cmd_full);
+        }
     }
 }
