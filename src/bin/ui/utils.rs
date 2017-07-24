@@ -151,6 +151,21 @@ pub fn parse_string_for_index<T>(input: &str, list: &Vec<T>) -> Result<usize> {
         .map_err(|err| GrafenCliError::from(err))
 }
 
+/// Get an input string from the user and parse it for a value.
+pub fn get_and_parse_string_single<T: FromStr>(query: &'static str) -> Result<T> {
+    get_input_string(query).and_then(|s| {
+        parse_string_single::<T>(&s).map_err(|err| GrafenCliError::from(err))
+    })
+}
+
+/// Get an input string from the user and parse it for values.
+pub fn get_and_parse_string<T: FromStr>(query: &'static str) -> Result<Vec<T>> {
+    get_input_string(query).and_then(|s| {
+        parse_string::<T>(&s).map_err(|err| GrafenCliError::from(err))
+    })
+}
+
+
 /// Remove an item from a list. The index is parsed from the input tail and returned as a result.
 pub fn remove_item<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<usize> {
     let index = parse_string_for_index(&tail, &item_list)?;
