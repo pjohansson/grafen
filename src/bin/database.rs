@@ -18,7 +18,7 @@ use std::result;
 /// A collection of residues and substrate configurations
 /// which can be saved to and read from disk.
 pub struct DataBase {
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(skip)]
     /// A path to the `DataBase` location on the hard drive.
     pub path: Option<PathBuf>,
 
@@ -169,14 +169,16 @@ impl AvailableComponents {
 
     /// Return a name for the component.
     pub fn name(&self) -> &str {
-        match self {
-            &AvailableComponents::Sheet(ref conf) => &conf.name,
-            &AvailableComponents::Cylinder(ref conf) => &conf.name,
+        match *self {
+            AvailableComponents::Sheet(ref conf) => &conf.name,
+            AvailableComponents::Cylinder(ref conf) => &conf.name,
         }
     }
 
     /// Construct the component from the definition.
     pub fn into_component(self) -> Result<Component> {
+        use ::std::f64::consts::PI;
+
         match self {
             AvailableComponents::Sheet(conf) => {
                 let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
@@ -186,14 +188,16 @@ impl AvailableComponents {
                 Ok(component.translate(&position).into_component())
             },
             AvailableComponents::Cylinder(conf) => {
-                let radius = conf.radius.unwrap();
-                let height = conf.height.unwrap();
+                let radius = conf.radius
+                    .ok_or(GrafenCliError::RunError("A cylinder radius was not set".to_string()))?;
+                let height = conf.height
+                    .ok_or(GrafenCliError::RunError("A cylinder height was not set".to_string()))?;
                 let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
 
                 let sheet_conf = SheetConf {
                     lattice: conf.lattice.clone(),
                     residue: conf.residue.clone(),
-                    size: (2.0 * ::std::f64::consts::PI * radius, height),
+                    size: (2.0 * PI * radius, height),
                     std_z: None,
                 };
                 let sheet = create_substrate(&sheet_conf)?;
