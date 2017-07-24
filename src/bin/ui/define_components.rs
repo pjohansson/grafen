@@ -1,12 +1,11 @@
-//! Define a `SystemDefinition` entry.
+//! Define a system components to create.
 //!
 //! This interface could use a lot of improvement.
 
-use database::{DataBase, SheetConfEntry};
+use database::{AvailableComponents, DataBase};
 use error::{GrafenCliError, Result, UIErrorKind};
-use ui::{AvailableComponents, ComponentDefinition};
 use ui::utils;
-use ui::utils::{CommandList, CommandParser};
+use ui::utils::CommandParser;
 
 use grafen::system::Coord;
 use std::error::Error;
@@ -22,16 +21,15 @@ enum Command {
 }
 
 /// Edit the list of system definitions to construct from.
-pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinition>)
+pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableComponents>)
         -> Result<()> {
-    let command_list: CommandList<Command> = vec![
+    let commands = command_parser!(
         ("d", Command::DefineSystem, "Define a system to create"),
         ("r", Command::RemoveSystem, "Remove a system from the list"),
         ("s", Command::SwapSystems, "Swap the order of two systems"),
         ("f", Command::QuitAndSave, "Finalize editing and return"),
         ("a", Command::QuitWithoutSaving, "Abort and discard changes to list")
-    ];
-    let commands = CommandParser::from_list(command_list);
+    );
 
     let backup = system_defs.clone();
 
@@ -63,13 +61,13 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinit
                     }
                 },
                 Command::QuitAndSave => {
-                    return Ok(());
+                    break Ok(())
                 },
                 Command::QuitWithoutSaving => {
                     system_defs.clear();
                     system_defs.extend_from_slice(&backup);
 
-                    return Ok(());
+                    break Ok(())
                 },
             }
         } else {
@@ -81,49 +79,65 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinit
 }
 
 /// Print the current system definitions to stdout.
-pub fn describe_system_definitions(system_defs: &[ComponentDefinition]) {
+pub fn describe_system_definitions(system_defs: &[AvailableComponents]) {
     if system_defs.is_empty() {
         println!("(No systems have been defined)");
     } else {
         println!("System definitions:");
         for (i, def) in system_defs.iter().enumerate() {
-            println!("{}. {}", i, def.describe());
+            println!("{}. {}", i, def.describe_long());
         }
     }
-
     println!("");
 }
 
-fn create_definition(database: &DataBase) -> Result<ComponentDefinition> {
-    let definition = select_substrate(&database)?;
-    let position = select_position()?;
-    let size = select_size()?;
+/// Prompt the user to fill in the missing information for a definition.
+fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
+    use database::AvailableComponents::*;
 
-    Ok(ComponentDefinition {
-        definition: AvailableComponents::Sheet{ conf: definition.clone(), size: size },
-        position: position,
-    })
+    match select_component(&database) {
+        Ok(Sheet(mut def)) => {
+            let position = select_position()?;
+            let size = select_size()?;
+
+            def.position = Some(position);
+            def.size = Some(size);
+
+            Ok(Sheet(def))
+        },
+        Ok(Cylinder(mut def)) => {
+            let position = select_position()?;
+            let radius = utils::get_and_parse_string_single("Set radius (nm)")?;
+            let height = utils::get_and_parse_string_single("Set height (nm)")?;
+
+            def.position = Some(position);
+            def.radius = Some(radius);
+            def.height = Some(height);
+
+            Ok(Cylinder(def))
+        },
+        err @ Err(_) => err,
+    }
 }
 
-fn select_substrate<'a>(database: &'a DataBase) -> Result<&'a SheetConfEntry> {
-    println!("Available substrates:");
-    for (i, sub) in database.substrate_defs.iter().enumerate() {
-        println!("{}. {}", i, sub.name);
+/// Prompt the user for a component from the list in the `DataBase`.
+fn select_component(database: &DataBase) -> Result<AvailableComponents> {
+    println!("Available components:");
+    for (i, sub) in database.component_defs.iter().enumerate() {
+        println!("{}. {}", i, &sub.describe());
     }
     println!("");
 
-    let selection = utils::get_input_string("Select substrate")?;
-    selection
-        .parse::<usize>()
-        .map_err(|_| UIErrorKind::BadValue(format!("'{}' is not a valid index", &selection)))
-        .and_then(|n| {
-            database.substrate_defs
-                .get(n)
-                .ok_or(UIErrorKind::BadValue(format!("No substrate with index {} exists", n)))
-        })
-        .map_err(|err| GrafenCliError::from(err))
+    let selection = utils::get_input_string("Select component")?;
+    let index = utils::parse_string_for_index(&selection, &database.component_defs)?;
+
+    database.component_defs
+        .get(index)
+        .ok_or(GrafenCliError::UIError(format!("'{}' is not a valid index", &selection)))
+        .map(|comp| comp.clone())
 }
 
+/// Get a `Coord` either from the user or by default at (0, 0, 0). Ugly?
 fn select_position() -> Result<Coord> {
     let selection = utils::get_input_string("Change position (default: (0.0, 0.0, 0.0))")?;
     if selection.is_empty() {
@@ -138,10 +152,9 @@ fn select_position() -> Result<Coord> {
     Ok(Coord::new(x, y, z))
 }
 
+/// Get a 2D size. Ugly.
 fn select_size() -> Result<(f64, f64)> {
-    let selection = utils::get_input_string("Set size")?;
-
-    let size = utils::parse_string(&selection)?;
+    let size = utils::get_and_parse_string("Set size (nm^2)")?;
     let &dx = size.get(0).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
     let &dy = size.get(1).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
 

@@ -17,8 +17,6 @@ mod ui;
 use database::{read_database, DataBase};
 use error::Result;
 
-use std::io;
-use std::io::Write;
 use std::process;
 use std::path::PathBuf;
 
@@ -66,8 +64,7 @@ fn main() {
     ).get_matches();
 
     if let Err(err) = Config::from_matches(matches).and_then(|mut conf| ui::user_menu(&mut conf)) {
-        let mut stderr = io::stderr();
-        writeln!(&mut stderr, "{}", err).expect("could not write to stderr");
+        eprintln!("{}", err);
         process::exit(1);
     }
 }
