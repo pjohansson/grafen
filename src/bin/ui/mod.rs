@@ -6,19 +6,18 @@
 //! greatly by knowing more about human interface design. In particular the systems
 //! for creating `SheetConfEntry` and `SystemDefinition` are in need of improvement.
 
+#[macro_use]
+mod utils;
 mod edit_database;
 mod define_components;
-mod utils;
 
 use super::Config;
-use database::{AvailableComponents, CylinderConfEntry, SheetConfEntry};
+use database::AvailableComponents;
 use error::{GrafenCliError, Result};
 use output;
 use ui::utils::{CommandList, CommandParser};
 
-use grafen::cylinder::Cylinder;
-use grafen::substrate::{create_substrate, SheetConf};
-use grafen::system::{Component, Coord, IntoComponent, Translate};
+use grafen::system::{Component, Coord};
 use std::error::Error;
 
 #[derive(Debug)]

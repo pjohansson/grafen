@@ -119,6 +119,7 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
     }
 }
 
+#[macro_use]
 mod define_residue {
     //! Define a new `ResidueBase`.
 
@@ -283,9 +284,10 @@ mod define_residue {
 mod define_component {
     //! Define a new `SheetConfEntry`.
 
-    use database::{AvailableComponents, SheetConfEntry};
+    use database::{AvailableComponents, CylinderConfEntry, SheetConfEntry};
     use error::{GrafenCliError, Result};
     use ui::utils;
+    use ui::utils::{CommandParser};
 
     use grafen::substrate::LatticeType;
     use grafen::system::ResidueBase;
@@ -300,28 +302,89 @@ mod define_component {
         PoissonDisc,
     }
 
+    #[derive(Clone, Copy, Debug)]
+    /// Available component types.
+    enum ComponentSelect {
+        Sheet,
+        Cylinder,
+    }
+
     pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<AvailableComponents> {
-        let name = utils::get_input_string("Substrate name")
-            .and_then(|string| {
-                if string.is_empty() {
-                    Err(GrafenCliError::UIError("No name was entered".to_string()))
-                } else {
-                    Ok(string)
-                }
-            })
-            .map_err(|err| GrafenCliError::from(err))?;
-        println!("");
+        match select_component_type() {
+            Some(ComponentSelect::Sheet) => {
+                let name = utils::get_input_string("Substrate name")
+                    .and_then(|string| {
+                        if string.is_empty() {
+                            Err(GrafenCliError::UIError("No name was entered".to_string()))
+                        } else {
+                            Ok(string)
+                        }
+                    })
+                    .map_err(|err| GrafenCliError::from(err))?;
+                println!("");
 
-        let residue = select_residue(&residue_list)?;
-        println!("");
+                let residue = select_residue(&residue_list)?;
+                println!("");
+                let lattice = select_lattice()?;
+                println!("");
+                let std_z = select_deviation_along_z()?;
+                println!("");
 
-        let lattice = select_lattice()?;
-        println!("");
+                Ok(AvailableComponents::Sheet(SheetConfEntry {
+                    name,
+                    lattice,
+                    residue,
+                    std_z,
+                    size: None,
+                    position: None
+                }))
+            },
+            
+            Some(ComponentSelect::Cylinder) => {
+                let name = utils::get_input_string("Cylinder name")
+                    .and_then(|string| {
+                        if string.is_empty() {
+                            Err(GrafenCliError::UIError("No name was entered".to_string()))
+                        } else {
+                            Ok(string)
+                        }
+                    })
+                    .map_err(|err| GrafenCliError::from(err))?;
+                println!("");
 
-        let std_z = select_deviation_along_z()?;
-        println!("");
+                let residue = select_residue(&residue_list)?;
+                println!("");
+                let lattice = select_lattice()?;
+                println!("");
 
-        Ok(AvailableComponents::Sheet(SheetConfEntry { name, lattice, residue, std_z, size: None, position: None }))
+                Ok(AvailableComponents::Cylinder(CylinderConfEntry {
+                    name,
+                    lattice,
+                    residue,
+                    radius: None,
+                    height: None,
+                    position: None,
+                }))
+            },
+
+            None => {
+                Err(GrafenCliError::UIError("Could not select a component".to_string()))
+            },
+        }
+    }
+
+    fn select_component_type() -> Option<ComponentSelect> {
+        let commands = command_parser!(
+            ("s", ComponentSelect::Sheet, "Sheet"),
+            ("c", ComponentSelect::Cylinder, "Cylinder")
+        );
+
+        commands.print_menu();
+        if let Some(input) = utils::get_input_string("Selection").ok() {
+            commands.get_selection(&input)
+        } else {
+            None
+        }
     }
 
     fn select_residue(residue_list: &Vec<ResidueBase>) -> Result<ResidueBase> {

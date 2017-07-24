@@ -44,11 +44,13 @@ impl DataBase {
     /// Print the `DataBase` content to stdout.
     pub fn describe(&self) {
         println!("Database path: {}", self.get_path_pretty());
+        println!("");
 
         println!("Component definitions:");
         for (i, def) in self.component_defs.iter().enumerate() {
-            println!("{:4}. ({}) {}", i, def.describe(), def.name());
+            println!("{:4}. {}", i, def.describe());
         }
+        println!("");
 
         println!("Residue definitions:");
         for (i, def) in self.residue_defs.iter().enumerate() {
@@ -67,7 +69,7 @@ impl DataBase {
 
     /// Set a new path for the `DataBase`. The input path is asserted to
     /// be a non-empty file and the extension is set to 'json'.
-    pub fn set_path<'a, T>(&mut self, new_path: &'a T) -> Result<()>
+    pub fn set_path<T>(&mut self, new_path: &T) -> Result<()>
             where T: ?Sized + AsRef<OsStr> {
         let mut path = PathBuf::from(new_path);
 
@@ -99,7 +101,7 @@ impl DataBase {
 
 /// Read a `DataBase` from a JSON formatted file.
 /// The owned path is set to the input path.
-pub fn read_database<'a>(from_path: &'a str) -> result::Result<DataBase, io::Error> {
+pub fn read_database(from_path: &str) -> result::Result<DataBase, io::Error> {
     let path = Path::new(from_path);
     let buffer = File::open(&path)?;
 
@@ -138,11 +140,11 @@ pub enum AvailableComponents {
 }
 
 impl AvailableComponents {
-    /// Return the type of the component.
-    pub fn describe(&self) -> &str {
-        match self {
-            &AvailableComponents::Sheet(_) => "Sheet",
-            &AvailableComponents::Cylinder(_) => "Cylinder",
+    /// Describe the components type with its name.
+    pub fn describe(&self) -> String {
+        match *self {
+            AvailableComponents::Sheet(_) => format!("(Sheet) {}", self.name()),
+            AvailableComponents::Cylinder(_) => format!("(Cylinder) {}", self.name()),
         }
     }
 
@@ -150,15 +152,15 @@ impl AvailableComponents {
     pub fn describe_long(&self) -> String {
         match self {
             &AvailableComponents::Sheet(ref conf) => {
-                let (dx, dy) = conf.size.unwrap();
-                let (x0, y0, z0) = conf.position.unwrap().to_tuple();
+                let (dx, dy) = conf.size.unwrap_or((0.0, 0.0));
+                let (x0, y0, z0) = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0)).to_tuple();
                 format!("Sheet of {} and size ({:.2}, {:.2}) at position ({:.2}, {:.2}, {:.2})",
                         conf.residue.code, dx, dy, x0, y0, z0)
             },
             &AvailableComponents::Cylinder(ref conf) => {
-                let radius = conf.radius.unwrap();
-                let height = conf.height.unwrap();
-                let (x0, y0, z0) = conf.position.unwrap().to_tuple();
+                let radius = conf.radius.unwrap_or(0.0);
+                let height = conf.height.unwrap_or(0.0);
+                let (x0, y0, z0) = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0)).to_tuple();
                 format!("Cylinder of {} with radius {:.2} and height {:.2} at position ({:.2}, {:.2}, {:.2})",
                         conf.residue.code, radius, height, x0, y0, z0)
             },
@@ -232,7 +234,7 @@ impl SheetConfEntry {
             Ok(SheetConf {
                 lattice: self.lattice.clone(),
                 residue: self.residue.clone(),
-                size: self.size.unwrap(),
+                size,
                 std_z: self.std_z,
             })
         } else {
@@ -391,7 +393,7 @@ mod tests {
         let database = DataBase {
             path: Some(PathBuf::from("This/will/be/removed")),
             residue_defs: vec![base.clone()],
-            component_defs: vec![conf.clone()],
+            component_defs: vec![AvailableComponents::Sheet(conf.clone())],
         };
 
         let mut serialized: Vec<u8> = Vec::new();

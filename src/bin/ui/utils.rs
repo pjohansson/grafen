@@ -43,7 +43,7 @@ impl<T: Copy> CommandParser<T> {
     }
 
     /// Parse a string for a command from the input list.
-    pub fn get_selection<'a>(&self, input: &'a str) -> Option<T> {
+    pub fn get_selection(&self, input: &str) -> Option<T> {
         if let Some(needle) = input.trim().to_lowercase().split_whitespace().next() {
             for &(ident, cmd, _) in self.commands.iter() {
                 if needle == ident {
@@ -57,7 +57,7 @@ impl<T: Copy> CommandParser<T> {
 
     /// Parse a string for a command from the input list and return along
     /// with the remaining string ("tail").
-    pub fn get_selection_and_tail<'a>(&self, input: &'a str) -> Option<(T, String)> {
+    pub fn get_selection_and_tail(&self, input: &str) -> Option<(T, String)> {
         let mut iter = input.split_whitespace();
 
         iter.next()
@@ -104,7 +104,7 @@ macro_rules! command_parser {
 }
 
 /// Read and trim a string from stdin.
-pub fn get_input_string(query: &'static str) -> Result<String> {
+pub fn get_input_string(query: &str) -> Result<String> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut selection = String::new();
@@ -118,7 +118,7 @@ pub fn get_input_string(query: &'static str) -> Result<String> {
 
 /// Parse an input string for values. Values are whitespace separated.
 /// Return an Error if any value of the string could not be parsed.
-pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIErrorKind> {
+pub fn parse_string<T: FromStr>(tail: &str) -> result::Result<Vec<T>, UIErrorKind> {
     // Note to self: This uses `FromIterator` to turn a Vec<Result> into Result<Vec>. Neat!
     tail.split_whitespace()
         .map(|s| s.parse::<T>().map_err(|_| {
@@ -128,7 +128,7 @@ pub fn parse_string<'a, T: FromStr>(tail: &'a str) -> result::Result<Vec<T>, UIE
 }
 
 /// Parse an input string for one value. Return an Error if a value could not be parsed.
-pub fn parse_string_single<'a, T: FromStr>(tail: &'a str) -> result::Result<T, UIErrorKind> {
+pub fn parse_string_single<T: FromStr>(tail: &str) -> result::Result<T, UIErrorKind> {
     let string = tail.split_whitespace().next()
         .ok_or(UIErrorKind::BadValue("Could not parse a value".to_string()))?;
 
@@ -152,7 +152,7 @@ pub fn parse_string_for_index<T>(input: &str, list: &Vec<T>) -> Result<usize> {
 }
 
 /// Get an input string from the user and parse it for a value.
-pub fn get_and_parse_string_single<T: FromStr>(query: &'static str) -> Result<T> {
+pub fn get_and_parse_string_single<T: FromStr>(query: &str) -> Result<T> {
     get_input_string(query).and_then(|s| {
         parse_string_single::<T>(&s).map_err(|err| GrafenCliError::from(err))
     })
@@ -167,7 +167,7 @@ pub fn get_and_parse_string<T: FromStr>(query: &'static str) -> Result<Vec<T>> {
 
 
 /// Remove an item from a list. The index is parsed from the input tail and returned as a result.
-pub fn remove_item<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<usize> {
+pub fn remove_item<T>(item_list: &mut Vec<T>, tail: &str) -> Result<usize> {
     let index = parse_string_for_index(&tail, &item_list)?;
     item_list.remove(index);
 
@@ -176,7 +176,7 @@ pub fn remove_item<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<usize
 
 /// Swap two items of a list in-place. The indices are parsed from the input string
 /// and returned as the result.
-pub fn swap_items<'a, T>(item_list: &mut Vec<T>, tail: &'a str) -> Result<(usize, usize)> {
+pub fn swap_items<T>(item_list: &mut Vec<T>, tail: &str) -> Result<(usize, usize)> {
     let parsed = parse_string(tail)?;
     let max_len = item_list.len();
 

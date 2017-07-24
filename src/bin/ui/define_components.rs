@@ -2,12 +2,12 @@
 //!
 //! This interface could use a lot of improvement.
 
-use database::{AvailableComponents, DataBase, SheetConfEntry};
+use database::{AvailableComponents, DataBase};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::utils;
 use ui::utils::{CommandList, CommandParser};
 
-use grafen::system::{Coord, Component};
+use grafen::system::Coord;
 use std::error::Error;
 
 #[derive(Clone, Copy, Debug)]
@@ -94,44 +94,57 @@ pub fn describe_system_definitions(system_defs: &[AvailableComponents]) {
 }
 
 fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
-    let mut definition = select_substrate(&database).map(|def| def.clone())?;
-    let position = select_position()?;
-    let size = select_size()?;
+    //let mut definition = select_substrate(&database).map(|def| def.clone())?;
+    let mut definition = select_component(&database).map(|def| def.clone())?;
 
-    definition.position = Some(position);
-    definition.size = Some(size);
+    match &mut definition {
+        &mut AvailableComponents::Sheet(ref mut conf) => {
+            let position = select_position()?;
+            let size = select_size()?;
 
-    Ok(AvailableComponents::Sheet(definition))
+            conf.position = Some(position);
+            conf.size = Some(size);
+        },
+        &mut AvailableComponents::Cylinder(ref mut conf) => {
+            let position = select_position()?;
+            let radius = utils::get_and_parse_string_single("Set radius")?;
+            let height = utils::get_and_parse_string_single("Set height")?;
+
+            conf.position = Some(position);
+            conf.radius = Some(radius);
+            conf.height = Some(height);
+        },
+    }
+
+    Ok(definition)
 }
 
-fn select_substrate(database: &DataBase) -> Result<SheetConfEntry> {
-    let available_substrates: Vec<SheetConfEntry> = database.component_defs
-        .iter()
-        .filter_map(|ref def| {
-            match def {
-                &&AvailableComponents::Sheet(ref conf) => Some(conf.clone()),
-                _ => None,
-            }
-        })
-        .collect();
-
-    println!("Available substrates:");
-    for (i, sub) in available_substrates.iter().enumerate() {
-        println!("{}. {}", i, sub.name);
+fn select_component(database: &DataBase) -> Result<&AvailableComponents> {
+    println!("Available components:");
+    for (i, sub) in database.component_defs.iter().enumerate() {
+        println!("{}. {}", i, &sub.describe());
     }
     println!("");
 
-    let selection = utils::get_input_string("Select substrate")?;
+    let selection = utils::get_input_string("Select component")?;
+    let index = utils::parse_string_for_index(&selection, &database.component_defs)?;
+
+    database.component_defs
+        .get(index)
+        .ok_or(GrafenCliError::UIError(format!("'{}' is not a valid index", &selection)))
+
+        /*
     selection
         .parse::<usize>()
         .map_err(|_| UIErrorKind::BadValue(format!("'{}' is not a valid index", &selection)))
         .and_then(|n| {
-            available_substrates
+            database.component_defs
                 .get(n)
                 .map(|def| def.clone())
-                .ok_or(UIErrorKind::BadValue(format!("No substrate with index {} exists", n)))
+                .ok_or(UIErrorKind::BadValue(format!("No component with index {} exists", n)))
         })
         .map_err(|err| GrafenCliError::from(err))
+        */
 }
 
 fn select_position() -> Result<Coord> {
@@ -149,9 +162,7 @@ fn select_position() -> Result<Coord> {
 }
 
 fn select_size() -> Result<(f64, f64)> {
-    let selection = utils::get_input_string("Set size")?;
-
-    let size = utils::parse_string(&selection)?;
+    let size = utils::get_and_parse_string("Set size")?;
     let &dx = size.get(0).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
     let &dy = size.get(1).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
 
