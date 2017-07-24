@@ -15,7 +15,7 @@ use super::Config;
 use database::AvailableComponents;
 use error::{GrafenCliError, Result};
 use output;
-use ui::utils::{CommandList, CommandParser};
+use ui::utils::CommandParser;
 
 use grafen::system::{Component, Coord};
 use std::error::Error;
@@ -99,14 +99,13 @@ enum Command {
 pub fn user_menu(mut config: &mut Config) -> Result<()> {
     let mut system = System { box_size: None, constructed: vec![], definitions: vec![] };
 
-    let command_list: CommandList<Command> = vec![
+    let commands = command_parser!(
         ("de", Command::DefineComponents, "Define the list of components to construct"),
         ("co", Command::ConstructComponents, "Construct components from all definitions"),
         ("db", Command::EditDatabase, "Edit the database of residue and object definitions"),
         ("save", Command::SaveSystem, "Save the constructed components to disk as a system"),
-        ("quit", Command::Quit, "Quit the program"),
-    ];
-    let commands = CommandParser::from_list(command_list);
+        ("quit", Command::Quit, "Quit the program")
+    );
 
     loop {
         define_components::describe_system_definitions(&system.definitions);
