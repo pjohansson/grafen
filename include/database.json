@@ -109,6 +109,29 @@
         },
         "std_z": null
       }
+    },
+    {
+      "Cylinder": {
+        "name": "CarbonTube",
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
+          }
+        },
+        "residue": {
+          "code": "CYL",
+          "atoms": [
+            {
+              "code": "C",
+              "position": {
+                "x": 0.071,
+                "y": 0.071,
+                "z": 0.0
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }
