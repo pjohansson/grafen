@@ -4,22 +4,104 @@
 
 use database::{DataBase, SheetConfEntry};
 use error::{GrafenCliError, Result, UIErrorKind};
-use ui::SystemDefinition;
+use ui::{AvailableComponents, ComponentDefinition};
 use ui::utils;
+use ui::utils::{CommandList, CommandParser};
 
 use grafen::system::Coord;
+use std::error::Error;
 
-pub fn user_menu(database: &DataBase) -> Result<SystemDefinition> {
-    let config = select_substrate(&database)?;
+#[derive(Clone, Copy, Debug)]
+/// User commands for defining the system.
+enum Command {
+    DefineSystem,
+    RemoveSystem,
+    SwapSystems,
+    QuitAndSave,
+    QuitWithoutSaving,
+}
+
+/// Edit the list of system definitions to construct from.
+pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<ComponentDefinition>)
+        -> Result<()> {
+    let command_list: CommandList<Command> = vec![
+        ("d", Command::DefineSystem, "Define a system to create"),
+        ("r", Command::RemoveSystem, "Remove a system from the list"),
+        ("s", Command::SwapSystems, "Swap the order of two systems"),
+        ("f", Command::QuitAndSave, "Finalize editing and return"),
+        ("a", Command::QuitWithoutSaving, "Abort and discard changes to list")
+    ];
+    let commands = CommandParser::from_list(command_list);
+
+    let backup = system_defs.clone();
+
+    loop {
+        describe_system_definitions(&system_defs);
+        commands.print_menu();
+        let input = utils::get_input_string("Selection")?;
+        println!("");
+
+        if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
+            match cmd {
+                Command::DefineSystem => {
+                    match create_definition(&database) {
+                        Ok(def) => system_defs.push(def),
+                        Err(err) => println!("Could not create definition: {}", err.description()),
+                    }
+                },
+                Command::RemoveSystem => {
+                    match utils::remove_item(&mut system_defs, &tail) {
+                        Ok(i) => println!("Removed system at index {}.", i),
+                        Err(err) => println!("Could not remove system: {}", err.description()),
+                    }
+                },
+                Command::SwapSystems => {
+                    match utils::swap_items(&mut system_defs, &tail) {
+                        Ok((i, j)) => println!("Swapped system at index {} with system at {}.",
+                                               i, j),
+                        Err(err) => println!("Could not swap systems: {}", err.description()),
+                    }
+                },
+                Command::QuitAndSave => {
+                    return Ok(());
+                },
+                Command::QuitWithoutSaving => {
+                    system_defs.clear();
+                    system_defs.extend_from_slice(&backup);
+
+                    return Ok(());
+                },
+            }
+        } else {
+            println!("Not a valid selection.");
+        }
+
+        println!("");
+    }
+}
+
+/// Print the current system definitions to stdout.
+pub fn describe_system_definitions(system_defs: &[ComponentDefinition]) {
+    if system_defs.is_empty() {
+        println!("(No systems have been defined)");
+    } else {
+        println!("System definitions:");
+        for (i, def) in system_defs.iter().enumerate() {
+            println!("{}. {}", i, def.describe());
+        }
+    }
+
+    println!("");
+}
+
+fn create_definition(database: &DataBase) -> Result<ComponentDefinition> {
+    let definition = select_substrate(&database)?;
     let position = select_position()?;
     let size = select_size()?;
-    let (x, y) = size;
 
-    Ok(SystemDefinition {
-        config: config.clone(),
+    Ok(ComponentDefinition {
+        definition: AvailableComponents::Sheet{ conf: definition.clone(), size: size },
         position: position,
-        size: size,
-        finalized: config.to_conf(x, y),
     })
 }
 

@@ -10,89 +10,196 @@ mod edit_database;
 mod define_system;
 mod utils;
 
-use database::{DataBase, SheetConfEntry};
+use super::Config;
+use database::{CylinderConfEntry, SheetConfEntry};
 use error::{GrafenCliError, Result};
+use output;
 use ui::utils::{CommandList, CommandParser};
 
-use grafen::substrate::SheetConf;
-use grafen::system::Coord;
+use grafen::cylinder::Cylinder;
+use grafen::substrate::{create_substrate, SheetConf};
+use grafen::system::{Component, Coord, IntoComponent, Translate};
 use std::error::Error;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+/// List of components that can be constructed.
+pub enum AvailableComponents {
+    Sheet { conf: SheetConfEntry, size: (f64, f64) },
+    Cylinder { conf: CylinderConfEntry, radius: f64, height: f64 },
+}
+
+#[derive(Clone, Debug, PartialEq)]
 /// One system is defined by these attributes.
-pub struct SystemDefinition {
-    pub config: SheetConfEntry,
+pub struct ComponentDefinition {
+    /// The type of the system and its specific attributes.
+    pub definition: AvailableComponents,
+    /// A position in the system.
     pub position: Coord,
-    pub size: (f64, f64),
-    pub finalized: SheetConf,
+}
+
+impl ComponentDefinition {
+    /// Return a description of the component that is to be created.
+    fn describe(&self) -> String {
+        let (x0, y0, z0) = self.position.to_tuple();
+
+        match self.definition {
+            AvailableComponents::Sheet { ref conf, size: (dx, dy) } => {
+                format!("Sheet of {} and size ({:.2}, {:.2}) at position ({:.2}, {:.2}, {:.2})",
+                        conf.residue.code, dx, dy, x0, y0, z0)
+            },
+            AvailableComponents::Cylinder { ref conf, radius, height } => {
+                format!("Cylinder of {} with radius {:.2} and height {:.2} at position ({:.2}, {:.2}, {:.2})",
+                        conf.residue.code, radius, height, x0, y0, z0)
+            },
+        }
+    }
+
+    /// Construct the component from the definition.
+    fn into_component(self) -> Result<Component> {
+        match self.definition {
+            AvailableComponents::Sheet { ref conf, size: (dx, dy) } => {
+                let sheet = conf.to_conf(dx, dy);
+                let component = create_substrate(&sheet)?;
+                Ok(component.translate(&self.position).into_component())
+            },
+            AvailableComponents::Cylinder { ref conf, radius, height } => {
+                let sheet_conf = SheetConf {
+                    lattice: conf.lattice.clone(),
+                    residue: conf.residue.clone(),
+                    size: (2.0 * ::std::f64::consts::PI * radius, height),
+                    std_z: None,
+                };
+                let sheet = create_substrate(&sheet_conf)?;
+                let cylinder = Cylinder::from_sheet(&sheet).into_component();
+                Ok(cylinder.translate(&self.position))
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
+/// A `Component` which has been constructed along with a descriptive string.
+pub struct ConstructedComponent {
+    /// Description of the component.
+    description: String,
+    /// The component.
+    pub component: Component,
+}
+
+#[derive(Debug)]
+/// All `ConstructedComponent`s and `ComponentDefinition`s are kept in this
+/// `System` which keeps track of those and other meta information.
+pub struct System {
+    /// System box size. Either set by the user or calculated from the components.
+    pub box_size: Option<Coord>,
+    /// Components and their descriptions belonging to the system.
+    pub constructed: Vec<ConstructedComponent>,
+    /// Component definitions.
+    pub definitions: Vec<ComponentDefinition>,
+}
+
+impl System {
+    /// Calculate the box size from the system components. The largest extension along each
+    /// direction is used for the final box size.
+    ///
+    /// Returns None if no components exist in the system.
+    pub fn calc_box_size(&self) -> Option<Coord> {
+        if self.constructed.is_empty() {
+            return None;
+        }
+
+        let box_size = self.constructed.iter().fold(
+            Coord::new(0.0, 0.0, 0.0), |acc, conf| {
+                let (x1, y1, z1) = acc.to_tuple();
+                let (x2, y2, z2) = conf.component.box_size.to_tuple();
+
+                Coord::new(x1.max(x2), y1.max(y2), z1.max(z2))
+            }
+        );
+
+        Some(box_size)
+    }
+
+    /// Calculate the number of atoms in the system.
+    pub fn num_atoms(&self) -> usize {
+        self.constructed.iter().map(|conf| {
+            conf.component.residue_base.atoms.len() * conf.component.residue_coords.len()
+        }).sum()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 /// User commands for defining the system.
 enum Command {
-    DefineSystem,
-    RemoveSystem,
-    SwapSystems,
+    DefineComponents,
+    ConstructComponents,
     EditDatabase,
-    QuitAndConstruct,
-    QuitWithoutSaving,
+    SaveSystem,
+    Quit,
 }
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
-pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
-    let mut system_defs: Vec<SystemDefinition> = Vec::new();
+///
+/// The idea of this interface is relatively simple:
+///
+/// 1. The user reads or constructs a `DataBase` of residues (`ResidueBase`).
+/// 2. Then constructs definitions of substrates or objects to be created (can also be
+///    saved to and read from the `DataBase`).
+/// 3. Processes these definitions to create the actual components which make up the system.
+/// 4. Modifies or transforms these components by copying, translating, rotating etc.
+/// 5. Finally saves the full system to disk.
+///
+/// Modifying the `DataBase`, setting the definitions `SheetConf` and editing the
+/// `Component`s each require a separate menu, accessed from this super menu.
+/// This menu should also allow the user to save the system to disk, set its name
+/// and file path and any other possible options.
+pub fn user_menu(mut config: &mut Config) -> Result<()> {
+    let mut system = System { box_size: None, constructed: vec![], definitions: vec![] };
 
     let command_list: CommandList<Command> = vec![
-        ("d", Command::DefineSystem, "Define a system to create"),
-        ("r", Command::RemoveSystem, "Remove a system from the list"),
-        ("s", Command::SwapSystems, "Swap the order of two systems"),
-        ("e", Command::EditDatabase, "Edit the substrate and residue database"),
-        ("f", Command::QuitAndConstruct, "Finalize and construct systems from list"),
-        ("a", Command::QuitWithoutSaving, "Abort and exit without saving")
+        ("de", Command::DefineComponents, "Define the list of components to construct"),
+        ("co", Command::ConstructComponents, "Construct components from all definitions"),
+        ("db", Command::EditDatabase, "Edit the database of residue and object definitions"),
+        ("save", Command::SaveSystem, "Save the constructed components to disk as a system"),
+        ("quit", Command::Quit, "Quit the program"),
     ];
     let commands = CommandParser::from_list(command_list);
 
     loop {
-        describe_system_definitions(&system_defs);
+        define_system::describe_system_definitions(&system.definitions);
+        describe_created_components(&system.constructed);
+
         commands.print_menu();
         let input = utils::get_input_string("Selection")?;
         println!("");
 
-        if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
+        if let Some((cmd, _)) = commands.get_selection_and_tail(&input) {
             match cmd {
-                Command::DefineSystem => {
-                    match define_system::user_menu(&database) {
-                        Ok(def) => system_defs.push(def),
+                Command::DefineComponents => {
+                    match define_system::user_menu(&config.database, &mut system.definitions) {
+                        Ok(_) => println!("Finished editing list of definitions."),
                         Err(err) => println!("Could not create definition: {}", err.description()),
                     }
                 },
-                Command::RemoveSystem => {
-                    match utils::remove_item(&mut system_defs, &tail) {
-                        Ok(i) => println!("Removed system at index {}.", i),
-                        Err(err) => println!("Could not remove system: {}", err.description()),
-                    }
-                },
-                Command::SwapSystems => {
-                    match utils::swap_items(&mut system_defs, &tail) {
-                        Ok((i, j)) => println!("Swapped system at index {} with system at {}.",
-                                               i, j),
-                        Err(err) => println!("Could not swap systems: {}", err.description()),
+                Command::ConstructComponents => {
+                    match construct_components(&mut system) {
+                        Ok(_) => println!("Successfully constructed all components."),
+                        Err(err) => println!("Could not construct all components: {}", err.description()),
                     }
                 },
                 Command::EditDatabase => {
-                    match edit_database::user_menu(&mut database) {
+                    match edit_database::user_menu(&mut config.database) {
                         Ok(msg) => println!("{}", msg),
                         Err(err) => println!("Error when editing database: {}", err.description()),
                     }
                 },
-                Command::QuitAndConstruct => {
-                    if system_defs.is_empty() {
-                        println!("No systems are defined, cannot finalize.");
-                    } else {
-                        return Ok(system_defs);
+                Command::SaveSystem => {
+                    match output::write_gromos(&system, &config) {
+                        Ok(()) => println!("Saved system to disk."),
+                        Err(msg) => println!("Error when saving system: {}", msg),
                     }
                 },
-                Command::QuitWithoutSaving => {
+                Command::Quit => {
                     return Err(GrafenCliError::QuitWithoutSaving);
                 },
             }
@@ -104,18 +211,115 @@ pub fn user_menu(mut database: &mut DataBase) -> Result<Vec<SystemDefinition>> {
     }
 }
 
-/// Print the current system definitions to stdout.
-fn describe_system_definitions(system_defs: &[SystemDefinition]) {
-    if system_defs.is_empty() {
-        println!("(No systems defined)");
+fn construct_components(system: &mut System) -> Result<()> {
+    let ref mut definitions = system.definitions;
+    let ref mut components = system.constructed;
+
+    for def in definitions.drain(..) {
+        let description = def.describe();
+        let component = def.into_component()?;
+        components.push(ConstructedComponent{ description, component });
+    }
+
+    Ok(())
+}
+
+fn describe_created_components(constructed: &Vec<ConstructedComponent>) {
+    if constructed.is_empty() {
+        println!("(No components have been created)");
     } else {
-        for (i, def) in system_defs.iter().enumerate() {
-            let (dx, dy) = def.size;
-            let (x, y, z) = def.position.to_tuple();
-            println!("{}. {} of size ({:.1}, {:.1}) at position ({:.1}, {:.1}, {:.1})",
-                     i, def.config.name, dx, dy, x, y, z);
+        println!("Constructed system components:");
+        for (i, conf) in constructed.iter().enumerate() {
+            println!("{}. {}", i, &conf.description);
         }
     }
 
     println!("");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use grafen::system::{Atom, ResidueBase};
+
+    /// Setup a system of three components and in total seven atoms
+    fn setup_system() -> System {
+        let base_one = ResidueBase {
+            code: "R1".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                Atom { code: "A2".to_string(), position: Coord::new(0.0, 2.0, 1.0) }
+                ],
+            };
+        let base_two = ResidueBase {
+            code: "R2".to_string(),
+            atoms: vec![
+                Atom { code: "B".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
+                ],
+            };
+
+        System {
+            box_size: None,
+            definitions: vec![],
+            constructed: vec![
+                ConstructedComponent {
+                    description: "None".to_string(),
+                    component: Component {
+                        // Largest along x
+                        box_size: Coord::new(10.0, 1.0, 0.0),
+                        origin: Coord::new(0.0, 0.0, 0.0),
+                        residue_base: base_one.clone(),
+                        // 1 residue * 2 atoms per residue
+                        residue_coords: vec![Coord::new(0.0, 0.0, 0.0)],
+                    },
+                },
+                ConstructedComponent {
+                    description: "None".to_string(),
+                    component: Component {
+                        // Largest along z
+                        box_size: Coord::new(1.0, 1.0, 7.0),
+                        origin: Coord::new(0.0, 0.0, 0.0),
+                        residue_base: base_two.clone(),
+                        // 1 * 1 atoms
+                        residue_coords: vec![Coord::new(0.0, 0.0, 0.0)],
+                    },
+                },
+                ConstructedComponent {
+                    description: "None".to_string(),
+                    component: Component {
+                        // Largest along y
+                        box_size: Coord::new(1.0, 5.0, 0.0),
+                        origin: Coord::new(0.0, 0.0, 0.0),
+                        residue_base: base_one.clone(),
+                        // 2 * 2 atoms
+                        residue_coords: vec![Coord::new(0.0, 0.0, 0.0), Coord::new(1.0, 0.0, 0.0)],
+                    },
+                },
+            ]
+        }
+    }
+
+    #[test]
+    fn all_atoms_are_counted_in_system() {
+        let system = setup_system();
+
+        assert_eq!(7, system.num_atoms());
+    }
+
+    #[test]
+    fn box_size_is_largest_in_each_direction() {
+        let system = setup_system();
+        assert_eq!(Some(Coord::new(10.0, 5.0, 7.0)), system.calc_box_size());
+    }
+
+    #[test]
+    fn box_size_is_none_if_no_components() {
+        let system = System {
+            box_size: None,
+            definitions: vec![],
+            constructed: vec![],
+        };
+
+        assert!(system.calc_box_size().is_none());
+    }
 }

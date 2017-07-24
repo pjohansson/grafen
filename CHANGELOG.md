@@ -7,7 +7,12 @@
 -----
 * It is now possible to properly edit the database by adding or removing residue and substrate definitions.
 * A database can be saved and moved to different locations.
-* The GROMOS file output has been changed to number atoms not per-residue but by their absolute index in the system. 
+* The GROMOS file output has been changed to number atoms not per-residue but by their absolute index in the system.
+
+0.6.2
+-----
+* The command line interface has been reworked to allow for new types of objects.
+* `Component`s now own their `ResidueBase`. As such the `Residue` object has been removed. 
 
 0.5
 ===

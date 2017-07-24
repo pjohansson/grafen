@@ -11,39 +11,42 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
+#[derive(Clone, Debug)]
 /// A system component which consists of a list of residues,
 /// each of which contains some atoms.
-pub struct Component<'a> {
-    /// Component origin position.
+pub struct Component {
+    /// Component origin position. All residue positions are relative to this.
     pub origin: Coord,
     /// Component boundary box size.
     pub box_size: Coord,
-    /// List of residues.
-    pub residues: Vec<Residue<'a>>,
+    /// Residue base of component.
+    pub residue_base: ResidueBase,
+    /// List of residue positions.
+    pub residue_coords: Vec<Coord>,
 }
 
-impl<'a> Component<'a> {
+impl Component {
     /// Count and return the number of atoms in the component.
     pub fn num_atoms(&self) -> usize {
-        self.residues.iter().map(|r| r.base.atoms.len()).sum()
+        self.residue_base.atoms.len() * self.residue_coords.len()
     }
 
-    /// Translate all residues within the component and return a copy.
+    /// Translate all residues within the component.
     /// TODO: Use relative coordinates.
-    pub fn translate(&self, add: &Coord) -> Component<'a> {
-        Component {
-            origin: self.origin + *add,
-            box_size: self.box_size,
-            residues: self.residues.iter().map(|r| r.translate(*add)).collect(),
-        }
+    pub fn translate(mut self, add: &Coord) -> Component {
+        self.origin = self.origin + *add;
+        self
     }
 }
 
 /// Components (eg. `Sheet`, `Cylinder`) use this trait to define
 /// common behaviour and conversion into a proper `Component` object.
-pub trait IntoComponent<'a> {
+pub trait IntoComponent {
+    /// Copy residues to create a `Component` from the sub-component.
+    fn to_component(&self) -> Component;
+
     /// Transform the sub-component into a `Component`.
-    fn into_component(self) -> Component<'a>;
+    fn into_component(self) -> Component;
 
     /// Return the number of atoms of component.
     fn num_atoms(&self) -> usize;
@@ -57,42 +60,24 @@ pub trait Translate {
 /// Join a list of `Component`s into a single `Component`. The output `Component` box
 /// is the maximum for all individual `Component`s along all axes. `Residue`s are
 /// added in order to the list.
-pub fn join_components<'a>(components: Vec<Component<'a>>) -> Component<'a> {
+/*
+pub fn merge_components<'a>(components: &[Component<'a>]) -> Component<'a> {
     components.into_iter()
         .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), box_size: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
-            |acc, comp| {
+            |acc, add_comp| {
                 let (x0, y0, z0) = acc.box_size.to_tuple();
-                let (x1, y1, z1) = comp.box_size.to_tuple();
+                let (x1, y1, z1) = add_comp.box_size.to_tuple();
 
                 let box_size = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
 
                 let mut residues = acc.residues;
-                for residue in comp.residues {
-                    residues.push(residue);
-                }
+                residues.extend_from_slice(&add_comp.residues);
 
                 Component { origin: Coord::new(0.0, 0.0, 0.0), box_size, residues }
             }
         )
 }
-
-/// Every residue has a reference to their base and a position.
-pub struct Residue<'a> {
-    /// Residue base.
-    pub base: &'a ResidueBase,
-    /// Absolute position of residue in system.
-    pub position: Coord,
-}
-
-impl<'a> Residue<'a> {
-    /// Translate the residue position. Does not alter the atom relative positions.
-    fn translate(&self, add: Coord) -> Residue<'a> {
-        Residue {
-            base: self.base,
-            position: self.position + add,
-        }
-    }
-}
+*/
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// Every atom in a residue has their own code and relative
@@ -160,16 +145,6 @@ macro_rules! resbase {
                 code: $rescode.to_string(),
                 atoms: temp_vec,
             }
-        }
-    }
-}
-
-impl ResidueBase {
-    /// Generate a proper residue at the input position.
-    pub fn to_residue(&self, position: &Coord) -> Residue {
-        Residue {
-            base: &self,
-            position: *position,
         }
     }
 }
@@ -244,9 +219,6 @@ impl PartialEq for Coord {
 mod tests {
     use super::*;
 
-    #[allow(non_upper_case_globals)]
-    const origin: Coord = Coord { x: 0.0, y: 0.0, z: 0.0 };
-
     #[test]
     fn coord_addition_and_subtraction() {
         let coord = Coord::new(0.0, 1.0, 2.0);
@@ -285,9 +257,21 @@ mod tests {
         assert_eq!((1.0, 2.0, 3.0), coord.to_tuple());
     }
 
-    fn setup_residues() -> (ResidueBase, ResidueBase) {
-        let coord0 = Coord::new(0.0, 0.0, 0.0);
-        let residue_one = ResidueBase {
+    // A simple component with two different residues and five atoms
+    fn setup_component(base: &ResidueBase, num: usize) -> Component {
+        Component {
+            origin: Coord::new(0.0, 0.0, 0.0),
+            box_size: Coord::new(0.0, 0.0, 0.0),
+            residue_base: base.clone(),
+            residue_coords: vec![Coord::new(0.0, 0.0, 0.0); num],
+        }
+    }
+
+    #[test]
+    fn count_atoms_in_component() {
+        // A residue with three atoms duplicated twice
+        let coord0 = Coord::new(0.0, 1.0, 2.0);
+        let residue_base = ResidueBase {
             code: "R1".to_string(),
             atoms: vec![
                 Atom { code: "A1".to_string(), position: coord0, },
@@ -295,73 +279,31 @@ mod tests {
                 Atom { code: "A3".to_string(), position: coord0, },
             ]
         };
-        let residue_two = ResidueBase {
-            code: "R2".to_string(),
-            atoms: vec![
-                Atom { code: "B1".to_string(), position: coord0, },
-                Atom { code: "B2".to_string(), position: coord0, },
-            ]
-        };
+        let component = setup_component(&residue_base, 2);
 
-        (residue_one, residue_two)
-    }
-
-    // A simple component with two different residues and five atoms
-    fn setup_component<'a>(base_one: &'a ResidueBase, base_two: &'a ResidueBase) -> Component<'a> {
-        let residue_one = Residue {
-            base: &base_one,
-            position: Coord::new(0.0, 0.0, 0.0),
-        };
-        let residue_two = Residue {
-            base: &base_two,
-            position: Coord::new(1.0, 1.0, 1.0),
-        };
-
-        Component {
-            origin: Coord::new(0.0, 0.0, 0.0),
-            box_size: Coord::new(0.0, 0.0, 0.0),
-            residues: vec![
-                residue_one,
-                residue_two
-            ]
-        }
-    }
-
-    #[test]
-    fn count_atoms_in_component() {
-        let (res_one, res_two) = setup_residues();
-        let component = setup_component(&res_one, &res_two);
-        assert_eq!(5, component.num_atoms());
+        assert_eq!(3 * 2, component.num_atoms());
     }
 
     #[test]
     fn translate_a_component() {
-        let (res_one, res_two) = setup_residues();
-        let component = setup_component(&res_one, &res_two);
+        let coord0 = Coord::new(0.0, 1.0, 2.0);
+        let residue_base = ResidueBase {
+            code: "R1".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: coord0, },
+                Atom { code: "A2".to_string(), position: coord0, },
+                Atom { code: "A3".to_string(), position: coord0, },
+            ]
+        };
+
+        let component = setup_component(&residue_base, 1);
         let shift = Coord::new(0.0, 1.0, 2.0);
 
-        let trans_component = component.translate(&shift);
-        for (orig, updated) in component.residues.iter().zip(trans_component.residues.iter()) {
-            assert_eq!(orig.position + shift, updated.position);
+        let trans_component = component.clone().translate(&shift);
+        for (orig, updated) in component.residue_coords.iter().zip(trans_component.residue_coords.iter()) {
+            assert_eq!(orig, updated);
         }
-        assert_eq!(shift, trans_component.origin);
-    }
-
-    #[test]
-    fn residue_base_to_residue() {
-        let base = ResidueBase {
-            code: "RES".to_string(),
-            atoms: vec![
-                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
-                Atom { code: "A2".to_string(), position: Coord::new(0.0, 1.0, 2.0) }
-            ],
-        };
-        let position = Coord::new(1.0, 1.0, 1.0);
-
-        let residue = base.to_residue(&position);
-        assert_eq!("RES", residue.base.code);
-        assert_eq!(position, residue.position);
-        assert_eq!(base.atoms, residue.base.atoms);
+        assert_eq!(component.origin + shift, trans_component.origin);
     }
 
     #[test]
@@ -380,78 +322,5 @@ mod tests {
         ];
 
         assert_eq!(expect, result);
-    }
-
-    #[test]
-    fn joined_system_dimensions() {
-        let components = vec![
-            Component { origin, box_size: Coord::new(1.0, 2.0, 3.0), residues: vec![] },
-            Component { origin, box_size: Coord::new(3.0, 1.0, 1.0), residues: vec![] },
-            Component { origin, box_size: Coord::new(1.0, 0.0, 4.0), residues: vec![] }
-        ];
-
-        let system = join_components(components);
-        assert_eq!(Coord::new(3.0, 2.0, 4.0), system.box_size);
-    }
-
-    #[test]
-    fn joined_system_residues() {
-        let (res_one, res_two) = setup_residues();
-
-        let components = vec![
-            Component {
-                origin,
-                box_size: Coord::new(1.0, 0.0, 0.0),
-                residues: vec![
-                    Residue {
-                        base: &res_one,
-                        position: Coord::new(1.0, 0.0, 0.0),
-                    },
-                    Residue {
-                        base: &res_one,
-                        position: Coord::new(2.0, 0.0, 0.0),
-                    },
-                    Residue {
-                        base: &res_one,
-                        position: Coord::new(3.0, 0.0, 0.0),
-                    }
-                ]
-            },
-            Component {
-                origin,
-                box_size: Coord::new(0.0, 0.0, 0.0),
-                residues: vec![
-                    Residue {
-                        base: &res_two,
-                        position: Coord::new(0.0, 1.0, 0.0),
-                    },
-                    Residue {
-                        base: &res_two,
-                        position: Coord::new(0.0, 2.0, 0.0),
-                    }
-                ]
-            }
-        ];
-
-        let system = join_components(components);
-        assert_eq!(5, system.residues.len());
-
-        // The components should be flattened in the correct order from above,
-        // check both ResidueBase and Coord.
-        let mut iter = system.residues.iter();
-        assert_eq!(&res_one, iter.next().unwrap().base);
-        assert_eq!(&res_one, iter.next().unwrap().base);
-        assert_eq!(&res_one, iter.next().unwrap().base);
-        assert_eq!(&res_two, iter.next().unwrap().base);
-        assert_eq!(&res_two, iter.next().unwrap().base);
-        assert!(iter.next().is_none());
-
-        let mut iter = system.residues.iter();
-        assert_eq!(Coord::new(1.0, 0.0, 0.0), iter.next().unwrap().position);
-        assert_eq!(Coord::new(2.0, 0.0, 0.0), iter.next().unwrap().position);
-        assert_eq!(Coord::new(3.0, 0.0, 0.0), iter.next().unwrap().position);
-        assert_eq!(Coord::new(0.0, 1.0, 0.0), iter.next().unwrap().position);
-        assert_eq!(Coord::new(0.0, 2.0, 0.0), iter.next().unwrap().position);
-        assert!(iter.next().is_none());
     }
 }
