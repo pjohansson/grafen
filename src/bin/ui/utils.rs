@@ -386,8 +386,8 @@ mod tests {
 
         assert_eq!(2, commands_macro.commands.len());
 
-        let mut iter_macro = commands_macro.commands.iter();
-        let mut iter_full = commands_full.commands.iter();
+        let iter_macro = commands_macro.commands.iter();
+        let iter_full = commands_full.commands.iter();
         for (&cmd_macro, &cmd_full) in iter_macro.zip(iter_full) {
             assert_eq!(cmd_macro, cmd_full);
         }
