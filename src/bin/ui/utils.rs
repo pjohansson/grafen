@@ -139,7 +139,7 @@ pub fn parse_string_single<T: FromStr>(tail: &str) -> result::Result<T, UIErrorK
 
 /// Parse an input string for an index and ensure that it exists in the input list.
 /// An error is raised if it is out of bounds.
-pub fn parse_string_for_index<T>(input: &str, list: &Vec<T>) -> Result<usize> {
+pub fn parse_string_for_index<T>(input: &str, list: &[T]) -> Result<usize> {
     parse_string_single::<usize>(input)
         .and_then(|i| {
             if i < list.len() {
@@ -159,7 +159,7 @@ pub fn get_and_parse_string_single<T: FromStr>(query: &str) -> Result<T> {
 }
 
 /// Get an input string from the user and parse it for values.
-pub fn get_and_parse_string<T: FromStr>(query: &'static str) -> Result<Vec<T>> {
+pub fn get_and_parse_string<T: FromStr>(query: &str) -> Result<Vec<T>> {
     get_input_string(query).and_then(|s| {
         parse_string::<T>(&s).map_err(|err| GrafenCliError::from(err))
     })

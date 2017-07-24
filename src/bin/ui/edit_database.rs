@@ -3,7 +3,7 @@
 use database::{write_database, DataBase};
 use error::Result;
 use ui::utils;
-use ui::utils::{CommandList, CommandParser};
+use ui::utils::CommandParser;
 
 use std::error::Error;
 
@@ -22,8 +22,8 @@ enum Command {
 }
 
 /// The main user menu.
-pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
-    let command_list: CommandList<Command> = vec![
+pub fn user_menu(database: &mut DataBase) -> Result<&str> {
+    let commands = command_parser!(
         ("ra", Command::AddResidue, "Add a residue definition"),
         ("rr", Command::RemoveResidue, "Remove a residue definition"),
         ("sa", Command::AddComponent, "Add a component definition"),
@@ -32,9 +32,8 @@ pub fn user_menu(database: &mut DataBase) -> Result<&'static str> {
         ("c", Command::SetLocation, "Change output location of database"),
         ("l", Command::ShowDatabase, "List database content"),
         ("f", Command::QuitAndSave, "Finish editing database"),
-        ("a", Command::QuitWithoutSaving, "Abort editing and discard changes"),
-    ];
-    let commands = CommandParser::from_list(command_list);
+        ("a", Command::QuitWithoutSaving, "Abort editing and discard changes")
+    );
 
     let path_backup = database.path.clone();
     let residues_backup = database.residue_defs.clone();
@@ -125,7 +124,7 @@ mod define_residue {
 
     use error::{GrafenCliError, Result, UIErrorKind};
     use ui::utils;
-    use ui::utils::{CommandList, CommandParser};
+    use ui::utils::CommandParser;
 
     use grafen::system::{Atom, Coord, ResidueBase};
     use std::error::Error;
@@ -142,7 +141,7 @@ mod define_residue {
     }
 
     pub fn user_menu() -> Result<ResidueBase> {
-        let command_list: CommandList<ResidueCommand> = vec![
+        let commands = command_parser!(
             ("n", ResidueCommand::SetName, "Set residue name"),
             ("at", ResidueCommand::AddAtom, "Add atom to residue"),
             ("r", ResidueCommand::RemoveAtom, "Remove atom from residue"),
@@ -150,8 +149,7 @@ mod define_residue {
             ("l", ResidueCommand::ShowResidue, "List current residue data"),
             ("f", ResidueCommand::QuitAndSave, "Finish and add residue to list"),
             ("a", ResidueCommand::QuitWithoutSaving, "Abort and discard changes")
-        ];
-        let commands = CommandParser::from_list(command_list);
+        );
 
         println!("Creating a new residue.\n");
 
@@ -219,7 +217,7 @@ mod define_residue {
         }
     }
 
-    fn parse_string_for_atom<'a>(input: &'a str) -> Result<Atom> {
+    fn parse_string_for_atom(input: &str) -> Result<Atom> {
         let mut iter = input.splitn(2, ' ');
         let name = iter.next().and_then(|s| {
                 if s.is_empty() {
@@ -246,7 +244,7 @@ mod define_residue {
         })
     }
 
-    fn describe_residue<'a>(name: &'a str, atoms: &[Atom]) {
+    fn describe_residue(name: &str, atoms: &[Atom]) {
         println!("Residue name: '{}'", name);
         println!("Atoms:");
         for (i, atom) in atoms.iter().enumerate() {
@@ -287,7 +285,7 @@ mod define_component {
     use database::{AvailableComponents, CylinderConfEntry, SheetConfEntry};
     use error::{GrafenCliError, Result};
     use ui::utils;
-    use ui::utils::{CommandParser};
+    use ui::utils::CommandParser;
 
     use grafen::substrate::LatticeType;
     use grafen::system::ResidueBase;
@@ -309,7 +307,7 @@ mod define_component {
         Cylinder,
     }
 
-    pub fn user_menu(residue_list: &Vec<ResidueBase>) -> Result<AvailableComponents> {
+    pub fn user_menu(residue_list: &[ResidueBase]) -> Result<AvailableComponents> {
         match select_component_type() {
             Some(ComponentSelect::Sheet) => {
                 let name = utils::get_input_string("Substrate name")
@@ -339,7 +337,7 @@ mod define_component {
                     position: None
                 }))
             },
-            
+
             Some(ComponentSelect::Cylinder) => {
                 let name = utils::get_input_string("Cylinder name")
                     .and_then(|string| {
@@ -387,7 +385,7 @@ mod define_component {
         }
     }
 
-    fn select_residue(residue_list: &Vec<ResidueBase>) -> Result<ResidueBase> {
+    fn select_residue(residue_list: &[ResidueBase]) -> Result<ResidueBase> {
         println!("Available residues:");
         for (i, residue) in residue_list.iter().enumerate() {
             println!("{:4}. {}", i, residue.code);

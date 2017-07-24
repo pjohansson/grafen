@@ -167,7 +167,7 @@ fn construct_components(system: &mut System) -> Result<()> {
     Ok(())
 }
 
-fn describe_created_components(constructed: &Vec<ConstructedComponent>) {
+fn describe_created_components(constructed: &[ConstructedComponent]) {
     if constructed.is_empty() {
         println!("(No components have been created)");
     } else {
