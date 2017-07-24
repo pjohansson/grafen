@@ -376,13 +376,8 @@ mod define_component {
             ("s", ComponentSelect::Sheet, "Sheet"),
             ("c", ComponentSelect::Cylinder, "Cylinder")
         );
-
         commands.print_menu();
-        if let Some(input) = utils::get_input_string("Selection").ok() {
-            commands.get_selection(&input)
-        } else {
-            None
-        }
+        utils::get_input_string("Selection").ok().and_then(|input| commands.get_selection(&input))
     }
 
     fn select_residue(residue_list: &[ResidueBase]) -> Result<ResidueBase> {
