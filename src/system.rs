@@ -32,9 +32,53 @@ impl Component {
     }
 
     /// Translate all residues within the component.
-    /// TODO: Use relative coordinates.
-    pub fn translate(mut self, add: &Coord) -> Component {
+    pub fn translate(mut self, add: &Coord) -> Self {
         self.origin = self.origin + *add;
+        self
+    }
+
+    /// Rotate all coordinates along the x axis by 90 degrees, counter-clockwise.
+    fn rotate_x(mut self) -> Self {
+        for coord in self.residue_coords.iter_mut() {
+            let y = coord.y;
+            coord.y = -coord.z;
+            coord.z = y;
+        }
+
+        let box_y = self.box_size.y;
+        self.box_size.y = self.box_size.z;
+        self.box_size.z = box_y;
+
+        self
+    }
+
+    /// Rotate all coordinates along the y axis by 90 degrees, counter-clockwise.
+    pub fn rotate_y(mut self) -> Self {
+        for coord in self.residue_coords.iter_mut() {
+            let x = coord.x;
+            coord.x = -coord.z;
+            coord.z = x;
+        }
+
+        let box_x = self.box_size.x;
+        self.box_size.x = self.box_size.z;
+        self.box_size.z = box_x;
+
+        self
+    }
+
+    /// Rotate all coordinates along the z axis by 90 degrees, counter-clockwise.
+    fn rotate_z(mut self) -> Self {
+        for coord in self.residue_coords.iter_mut() {
+            let x = coord.x;
+            coord.x = -coord.y;
+            coord.y = x;
+        }
+
+        let box_x = self.box_size.x;
+        self.box_size.x = self.box_size.y;
+        self.box_size.y = box_x;
+
         self
     }
 }
@@ -56,28 +100,6 @@ pub trait IntoComponent {
 pub trait Translate {
     fn translate(self, &Coord) -> Self;
 }
-
-/// Join a list of `Component`s into a single `Component`. The output `Component` box
-/// is the maximum for all individual `Component`s along all axes. `Residue`s are
-/// added in order to the list.
-/*
-pub fn merge_components<'a>(components: &[Component<'a>]) -> Component<'a> {
-    components.into_iter()
-        .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), box_size: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
-            |acc, add_comp| {
-                let (x0, y0, z0) = acc.box_size.to_tuple();
-                let (x1, y1, z1) = add_comp.box_size.to_tuple();
-
-                let box_size = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
-
-                let mut residues = acc.residues;
-                residues.extend_from_slice(&add_comp.residues);
-
-                Component { origin: Coord::new(0.0, 0.0, 0.0), box_size, residues }
-            }
-        )
-}
-*/
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// Every atom in a residue has their own code and relative
@@ -322,5 +344,62 @@ mod tests {
         ];
 
         assert_eq!(expect, result);
+    }
+
+    #[test]
+    fn rotate_component_around_yxz() {
+        let residue = resbase![
+            "RES",
+            ("A", 0.0, 0.0, 0.0)
+        ];
+
+        let origin = Coord::new(1.0, 1.0, 1.0);
+
+        let component = Component {
+            origin,
+            box_size: Coord::new(2.0, 5.0, 8.0),
+            residue_base: residue,
+            residue_coords: vec![
+                Coord::new(0.0, 3.0, 6.0),
+                Coord::new(1.0, 4.0, 7.0),
+                Coord::new(2.0, 5.0, 8.0),
+            ],
+        };
+
+        let rotated_y = component.rotate_y();
+
+        {
+            assert_eq!(origin, rotated_y.origin);
+            assert_eq!(Coord::new(8.0, 5.0, 2.0), rotated_y.box_size);
+
+            // Our 90 degree rotation is counter-clockwise.
+            let mut iter = rotated_y.residue_coords.iter();
+            assert_eq!(&Coord::new(-6.0, 3.0, 0.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-7.0, 4.0, 1.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-8.0, 5.0, 2.0), iter.next().unwrap());
+            assert_eq!(None, iter.next());
+        }
+
+        let rotated_yx = rotated_y.rotate_x();
+        {
+            assert_eq!(origin, rotated_yx.origin);
+            assert_eq!(Coord::new(8.0, 2.0, 5.0), rotated_yx.box_size);
+            let mut iter = rotated_yx.residue_coords.iter();
+            assert_eq!(&Coord::new(-6.0, 0.0, 3.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-7.0, -1.0, 4.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-8.0, -2.0, 5.0), iter.next().unwrap());
+            assert_eq!(None, iter.next());
+        }
+
+        let rotated_yxz = rotated_yx.rotate_z();
+        {
+            assert_eq!(origin, rotated_yxz.origin);
+            assert_eq!(Coord::new(2.0, 8.0, 5.0), rotated_yxz.box_size);
+            let mut iter = rotated_yxz.residue_coords.iter();
+            assert_eq!(&Coord::new(0.0, -6.0, 3.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(1.0, -7.0, 4.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(2.0, -8.0, 5.0), iter.next().unwrap());
+            assert_eq!(None, iter.next());
+        }
     }
 }
