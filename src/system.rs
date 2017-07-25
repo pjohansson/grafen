@@ -38,7 +38,7 @@ impl Component {
     }
 
     /// Rotate all coordinates along the x axis by 90 degrees, counter-clockwise.
-    fn rotate_x(mut self) -> Self {
+    pub fn rotate_x(mut self) -> Self {
         for coord in self.residue_coords.iter_mut() {
             let y = coord.y;
             coord.y = -coord.z;
@@ -68,7 +68,7 @@ impl Component {
     }
 
     /// Rotate all coordinates along the z axis by 90 degrees, counter-clockwise.
-    fn rotate_z(mut self) -> Self {
+    pub fn rotate_z(mut self) -> Self {
         for coord in self.residue_coords.iter_mut() {
             let x = coord.x;
             coord.x = -coord.y;

@@ -203,7 +203,8 @@ impl AvailableComponents {
                 let sheet = create_substrate(&sheet_conf)?;
                 let cylinder = Cylinder::from_sheet(&sheet).into_component();
 
-                Ok(cylinder.translate(&position))
+                // Rotate the cylinder to point along z
+                Ok(cylinder.rotate_x().translate(&position))
             },
         }
     }
