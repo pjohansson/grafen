@@ -208,6 +208,26 @@ impl Coord {
 
         (dx.x * dx.x + dx.y * dx.y + dx.z * dx.z).sqrt()
     }
+
+    /// Return the coordinate with its position adjusted to lie within the input box.
+    ///
+    /// If an input box size side is 0.0 (or smaller) the coordinate is not changed.
+    pub fn with_pbc(self, box_size: Coord) -> Coord {
+        let do_pbc = |mut c: f64, size: f64| {
+            if size <= 0.0 {
+                c
+            } else {
+                while c < 0.0 {
+                    c += size;
+                }
+
+                c % size
+            }
+        };
+
+        let (x, y, z) = self.to_tuple();
+        Coord::new(do_pbc(x, box_size.x), do_pbc(y, box_size.y), do_pbc(z, box_size.z))
+    }
 }
 
 impl Add for Coord {
@@ -277,6 +297,24 @@ mod tests {
     fn coord_to_tuple() {
         let coord = Coord::new(1.0, 2.0, 3.0);
         assert_eq!((1.0, 2.0, 3.0), coord.to_tuple());
+    }
+
+    #[test]
+    fn coord_with_set_pbc() {
+        let box_size = Coord::new(2.0, 4.0, 6.0);
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(3.0, 1.0, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 0.5, 1.0), Coord::new(1.0, 4.5, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 13.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(-1.0, 1.0, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 3.0, 1.0), Coord::new(1.0, -1.0, 1.0).with_pbc(box_size));
+    }
+
+    #[test]
+    fn coords_adjusted_by_pbc_with_size_0_does_not_change() {
+        let box_size = Coord::new(0.0, 0.0, 0.0);
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        assert_eq!(coord, coord.with_pbc(box_size));
     }
 
     // A simple component with two different residues and five atoms
