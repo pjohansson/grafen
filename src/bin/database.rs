@@ -206,18 +206,31 @@ impl AvailableComponents {
                 // This is to easily set the bottom and top caps.
                 let mut cylinder = Cylinder::from_sheet(&sheet).into_component().rotate_x();
 
-                // Cut circles of the same material to work as bottom and top caps.
-                // Make them of slightly smaller radius to not overlap coordinates.
-                // TODO: This should be improved. IDEA: No offset, rotate circle
-                // and score nearest neighbor distance or something. Expensive, though.
-                const OFFSET: f64 = 0.0;
-                sheet_conf.size = (2.0 * radius, 2.0 * radius);
-                let circle_sheet = create_substrate(&sheet_conf)?;
+                if let Some(cap) = conf.cap {
+                    // Cut circles of the same material to work as bottom and top caps.
+                    // Make them of slightly smaller radius to not overlap coordinates.
+                    // TODO: This should be improved. IDEA: No offset, rotate circle
+                    // and score nearest neighbor distance or something. Expensive, though.
+                    const OFFSET: f64 = 0.0;
+                    sheet_conf.size = (2.0 * radius, 2.0 * radius);
+                    let circle_sheet = create_substrate(&sheet_conf)?;
 
-                let bottom = circle_sheet.into_circle(radius - OFFSET).into_component();
-                let top = bottom.clone().translate(&Coord::new(0.0, 0.0, height));
-                cylinder.extend(bottom);
-                cylinder.extend(top);
+                    let bottom = circle_sheet.into_circle(radius - OFFSET).into_component();
+                    let top = bottom.clone().translate(&Coord::new(0.0, 0.0, height));
+
+                    match cap {
+                        CylinderCap::Bottom => {
+                            cylinder.extend(bottom);
+                        },
+                        CylinderCap::Top => {
+                            cylinder.extend(top);
+                        },
+                        CylinderCap::Both => {
+                            cylinder.extend(bottom);
+                            cylinder.extend(top);
+                        },
+                    }
+                }
 
                 // Rotate it to the final position.
                 // TODO: A proper general rotate function would be good here.
@@ -282,6 +295,14 @@ impl Direction {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+/// Cylinders can be capped in either or both ends.
+pub enum CylinderCap {
+    Top,
+    Bottom,
+    Both,
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// A catalog entry for a `CylinderConf`.
 ///
@@ -296,6 +317,8 @@ pub struct CylinderConfEntry {
     #[serde(default = "Direction::default_cylinder")]
     /// Cylinder axis alignment.
     pub alignment: Direction,
+    /// Cylinder cap.
+    pub cap: Option<CylinderCap>,
     #[serde(skip)]
     /// Cylinder radius.
     pub radius: Option<f64>,

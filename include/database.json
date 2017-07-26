@@ -112,7 +112,7 @@
     },
     {
       "Cylinder": {
-        "name": "CarbonTube",
+        "name": "CarbonTip",
         "lattice": {
           "Hexagonal": {
             "a": 0.142
@@ -131,7 +131,8 @@
             }
           ]
         },
-        "alignment": "Z"
+        "alignment": "Z",
+        "cap": "Bottom"
       }
     }
   ]

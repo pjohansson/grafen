@@ -282,7 +282,7 @@ mod define_residue {
 mod define_component {
     //! Define a new `SheetConfEntry`.
 
-    use database::{AvailableComponents, Direction, CylinderConfEntry, SheetConfEntry};
+    use database::{AvailableComponents, Direction, CylinderCap, CylinderConfEntry, SheetConfEntry};
     use error::{GrafenCliError, Result};
     use ui::utils;
     use ui::utils::CommandParser;
@@ -350,26 +350,36 @@ mod define_component {
                     .map_err(|err| GrafenCliError::from(err))?;
                 println!("");
 
-                let commands = command_parser!(
-                    ("x", Direction::X, ""),
-                    ("y", Direction::Y, ""),
-                    ("z", Direction::Z, "")
-                );
-                let input = utils::get_input_string("Cylinder direction (default: Z)")?;
-                let alignment = commands
-                    .get_selection(&input)
-                    .unwrap_or(Direction::Z);
-
                 let residue = select_residue(&residue_list)?;
                 println!("");
                 let lattice = select_lattice()?;
                 println!("");
+
+                let direction_commands = command_parser!(
+                    ("x", Direction::X, ""),
+                    ("y", Direction::Y, ""),
+                    ("z", Direction::Z, "")
+                );
+                let input = utils::get_input_string("Cylinder direction (x/y/z, default: z)")?;
+                let alignment = direction_commands
+                    .get_selection(&input)
+                    .unwrap_or(Direction::Z);
+
+                let cap_commands = command_parser!(
+                    ("top", CylinderCap::Top, ""),
+                    ("bottom", CylinderCap::Bottom, ""),
+                    ("both", CylinderCap::Both, "")
+                );
+                let input = utils::get_input_string("Cylinder cap (none/top/bottom/both, default: none)")?;
+                let cap = cap_commands
+                    .get_selection(&input);
 
                 Ok(AvailableComponents::Cylinder(CylinderConfEntry {
                     name,
                     lattice,
                     residue,
                     alignment,
+                    cap: cap,
                     radius: None,
                     height: None,
                     position: None,
