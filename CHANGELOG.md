@@ -1,3 +1,10 @@
+0.7
+===
+* The command line interface has been reworked to allow for new types of objects.
+* This includes the database being able to store these on disk.
+* In particular, a `Cylinder` object has been added. It is a sheet of molecules, folded into a cylinder. Practically it represents (eg.) a nanotube.
+* `Component`s now own their `ResidueBase`. As such the `Residue` object has been removed.
+
 0.6
 ===
 * Substrate definitions are now read from a database at runtime. This database is JSON formatted and implemented using the `serde` framework.
@@ -8,13 +15,6 @@
 * It is now possible to properly edit the database by adding or removing residue and substrate definitions.
 * A database can be saved and moved to different locations.
 * The GROMOS file output has been changed to number atoms not per-residue but by their absolute index in the system.
-
-0.6.2
------
-* The command line interface has been reworked to allow for new types of objects.
-* This includes the database being able to store these on disk.
-* In particular, a `Cylinder` object has been added. It is a sheet of molecules, folded into a cylinder. Practically it represents a nanotube.
-* `Component`s now own their `ResidueBase`. As such the `Residue` object has been removed.
 
 0.5
 ===
