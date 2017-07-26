@@ -32,9 +32,62 @@ impl Component {
     }
 
     /// Translate all residues within the component.
-    /// TODO: Use relative coordinates.
-    pub fn translate(mut self, add: &Coord) -> Component {
+    pub fn translate(mut self, add: &Coord) -> Self {
         self.origin = self.origin + *add;
+        self
+    }
+
+    /// Extend the component with coordinates from another, translating them by
+    /// the relative difference of their origins.
+    pub fn extend(&mut self, other: Component) {
+        let difference = other.origin - self.origin;
+        for coord in other.residue_coords {
+            self.residue_coords.push(coord + difference);
+        }
+    }
+
+    /// Rotate all coordinates along the x axis by 90 degrees, counter-clockwise.
+    pub fn rotate_x(mut self) -> Self {
+        for coord in self.residue_coords.iter_mut() {
+            let y = coord.y;
+            coord.y = -coord.z;
+            coord.z = y;
+        }
+
+        let box_y = self.box_size.y;
+        self.box_size.y = self.box_size.z;
+        self.box_size.z = box_y;
+
+        self
+    }
+
+    /// Rotate all coordinates along the y axis by 90 degrees, counter-clockwise.
+    pub fn rotate_y(mut self) -> Self {
+        for coord in self.residue_coords.iter_mut() {
+            let x = coord.x;
+            coord.x = -coord.z;
+            coord.z = x;
+        }
+
+        let box_x = self.box_size.x;
+        self.box_size.x = self.box_size.z;
+        self.box_size.z = box_x;
+
+        self
+    }
+
+    /// Rotate all coordinates along the z axis by 90 degrees, counter-clockwise.
+    pub fn rotate_z(mut self) -> Self {
+        for coord in self.residue_coords.iter_mut() {
+            let x = coord.x;
+            coord.x = -coord.y;
+            coord.y = x;
+        }
+
+        let box_x = self.box_size.x;
+        self.box_size.x = self.box_size.y;
+        self.box_size.y = box_x;
+
         self
     }
 }
@@ -56,28 +109,6 @@ pub trait IntoComponent {
 pub trait Translate {
     fn translate(self, &Coord) -> Self;
 }
-
-/// Join a list of `Component`s into a single `Component`. The output `Component` box
-/// is the maximum for all individual `Component`s along all axes. `Residue`s are
-/// added in order to the list.
-/*
-pub fn merge_components<'a>(components: &[Component<'a>]) -> Component<'a> {
-    components.into_iter()
-        .fold(Component { origin: Coord::new(0.0, 0.0, 0.0), box_size: Coord::new(0.0, 0.0, 0.0), residues: vec![] },
-            |acc, add_comp| {
-                let (x0, y0, z0) = acc.box_size.to_tuple();
-                let (x1, y1, z1) = add_comp.box_size.to_tuple();
-
-                let box_size = Coord::new(x0.max(x1), y0.max(y1), z0.max(z1));
-
-                let mut residues = acc.residues;
-                residues.extend_from_slice(&add_comp.residues);
-
-                Component { origin: Coord::new(0.0, 0.0, 0.0), box_size, residues }
-            }
-        )
-}
-*/
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// Every atom in a residue has their own code and relative
@@ -186,6 +217,26 @@ impl Coord {
 
         (dx.x * dx.x + dx.y * dx.y + dx.z * dx.z).sqrt()
     }
+
+    /// Return the coordinate with its position adjusted to lie within the input box.
+    ///
+    /// If an input box size side is 0.0 (or smaller) the coordinate is not changed.
+    pub fn with_pbc(self, box_size: Coord) -> Coord {
+        let do_pbc = |mut c: f64, size: f64| {
+            if size <= 0.0 {
+                c
+            } else {
+                while c < 0.0 {
+                    c += size;
+                }
+
+                c % size
+            }
+        };
+
+        let (x, y, z) = self.to_tuple();
+        Coord::new(do_pbc(x, box_size.x), do_pbc(y, box_size.y), do_pbc(z, box_size.z))
+    }
 }
 
 impl Add for Coord {
@@ -257,7 +308,24 @@ mod tests {
         assert_eq!((1.0, 2.0, 3.0), coord.to_tuple());
     }
 
-    // A simple component with two different residues and five atoms
+    #[test]
+    fn coord_with_set_pbc() {
+        let box_size = Coord::new(2.0, 4.0, 6.0);
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(3.0, 1.0, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 0.5, 1.0), Coord::new(1.0, 4.5, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 13.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(-1.0, 1.0, 1.0).with_pbc(box_size));
+        assert_eq!(Coord::new(1.0, 3.0, 1.0), Coord::new(1.0, -1.0, 1.0).with_pbc(box_size));
+    }
+
+    #[test]
+    fn coords_adjusted_by_pbc_with_size_0_does_not_change() {
+        let box_size = Coord::new(0.0, 0.0, 0.0);
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        assert_eq!(coord, coord.with_pbc(box_size));
+    }
+
     fn setup_component(base: &ResidueBase, num: usize) -> Component {
         Component {
             origin: Coord::new(0.0, 0.0, 0.0),
@@ -322,5 +390,86 @@ mod tests {
         ];
 
         assert_eq!(expect, result);
+    }
+
+    #[test]
+    fn rotate_component_around_yxz() {
+        let residue = resbase![
+            "RES",
+            ("A", 0.0, 0.0, 0.0)
+        ];
+
+        let origin = Coord::new(1.0, 1.0, 1.0);
+
+        let component = Component {
+            origin,
+            box_size: Coord::new(2.0, 5.0, 8.0),
+            residue_base: residue,
+            residue_coords: vec![
+                Coord::new(0.0, 3.0, 6.0),
+                Coord::new(1.0, 4.0, 7.0),
+                Coord::new(2.0, 5.0, 8.0),
+            ],
+        };
+
+        let rotated_y = component.rotate_y();
+
+        {
+            assert_eq!(origin, rotated_y.origin);
+            assert_eq!(Coord::new(8.0, 5.0, 2.0), rotated_y.box_size);
+
+            // Our 90 degree rotation is counter-clockwise.
+            let mut iter = rotated_y.residue_coords.iter();
+            assert_eq!(&Coord::new(-6.0, 3.0, 0.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-7.0, 4.0, 1.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-8.0, 5.0, 2.0), iter.next().unwrap());
+            assert_eq!(None, iter.next());
+        }
+
+        let rotated_yx = rotated_y.rotate_x();
+        {
+            assert_eq!(origin, rotated_yx.origin);
+            assert_eq!(Coord::new(8.0, 2.0, 5.0), rotated_yx.box_size);
+            let mut iter = rotated_yx.residue_coords.iter();
+            assert_eq!(&Coord::new(-6.0, 0.0, 3.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-7.0, -1.0, 4.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(-8.0, -2.0, 5.0), iter.next().unwrap());
+            assert_eq!(None, iter.next());
+        }
+
+        let rotated_yxz = rotated_yx.rotate_z();
+        {
+            assert_eq!(origin, rotated_yxz.origin);
+            assert_eq!(Coord::new(2.0, 8.0, 5.0), rotated_yxz.box_size);
+            let mut iter = rotated_yxz.residue_coords.iter();
+            assert_eq!(&Coord::new(0.0, -6.0, 3.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(1.0, -7.0, 4.0), iter.next().unwrap());
+            assert_eq!(&Coord::new(2.0, -8.0, 5.0), iter.next().unwrap());
+            assert_eq!(None, iter.next());
+        }
+    }
+
+    #[test]
+    fn extend_component_with_more_coordinates_using_their_relative_position() {
+        let origin = Coord::new(0.0, 0.0, 1.0);
+        let mut component = Component {
+            origin: origin,
+            box_size: Coord::new(0.0, 0.0, 0.0),
+            residue_base: resbase!["RES", ("A", 0.0, 0.0, 0.0)],
+            residue_coords: vec![
+                Coord::new(0.0, 0.0, 0.0),
+                Coord::new(1.0, 0.0, 0.0)
+            ],
+        };
+
+        // Extend the component by one that is translated by 5 along z.
+        let translate = Coord::new(0.0, 0.0, 5.0);
+        let extension = component.clone().translate(&translate);
+        component.extend(extension);
+
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), component.residue_coords[0]);
+        assert_eq!(Coord::new(1.0, 0.0, 0.0), component.residue_coords[1]);
+        assert_eq!(Coord::new(0.0, 0.0, 5.0), component.residue_coords[2]);
+        assert_eq!(Coord::new(1.0, 0.0, 5.0), component.residue_coords[3]);
     }
 }

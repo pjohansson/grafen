@@ -85,6 +85,33 @@ pub struct Sheet {
     pub residue_coords: Vec<Coord>,
 }
 
+impl Sheet {
+    /// Cut the `Sheet` into a circle of input radius.
+    ///
+    /// This method assumes that the sheet is aligned in the xy plane and that
+    /// coordinates are set at z = 0.0. Furthermore, it cuts the circle around
+    /// the center point (radius, radius, 0).
+    ///
+    /// The final circle will be centered around (0, 0, 0).
+    pub fn into_circle(self, radius: f64) -> Self {
+        const ORIGO: Coord = Coord { x: 0.0, y: 0.0, z: 0.0 };
+        let center = Coord::new(radius, radius, 0.0);
+
+        let residue_coords = self.residue_coords
+            .iter()
+            .map(|&coord| coord.with_pbc(self.size) - center)
+            .filter(|coord| coord.distance(ORIGO) <= radius)
+            .collect();
+
+        Sheet {
+            origin: Coord::new(0.0, 0.0, 0.0),
+            size: Coord::new(2.0 * radius, 2.0 * radius, self.size.z),
+            residue_base: self.residue_base,
+            residue_coords,
+        }
+    }
+}
+
 impl IntoComponent for Sheet {
     fn to_component(&self) -> Component {
         Component {
@@ -249,5 +276,74 @@ mod tests {
         assert_eq!(size, sheet.size);
         assert_eq!(origin + translate, sheet.origin);
         assert_eq!(Coord::new(0.0, 0.0, 0.0), sheet.residue_coords[0]);
+    }
+
+    #[test]
+    fn cut_a_circle_from_a_sheet() {
+        let conf = setup_conf();
+        let sheet = create_substrate(&conf).unwrap();
+
+        let radius = 2.5;
+        let origin = Coord::new(0.0, 0.0, 0.0);
+
+        let circle = sheet.into_circle(radius);
+        assert_eq!(origin, circle.origin);
+        assert!(circle.num_atoms() > 0);
+
+        for coord in circle.residue_coords {
+            assert!(coord.distance(origin) <= radius);
+        }
+    }
+
+    #[test]
+    fn circles_center_coords_around_origo() {
+        let origin = Coord::new(0.0, 0.0, 0.0);
+        let size = Coord::new(4.0, 4.0, 1.0);
+        let residue_base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+            ],
+        };
+
+        // The coordinates are offset from (0, 0, 0) but will be centered around it
+        let radius = 2.0;
+        let residue_coords = vec![
+            Coord::new(0.1, radius, 0.0), // After: (-1.9, radius, 0.0)
+            Coord::new(3.9, radius, 0.0)  // After: (1.9, radius, 0.0)
+        ];
+
+        let sheet = Sheet { origin, size, residue_base, residue_coords };
+        let circle = sheet.into_circle(radius);
+
+        assert_eq!(2, circle.num_atoms());
+        assert_eq!(Coord::new(-1.9, 0.0, 0.0), circle.residue_coords[0]);
+        assert_eq!(Coord::new(1.9, 0.0, 0.0), circle.residue_coords[1]);
+    }
+
+    #[test]
+    fn circles_check_coordinates_after_pbc_adjustment() {
+        let origin = Coord::new(0.0, 0.0, 0.0);
+        let size = Coord::new(1.0, 1.0, 1.0);
+        let residue_base = ResidueBase {
+            code: "RES".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
+            ],
+        };
+
+        // The coordinates are outside the box, but will be adjusted to be in the center.
+        let radius = 0.5;
+        let residue_coords = vec![
+            Coord::new(-0.6, radius, 0.0), // In box: (0.4, radius, 0.0)
+            Coord::new(2.6, radius, 0.0)   // In box: (0.6, radius, 0.0)
+        ];
+
+        let sheet = Sheet { origin, size, residue_base, residue_coords };
+        let circle = sheet.into_circle(radius);
+
+        assert_eq!(2, circle.num_atoms());
+        assert_eq!(Coord::new(-0.1, 0.0, 0.0), circle.residue_coords[0]);
+        assert_eq!(Coord::new(0.1, 0.0, 0.0), circle.residue_coords[1]);
     }
 }
