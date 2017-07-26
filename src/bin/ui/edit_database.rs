@@ -282,7 +282,7 @@ mod define_residue {
 mod define_component {
     //! Define a new `SheetConfEntry`.
 
-    use database::{AvailableComponents, CylinderConfEntry, SheetConfEntry};
+    use database::{AvailableComponents, Direction, CylinderConfEntry, SheetConfEntry};
     use error::{GrafenCliError, Result};
     use ui::utils;
     use ui::utils::CommandParser;
@@ -350,6 +350,16 @@ mod define_component {
                     .map_err(|err| GrafenCliError::from(err))?;
                 println!("");
 
+                let commands = command_parser!(
+                    ("x", Direction::X, ""),
+                    ("y", Direction::Y, ""),
+                    ("z", Direction::Z, "")
+                );
+                let input = utils::get_input_string("Cylinder direction (default: Z)")?;
+                let alignment = commands
+                    .get_selection(&input)
+                    .unwrap_or(Direction::Z);
+
                 let residue = select_residue(&residue_list)?;
                 println!("");
                 let lattice = select_lattice()?;
@@ -359,6 +369,7 @@ mod define_component {
                     name,
                     lattice,
                     residue,
+                    alignment,
                     radius: None,
                     height: None,
                     position: None,

@@ -93,13 +93,12 @@ impl Sheet {
     /// the center point (radius, radius, 0).
     ///
     /// The final circle will be centered around (0, 0, 0).
-    fn into_circle(self, radius: f64) -> Self {
+    pub fn into_circle(self, radius: f64) -> Self {
         const ORIGO: Coord = Coord { x: 0.0, y: 0.0, z: 0.0 };
         let center = Coord::new(radius, radius, 0.0);
 
         let residue_coords = self.residue_coords
             .iter()
-            .inspect(|coord| println!("{:?}", coord))
             .map(|&coord| coord.with_pbc(self.size) - center)
             .filter(|coord| coord.distance(ORIGO) <= radius)
             .collect();

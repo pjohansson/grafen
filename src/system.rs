@@ -37,6 +37,15 @@ impl Component {
         self
     }
 
+    /// Extend the component with coordinates from another, translating them by
+    /// the relative difference of their origins.
+    pub fn extend(&mut self, other: Component) {
+        let difference = other.origin - self.origin;
+        for coord in other.residue_coords {
+            self.residue_coords.push(coord + difference);
+        }
+    }
+
     /// Rotate all coordinates along the x axis by 90 degrees, counter-clockwise.
     pub fn rotate_x(mut self) -> Self {
         for coord in self.residue_coords.iter_mut() {
@@ -317,7 +326,6 @@ mod tests {
         assert_eq!(coord, coord.with_pbc(box_size));
     }
 
-    // A simple component with two different residues and five atoms
     fn setup_component(base: &ResidueBase, num: usize) -> Component {
         Component {
             origin: Coord::new(0.0, 0.0, 0.0),
@@ -439,5 +447,29 @@ mod tests {
             assert_eq!(&Coord::new(2.0, -8.0, 5.0), iter.next().unwrap());
             assert_eq!(None, iter.next());
         }
+    }
+
+    #[test]
+    fn extend_component_with_more_coordinates_using_their_relative_position() {
+        let origin = Coord::new(0.0, 0.0, 1.0);
+        let mut component = Component {
+            origin: origin,
+            box_size: Coord::new(0.0, 0.0, 0.0),
+            residue_base: resbase!["RES", ("A", 0.0, 0.0, 0.0)],
+            residue_coords: vec![
+                Coord::new(0.0, 0.0, 0.0),
+                Coord::new(1.0, 0.0, 0.0)
+            ],
+        };
+
+        // Extend the component by one that is translated by 5 along z.
+        let translate = Coord::new(0.0, 0.0, 5.0);
+        let extension = component.clone().translate(&translate);
+        component.extend(extension);
+
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), component.residue_coords[0]);
+        assert_eq!(Coord::new(1.0, 0.0, 0.0), component.residue_coords[1]);
+        assert_eq!(Coord::new(0.0, 0.0, 5.0), component.residue_coords[2]);
+        assert_eq!(Coord::new(1.0, 0.0, 5.0), component.residue_coords[3]);
     }
 }

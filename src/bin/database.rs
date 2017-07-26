@@ -22,11 +22,11 @@ pub struct DataBase {
     /// A path to the `DataBase` location on the hard drive.
     pub path: Option<PathBuf>,
 
-    #[serde(rename = "residue_definitions")]
+    #[serde(rename = "residue_definitions", default = "Vec::new")]
     /// Definitions of `ResidueBase` objects.
     pub residue_defs: Vec<ResidueBase>,
 
-    #[serde(rename = "component_definitions")]
+    #[serde(rename = "component_definitions", default = "Vec::new")]
     /// Definitions of components.
     pub component_defs: Vec<AvailableComponents>,
 }
@@ -194,17 +194,40 @@ impl AvailableComponents {
                     .ok_or(GrafenCliError::RunError("A cylinder height was not set".to_string()))?;
                 let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
 
-                let sheet_conf = SheetConf {
+                let mut sheet_conf = SheetConf {
                     lattice: conf.lattice.clone(),
                     residue: conf.residue.clone(),
                     size: (2.0 * PI * radius, height),
                     std_z: None,
                 };
                 let sheet = create_substrate(&sheet_conf)?;
-                let cylinder = Cylinder::from_sheet(&sheet).into_component();
 
-                // Rotate the cylinder to point along z
-                Ok(cylinder.rotate_x().translate(&position))
+                // Create the cylinder rotated to align along the z axis during construction.
+                // This is to easily set the bottom and top caps.
+                let mut cylinder = Cylinder::from_sheet(&sheet).into_component().rotate_x();
+
+                // Cut circles of the same material to work as bottom and top caps.
+                // Make them of slightly smaller radius to not overlap coordinates.
+                // TODO: This should be improved. IDEA: No offset, rotate circle
+                // and score nearest neighbor distance or something. Expensive, though.
+                const OFFSET: f64 = 0.0;
+                sheet_conf.size = (2.0 * radius, 2.0 * radius);
+                let circle_sheet = create_substrate(&sheet_conf)?;
+
+                let bottom = circle_sheet.into_circle(radius - OFFSET).into_component();
+                let top = bottom.clone().translate(&Coord::new(0.0, 0.0, height));
+                cylinder.extend(bottom);
+                cylinder.extend(top);
+
+                // Rotate it to the final position.
+                // TODO: A proper general rotate function would be good here.
+                let cylinder = match conf.alignment {
+                    Direction::X => cylinder.rotate_y().rotate_y().rotate_y(),
+                    Direction::Y => cylinder.rotate_x().rotate_x().rotate_x(),
+                    Direction::Z => cylinder,
+                };
+
+                Ok(cylinder.translate(&position))
             },
         }
     }
@@ -248,6 +271,17 @@ impl SheetConfEntry {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+/// Component direction axis. Eg. for `Cylinder`s this is the cylinder axis.
+/// For a `Sheet` it could be the normal.
+pub enum Direction { X, Y, Z }
+
+impl Direction {
+    fn default_cylinder() -> Direction {
+        Direction::Z
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// A catalog entry for a `CylinderConf`.
 ///
@@ -259,6 +293,9 @@ pub struct CylinderConfEntry {
     pub lattice: LatticeType,
     /// Base residue.
     pub residue: ResidueBase,
+    #[serde(default = "Direction::default_cylinder")]
+    /// Cylinder axis alignment.
+    pub alignment: Direction,
     #[serde(skip)]
     /// Cylinder radius.
     pub radius: Option<f64>,
@@ -374,6 +411,13 @@ mod tests {
         let deserialized: SheetConfEntry = serde_json::from_str(&serialized).unwrap();
         assert_eq!(None, deserialized.size);
         assert_eq!(None, deserialized.position);
+    }
+
+    #[test]
+    fn database_by_default_sets_empty_vectors_if_not_available() {
+        let database: DataBase = serde_json::from_str("{}").unwrap();
+        assert!(database.residue_defs.is_empty());
+        assert!(database.component_defs.is_empty());
     }
 
     #[test]
