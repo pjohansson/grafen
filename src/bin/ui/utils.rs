@@ -2,6 +2,7 @@
 
 use error::{GrafenCliError, Result, UIErrorKind};
 
+use ansi_term::Colour::Yellow;
 use std::io;
 use std::io::Write;
 use std::result;
@@ -13,6 +14,15 @@ type CommandArg<T> = (&'static str, T, &'static str);
 /// These are put into a list. Unfortunately it is difficult to use
 /// a const array for this since we need to send a Sized type to functions.
 pub type CommandList<T> = Vec<CommandArg<T>>;
+
+#[derive(Debug, PartialEq)]
+/// Commands can be selected using a parsed short string or enumeration.
+enum SelectionClass {
+    /// Enumeration selection.
+    Enum,
+    /// String selection.
+    String,
+}
 
 /// Finally a `CommandParser` is used to parse input strings for commands.
 /// Commands are any unit type which implements `Copy`.
@@ -33,26 +43,51 @@ pub type CommandList<T> = Vec<CommandArg<T>>;
 /// }
 /// ```
 pub struct CommandParser<T: Copy> {
+    /// Commands are selected by inputting strings or through enumeration.
+    class: SelectionClass,
+    /// List of commands to select from.
     commands: CommandList<T>,
 }
 
 impl<T: Copy> CommandParser<T> {
     /// Create a `CommandParser` from an input `CommandList`.
     pub fn from_list(commands: CommandList<T>) -> CommandParser<T> {
-        CommandParser { commands }
+        CommandParser { commands, class: SelectionClass::String }
+    }
+
+    /// Set the parser class to selection by enumeration.
+    pub fn into_enum_class(mut self) -> Self {
+        self.class = SelectionClass::Enum;
+        self
+    }
+
+    /// Set the parser class to selection by a string.
+    pub fn into_string_class(mut self) -> Self {
+        self.class = SelectionClass::String;
+        self
     }
 
     /// Parse a string for a command from the input list.
     pub fn get_selection(&self, input: &str) -> Option<T> {
-        if let Some(needle) = input.trim().to_lowercase().split_whitespace().next() {
-            for &(ident, cmd, _) in self.commands.iter() {
-                if needle == ident {
-                    return Some(cmd);
+        match self.class {
+            SelectionClass::String => {
+                if let Some(needle) = input.trim().to_lowercase().split_whitespace().next() {
+                    for &(ident, cmd, _) in self.commands.iter() {
+                        if needle == ident {
+                            return Some(cmd);
+                        }
+                    }
                 }
-            }
+                None
+            },
+            SelectionClass::Enum => {
+                input.trim()
+                     .parse::<usize>()
+                     .ok()
+                     .and_then(|index| self.commands.get(index))
+                     .map(|&(_, cmd, _)| cmd)
+            },
         }
-
-        None
     }
 
     /// Parse a string for a command from the input list and return along
@@ -71,14 +106,23 @@ impl<T: Copy> CommandParser<T> {
     /// Print a menu of the available commands.
     pub fn print_menu(&self) {
         println!("Commands:");
-        for &(ref c, _, ref info) in self.commands.iter() {
-            println!("{:>4}{:4}{}", c, ' ', info);
+        match self.class {
+            SelectionClass::String => {
+                for &(ref c, _, ref info) in &self.commands {
+                    println!("{:>4}{:4}{}", c, ' ', info);
+                }
+            },
+            SelectionClass::Enum => {
+                for (index, &(_, _, ref info)) in self.commands.iter().enumerate() {
+                    println!("{:>2}. {}", index, info);
+                }
+            }
         }
         println!("");
     }
 }
 
-/// Macro for creating a `CommandParser` object.
+/// Macro for creating a `CommandParser` object with string selection.
 ///
 /// See the tests below for an up-to-date example of use. The general idea
 /// is to just do:
@@ -98,7 +142,32 @@ macro_rules! command_parser {
             $(
                 temp_command_list.push(($short, $command, $description));
             )*
-            CommandParser::from_list(temp_command_list)
+            CommandParser::from_list(temp_command_list).into_string_class()
+        }
+    }
+}
+
+/// Macro for creating a `CommandParser` object with enum selection.
+///
+/// See the tests below for an up-to-date example of use. The general idea
+/// is to just do:
+/// ```
+/// #[derive(Clone, Copy)] enum Commands { One, Two }
+/// let commands = command_parser!(
+///     (Commands::One, "Description"),
+///     (Commands::Two, "Description")
+/// );
+/// ```
+macro_rules! command_parser_enum {
+    (
+        $(($command:path, $description:expr)),+
+    ) => {
+        {
+            let mut temp_command_list = Vec::new();
+            $(
+                temp_command_list.push(("", $command, $description));
+            )*
+            CommandParser::from_list(temp_command_list).into_enum_class()
         }
     }
 }
@@ -109,7 +178,7 @@ pub fn get_input_string(query: &str) -> Result<String> {
     let mut stdout = io::stdout();
     let mut selection = String::new();
 
-    print!("{}: ", query);
+    print!("{}: ", Yellow.paint(query));
     stdout.flush()?;
     stdin.read_line(&mut selection)?;
 
@@ -399,6 +468,33 @@ mod tests {
         ];
         let commands_full = CommandParser::from_list(command_list_full);
 
+        assert_eq!(2, commands_macro.commands.len());
+        assert_eq!(SelectionClass::String, commands_macro.class);
+
+        let iter_macro = commands_macro.commands.iter();
+        let iter_full = commands_full.commands.iter();
+        for (&cmd_macro, &cmd_full) in iter_macro.zip(iter_full) {
+            assert_eq!(cmd_macro, cmd_full);
+        }
+    }
+
+    #[test]
+    fn command_list_enum_macro_is_consistent() {
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        enum TestCommand { One, Two }
+
+        let commands_macro = command_parser_enum!(
+            (TestCommand::One, "First command"),
+            (TestCommand::Two, "Second command")
+        );
+
+        let command_list_full: CommandList<TestCommand> = vec![
+            ("", TestCommand::One, "First command"),
+            ("", TestCommand::Two, "Second command")
+        ];
+        let commands_full = CommandParser::from_list(command_list_full);
+
+        assert_eq!(SelectionClass::Enum, commands_macro.class);
         assert_eq!(2, commands_macro.commands.len());
 
         let iter_macro = commands_macro.commands.iter();
