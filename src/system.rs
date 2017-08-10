@@ -206,6 +206,11 @@ impl Coord {
         Coord { x: x, y: y, z: z }
     }
 
+    /// A coordinate at origo.
+    pub fn origo() -> Coord {
+        Coord { x: 0.0, y: 0.0, z: 0.0 }
+    }
+
     /// Unpack the coordinate into a tuple.
     pub fn to_tuple(&self) -> (f64, f64, f64) {
         (self.x, self.y, self.z)
@@ -269,6 +274,11 @@ impl PartialEq for Coord {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn coord_origo_is_correct() {
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), Coord::origo());
+    }
 
     #[test]
     fn coord_addition_and_subtraction() {

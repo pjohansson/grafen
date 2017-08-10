@@ -112,14 +112,9 @@
     },
     {
       "Cylinder": {
-        "name": "CarbonTip",
-        "lattice": {
-          "Hexagonal": {
-            "a": 0.142
-          }
-        },
+        "name": "CylinderTip",
         "residue": {
-          "code": "CYL",
+          "code": "GRA",
           "atoms": [
             {
               "code": "C",
@@ -132,7 +127,37 @@
           ]
         },
         "alignment": "Z",
-        "cap": "Bottom"
+        "cap": null,
+        "class": {
+          "Sheet": {
+            "Hexagonal": {
+              "a": 0.142
+            }
+          }
+        }
+      }
+    },
+    {
+      "Cylinder": {
+        "name": "FilledCylinder",
+        "residue": {
+          "code": "GRA",
+          "atoms": [
+            {
+              "code": "C",
+              "position": {
+                "x": 0.071,
+                "y": 0.071,
+                "z": 0.0
+              }
+            }
+          ]
+        },
+        "alignment": "Z",
+        "cap": null,
+        "class": {
+          "Volume": 100
+        }
       }
     }
   ]

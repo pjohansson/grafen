@@ -3,7 +3,7 @@
 
 use error::{GrafenCliError, Result};
 
-use grafen::cylinder::Cylinder;
+use grafen::cylinder::{Cylinder, CylinderConf};
 use grafen::substrate::{create_substrate, LatticeType, SheetConf};
 use grafen::system::{Coord, Component, ResidueBase, IntoComponent, Translate};
 use serde_json;
@@ -194,43 +194,56 @@ impl AvailableComponents {
                     .ok_or(GrafenCliError::RunError("A cylinder height was not set".to_string()))?;
                 let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
 
-                let mut sheet_conf = SheetConf {
-                    lattice: conf.lattice.clone(),
-                    residue: conf.residue.clone(),
-                    size: (2.0 * PI * radius, height),
-                    std_z: None,
+                let cylinder = match conf.class {
+                    CylinderClass::Sheet(ref lattice) => {
+                            let mut sheet_conf = SheetConf {
+                            lattice: lattice.clone(),
+                            residue: conf.residue.clone(),
+                            size: (2.0 * PI * radius, height),
+                            std_z: None,
+                        };
+                        let sheet = create_substrate(&sheet_conf)?;
+
+                        // Create the cylinder rotated to align along the z axis during construction.
+                        // This is to easily set the bottom and top caps.
+                        let mut cylinder = Cylinder::from_sheet(&sheet).into_component().rotate_x();
+
+                        if let Some(cap) = conf.cap {
+                            // Cut circles of the same material to work as bottom and top caps.
+                            // Make them of slightly smaller radius to not overlap coordinates.
+                            // TODO: This should be improved. IDEA: No offset, rotate circle
+                            // and score nearest neighbor distance or something. Expensive, though.
+                            const OFFSET: f64 = 0.0;
+                            sheet_conf.size = (2.0 * radius, 2.0 * radius);
+                            let circle_sheet = create_substrate(&sheet_conf)?;
+
+                            let bottom = circle_sheet.into_circle(radius - OFFSET).into_component();
+                            let top = bottom.clone().translate(&Coord::new(0.0, 0.0, height));
+
+                            match cap {
+                                CylinderCap::Bottom => {
+                                    cylinder.extend(bottom);
+                                },
+                                CylinderCap::Top => {
+                                    cylinder.extend(top);
+                                },
+                                CylinderCap::Both => {
+                                    cylinder.extend(bottom);
+                                    cylinder.extend(top);
+                                },
+                            }
+                        }
+                        cylinder
+                    },
+                    CylinderClass::Volume => {
+                        CylinderConf {
+                            origin: Coord::origo(),
+                            radius,
+                            height,
+                            residue_base: conf.residue.clone(),
+                        }.fill_z(num_residues).into_component()
+                    },
                 };
-                let sheet = create_substrate(&sheet_conf)?;
-
-                // Create the cylinder rotated to align along the z axis during construction.
-                // This is to easily set the bottom and top caps.
-                let mut cylinder = Cylinder::from_sheet(&sheet).into_component().rotate_x();
-
-                if let Some(cap) = conf.cap {
-                    // Cut circles of the same material to work as bottom and top caps.
-                    // Make them of slightly smaller radius to not overlap coordinates.
-                    // TODO: This should be improved. IDEA: No offset, rotate circle
-                    // and score nearest neighbor distance or something. Expensive, though.
-                    const OFFSET: f64 = 0.0;
-                    sheet_conf.size = (2.0 * radius, 2.0 * radius);
-                    let circle_sheet = create_substrate(&sheet_conf)?;
-
-                    let bottom = circle_sheet.into_circle(radius - OFFSET).into_component();
-                    let top = bottom.clone().translate(&Coord::new(0.0, 0.0, height));
-
-                    match cap {
-                        CylinderCap::Bottom => {
-                            cylinder.extend(bottom);
-                        },
-                        CylinderCap::Top => {
-                            cylinder.extend(top);
-                        },
-                        CylinderCap::Both => {
-                            cylinder.extend(bottom);
-                            cylinder.extend(top);
-                        },
-                    }
-                }
 
                 // Rotate it to the final position.
                 // TODO: A proper general rotate function would be good here.
@@ -303,6 +316,15 @@ pub enum CylinderCap {
     Both,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+/// Cylinders can either be a volume (residues inside) or a sheet (residues) on the outside.
+pub enum CylinderClass {
+    /// The cylinder is a folded sheet of an input lattice type.
+    Sheet(LatticeType),
+    /// The cylinder is filled with some residues.
+    Volume,
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// A catalog entry for a `CylinderConf`.
 ///
@@ -310,8 +332,6 @@ pub enum CylinderCap {
 pub struct CylinderConfEntry {
     /// Definition name.
     pub name: String,
-    /// Lattice constructor for the sheet.
-    pub lattice: LatticeType,
     /// Base residue.
     pub residue: ResidueBase,
     #[serde(default = "Direction::default_cylinder")]
@@ -319,6 +339,8 @@ pub struct CylinderConfEntry {
     pub alignment: Direction,
     /// Cylinder cap.
     pub cap: Option<CylinderCap>,
+    /// Cylinder is a layer or a filled volume.
+    pub class: CylinderClass,
     #[serde(skip)]
     /// Cylinder radius.
     pub radius: Option<f64>,
@@ -492,6 +514,7 @@ mod tests {
         assert_eq!("unchanged.json", database.path.unwrap().to_str().unwrap());
     }
 
+    #[cfg(unix)]
     #[test]
     fn get_database_path() {
         let mut database = DataBase::new();
