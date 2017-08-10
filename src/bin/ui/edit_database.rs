@@ -282,7 +282,7 @@ mod define_residue {
 mod define_component {
     //! Define a new `SheetConfEntry`.
 
-    use database::{AvailableComponents, Direction, CylinderCap, CylinderConfEntry, SheetConfEntry};
+    use database::{AvailableComponents, Direction, CylinderCap, CylinderClass, CylinderConfEntry, SheetConfEntry};
     use error::{GrafenCliError, Result};
     use ui::utils;
     use ui::utils::CommandParser;
@@ -350,40 +350,83 @@ mod define_component {
                     .map_err(|err| GrafenCliError::from(err))?;
                 println!("");
 
-                let residue = select_residue(&residue_list)?;
-                println!("");
-                let lattice = select_lattice()?;
-                println!("");
+                // Use a simplified enum to create the list, since CylinderClass::Volume has a usize.
+                #[derive(Clone, Copy)]
+                enum SelectClass { Sheet, Volume }
 
-                let direction_commands = command_parser!(
-                    ("x", Direction::X, ""),
-                    ("y", Direction::Y, ""),
-                    ("z", Direction::Z, "")
+                let cylinder_class_commands = command_parser_enum!(
+                    (SelectClass::Sheet, "Sheet"),
+                    (SelectClass::Volume, "Volume")
                 );
-                let input = utils::get_input_string("Cylinder direction (x/y/z, default: z)")?;
-                let alignment = direction_commands
-                    .get_selection(&input)
-                    .unwrap_or(Direction::Z);
+                cylinder_class_commands.print_menu();
+                let input = utils::get_input_string("Cylinder class")?;
 
-                let cap_commands = command_parser!(
-                    ("top", CylinderCap::Top, ""),
-                    ("bottom", CylinderCap::Bottom, ""),
-                    ("both", CylinderCap::Both, "")
-                );
-                let input = utils::get_input_string("Cylinder cap (none/top/bottom/both, default: none)")?;
-                let cap = cap_commands
-                    .get_selection(&input);
+                match cylinder_class_commands.get_selection(&input) {
+                    Some(SelectClass::Sheet) => {
+                        let residue = select_residue(&residue_list)?;
+                        println!("");
+                        let lattice = select_lattice()?;
+                        println!("");
 
-                Ok(AvailableComponents::Cylinder(CylinderConfEntry {
-                    name,
-                    lattice,
-                    residue,
-                    alignment,
-                    cap: cap,
-                    radius: None,
-                    height: None,
-                    position: None,
-                }))
+                        let cap_commands = command_parser_enum!(
+                            (CylinderCap::Top, "Top"),
+                            (CylinderCap::Bottom, "Bottom"),
+                            (CylinderCap::Both, "Both")
+                        );
+                        cap_commands.print_menu();
+                        let input = utils::get_input_string("Cylinder cap (default: none)")?;
+                        let cap = cap_commands.get_selection(&input);
+
+                        let direction_commands = command_parser!(
+                            ("x", Direction::X, ""),
+                            ("y", Direction::Y, ""),
+                            ("z", Direction::Z, "")
+                        );
+                        let input = utils::get_input_string("Cylinder direction (x/y/z, default: z)")?;
+                        let alignment = direction_commands
+                            .get_selection(&input)
+                            .unwrap_or(Direction::Z);
+
+                        Ok(AvailableComponents::Cylinder(CylinderConfEntry {
+                            name,
+                            residue,
+                            alignment,
+                            cap: cap,
+                            class: CylinderClass::Sheet(lattice),
+                            radius: None,
+                            height: None,
+                            position: None,
+                        }))
+                    },
+                    Some(SelectClass::Volume(num_residues)) => {
+                        let residue = select_residue(&residue_list)?;
+                        println!("");
+                        let input = utils::get_input_string("Number of residues")?;
+                        let num_residues = utils::parse_string_single(&input)?;
+
+                        let direction_commands = command_parser!(
+                            ("x", Direction::X, ""),
+                            ("y", Direction::Y, ""),
+                            ("z", Direction::Z, "")
+                        );
+                        let input = utils::get_input_string("Cylinder direction (x/y/z, default: z)")?;
+                        let alignment = direction_commands
+                            .get_selection(&input)
+                            .unwrap_or(Direction::Z);
+
+                        Ok(AvailableComponents::Cylinder(CylinderConfEntry {
+                            name,
+                            residue,
+                            alignment,
+                            cap: None,
+                            class: CylinderClass::Volume(num_residues),
+                            radius: None,
+                            height: None,
+                            position: None,
+                        }))
+                    },
+                    None => Err(GrafenCliError::UIError("Could not select a cylinder class".to_string())),
+                }
             },
 
             None => {
@@ -393,9 +436,9 @@ mod define_component {
     }
 
     fn select_component_type() -> Option<ComponentSelect> {
-        let commands = command_parser!(
-            ("s", ComponentSelect::Sheet, "Sheet"),
-            ("c", ComponentSelect::Cylinder, "Cylinder")
+        let commands = command_parser_enum!(
+            (ComponentSelect::Sheet, "Sheet"),
+            (ComponentSelect::Cylinder, "Cylinder")
         );
 
         commands.print_menu();

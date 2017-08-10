@@ -52,7 +52,7 @@ pub struct SheetConf {
     pub std_z: Option<f64>,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 /// Lattice types which a substrate can be constructed from.
 pub enum LatticeType {
     /// A hexagonal (honey comb) lattice with bond spacing `a`.
