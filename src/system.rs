@@ -11,6 +11,8 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
+use std::fmt;
+
 #[derive(Clone, Debug)]
 /// A system component which consists of a list of residues,
 /// each of which contains some atoms.
@@ -29,6 +31,11 @@ impl Component {
     /// Count and return the number of atoms in the component.
     pub fn num_atoms(&self) -> usize {
         self.residue_base.atoms.len() * self.residue_coords.len()
+    }
+
+    /// Count and return the number of residues in the component.
+    pub fn num_residues(&self) -> usize {
+        self.residue_coords.len()
     }
 
     /// Translate all residues within the component.
@@ -242,6 +249,12 @@ impl Coord {
     }
 }
 
+impl fmt::Display for Coord {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({:.1}, {:.1}, {:.1})", self.x, self.y, self.z)
+    }
+}
+
 impl Add for Coord {
     type Output = Coord;
 
@@ -334,6 +347,12 @@ mod tests {
         assert_eq!(coord, coord.with_pbc(box_size));
     }
 
+    #[test]
+    fn coord_display_format() {
+        let coord = Coord::ORIGO;
+        assert_eq!("(0.0, 0.0, 0.0)", &format!("{}", coord));
+    }
+
     fn setup_component(base: &ResidueBase, num: usize) -> Component {
         Component {
             origin: Coord::new(0.0, 0.0, 0.0),
@@ -358,6 +377,23 @@ mod tests {
         let component = setup_component(&residue_base, 2);
 
         assert_eq!(3 * 2, component.num_atoms());
+    }
+
+    #[test]
+    fn count_residues_in_component() {
+        // A residue duplicated twice
+        let coord0 = Coord::new(0.0, 1.0, 2.0);
+        let residue_base = ResidueBase {
+            code: "R1".to_string(),
+            atoms: vec![
+                Atom { code: "A1".to_string(), position: coord0, },
+                Atom { code: "A2".to_string(), position: coord0, },
+                Atom { code: "A3".to_string(), position: coord0, },
+            ]
+        };
+        let component = setup_component(&residue_base, 3);
+
+        assert_eq!(2, component.num_residues());
     }
 
     #[test]
