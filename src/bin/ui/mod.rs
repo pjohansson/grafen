@@ -17,7 +17,7 @@ use error::{GrafenCliError, Result};
 use output;
 use ui::utils::CommandParser;
 
-use grafen::system::{Component, Coord};
+use grafen::system::{Component, Coord, ResidueBase};
 use std::error::Error;
 
 #[derive(Debug)]
@@ -63,6 +63,13 @@ impl System {
         Some(box_size)
     }
 
+    /// Iterate over the residues in a `System`.
+    ///
+    /// Yields the `Coord` and `ResidueBase` for each residue, as the tuple `CoordAndResidue`.
+    pub fn iter_residues(&self) -> ResidueIter {
+        CoordsAndResiduesIterator::new(&self.constructed)
+    }
+
     /// Calculate the number of atoms in the system.
     pub fn num_atoms(&self) -> usize {
         self.constructed.iter().map(|conf| {
@@ -70,6 +77,54 @@ impl System {
         }).sum()
     }
 }
+
+/// We want to be able to iterate over all residues in a `System`.
+/// To do this we use as custom `Iterator` which yields every residue's
+/// `Coord` and `ResidueBase`.
+struct CoordsAndResiduesIterator<'a> {
+    components: &'a [ConstructedComponent],
+    current_component: usize,
+    current_coord: usize,
+}
+
+/// Construct it from a list of components.
+impl<'a> CoordsAndResiduesIterator<'a> {
+    fn new(components: &[ConstructedComponent]) -> Box<CoordsAndResiduesIterator> {
+        Box::new(CoordsAndResiduesIterator {
+            components: &components,
+            current_component: 0,
+            current_coord: 0,
+        })
+    }
+}
+
+// Newtypes for the iterator.
+type CoordAndResidue<'a> = (Coord, &'a ResidueBase);
+// TODO: This should use `impl Trait` once that is in Rust stable.
+type ResidueIter<'a> = Box<Iterator<Item = CoordAndResidue<'a>> + 'a>;
+
+impl<'a> Iterator for CoordsAndResiduesIterator<'a> {
+    type Item = CoordAndResidue<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(cons_component) = self.components.get(self.current_component) {
+                let component = &cons_component.component;
+
+                if let Some(&coord) = component.residue_coords.get(self.current_coord) {
+                    self.current_coord += 1;
+                    return Some((component.origin + coord, &component.residue_base));
+                } else {
+                    self.current_component += 1;
+                    self.current_coord = 0;
+                }
+            } else {
+                return None;
+            }
+        }
+    }
+}
+
 
 #[derive(Clone, Copy, Debug)]
 /// User commands for defining the system.
@@ -184,8 +239,10 @@ mod tests {
     use super::*;
     use grafen::system::{Atom, ResidueBase};
 
-    /// Setup a system of three components and in total seven atoms
-    fn setup_system() -> System {
+    /// Setup the base residues.
+    /// base_one: two atoms
+    /// base_two: one atom
+    fn setup_base_residues() -> (ResidueBase, ResidueBase) {
         let base_one = ResidueBase {
             code: "R1".to_string(),
             atoms: vec![
@@ -199,6 +256,17 @@ mod tests {
                 Atom { code: "B".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
                 ],
             };
+
+        (base_one, base_two)
+    }
+
+    /// Setup a system of three components and in total four residues / seven atoms:
+    ///     0. base_one, 2 atoms
+    ///     1. base_two, 1 atom
+    ///     2. base_one, 2 atoms
+    ///     3. base_one, 2 atoms
+    fn setup_system() -> System {
+        let (base_one, base_two) = setup_base_residues();
 
         System {
             box_size: None,
@@ -263,5 +331,47 @@ mod tests {
         };
 
         assert!(system.calc_box_size().is_none());
+    }
+
+    #[test]
+    fn iterate_over_system_residues() {
+        let (base_one, base_two) = setup_base_residues();
+        let system = setup_system();
+
+        let mut iter = system.iter_residues();
+        assert_eq!(Some((Coord::new(0.0, 0.0, 0.0), &base_one)), iter.next());
+        assert_eq!(Some((Coord::new(0.0, 0.0, 0.0), &base_two)), iter.next());
+        assert_eq!(Some((Coord::new(0.0, 0.0, 0.0), &base_one)), iter.next());
+        assert_eq!(Some((Coord::new(1.0, 0.0, 0.0), &base_one)), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn iter_residues_adds_component_origin() {
+        let origin = Coord::new(-5.0, 10.0, 5.0);
+        let coord1 = Coord::new(0.0, 0.0, 0.0);
+        let coord2 = Coord::new(1.0, 1.0, 1.0);
+
+        let (base_one, _) = setup_base_residues();
+        let system = System {
+            box_size: None,
+            definitions: vec![],
+            constructed: vec![
+                ConstructedComponent {
+                    description: "None".to_string(),
+                    component: Component {
+                        box_size: Coord::ORIGO,
+                        origin: origin,
+                        residue_base: base_one.clone(),
+                        residue_coords: vec![coord1, coord2],
+                    },
+                },
+            ]
+        };
+
+        let mut iter = system.iter_residues();
+        assert_eq!(Some((origin + coord1, &base_one)), iter.next());
+        assert_eq!(Some((origin + coord2, &base_one)), iter.next());
+        assert_eq!(None, iter.next());
     }
 }

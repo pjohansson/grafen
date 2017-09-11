@@ -156,7 +156,7 @@
         "alignment": "Z",
         "cap": null,
         "class": {
-          "Volume": 100
+          "Volume": null
         }
       }
     }

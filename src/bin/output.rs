@@ -22,42 +22,23 @@ pub fn write_gromos(system: &System, config: &Config) -> Result<()> {
     writer.write_fmt(format_args!("{}\n", system.num_atoms()))?;
 
     // Absolute atom numbering.
-    let mut i = 0;
     let mut j = 0;
 
-    // TODO: Ideally, we would call an iterator (eg. system.iter_residues()) here
-    // which would in order yield all `Coord`s with their `ResidueBase`s.
-    // It would then be trivial to iterate over all `Atom`s of each base
-    // and more flexible if we implement more output file types in the future.
-    //
-    // Alas, Rust cannot currently just yield types like that.
-    // Look out for future improvements.
-    for conf in system.constructed.iter() {
-        let coords = &conf.component.residue_coords;
-        let base = &conf.component.residue_base;
+    for (i, (coord, ref base)) in system.iter_residues().enumerate() {
+        let residue_number = (i + 1) % 100_000;
 
-        for &coord in coords {
-            // GROMOS files wrap atom and residue numbering after five digits
-            // so we must output at most that. We also switch to indexing the
-            // numbers from 1 instead of from 0.
-            let residue_number = (i + 1) % 100_000;
+        for atom in &base.atoms {
+            let atom_number = (j + 1) % 100_000;
+            let position = coord + atom.position;
+            let (x, y, z) = position.to_tuple();
 
-            for atom in &base.atoms {
-                let atom_number = (j + 1) % 100_000;
-                let position = conf.component.origin + coord + atom.position;
-                let (x, y, z) = position.to_tuple();
-
-                writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
-                                            residue_number,
-                                            base.code,
-                                            atom.code,
-                                            atom_number,
-                                            x, y, z))?;
-
-                j += 1;
-            }
-
-            i += 1;
+            writer.write_fmt(format_args!("{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
+                                        residue_number,
+                                        base.code,
+                                        atom.code,
+                                        atom_number,
+                                        x, y, z))?;
+            j += 1;
         }
     }
 
