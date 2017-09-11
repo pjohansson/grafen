@@ -235,13 +235,20 @@ impl AvailableComponents {
                         }
                         cylinder
                     },
-                    CylinderClass::Volume => {
+                    CylinderClass::Volume(opt_num_residues) => {
+                        let num_residues = opt_num_residues.ok_or(
+                            GrafenCliError::UIError(
+                                "No number of residues to fill the cylinder with is set".to_string()
+                        ))?;
+
                         CylinderConf {
                             origin: Coord::origo(),
                             radius,
                             height,
                             residue_base: conf.residue.clone(),
-                        }.fill_z(num_residues).into_component()
+                        }
+                        .fill_z(num_residues)
+                        .into_component()
                     },
                 };
 
@@ -320,9 +327,18 @@ pub enum CylinderCap {
 /// Cylinders can either be a volume (residues inside) or a sheet (residues) on the outside.
 pub enum CylinderClass {
     /// The cylinder is a folded sheet of an input lattice type.
+    ///
+    /// The number of residues is a result of which lattice is created.
     Sheet(LatticeType),
     /// The cylinder is filled with some residues.
-    Volume,
+    ///
+    /// The number of residues are given directly to fill it with. It is an option since
+    /// it should not actually be read from or saved to disk in the database. I believe
+    /// this requires a custom de/serialize function? Works for now at least, but is not
+    /// pretty.
+    ///
+    /// TODO: Ensure that the number of residues is not de/serialized.
+    Volume(Option<usize>),
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]

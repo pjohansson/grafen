@@ -398,11 +398,9 @@ mod define_component {
                             position: None,
                         }))
                     },
-                    Some(SelectClass::Volume(num_residues)) => {
+                    Some(SelectClass::Volume) => {
                         let residue = select_residue(&residue_list)?;
                         println!("");
-                        let input = utils::get_input_string("Number of residues")?;
-                        let num_residues = utils::parse_string_single(&input)?;
 
                         let direction_commands = command_parser!(
                             ("x", Direction::X, ""),
@@ -419,7 +417,7 @@ mod define_component {
                             residue,
                             alignment,
                             cap: None,
-                            class: CylinderClass::Volume(num_residues),
+                            class: CylinderClass::Volume(None),
                             radius: None,
                             height: None,
                             position: None,

@@ -2,7 +2,7 @@
 //!
 //! This interface could use a lot of improvement.
 
-use database::{AvailableComponents, DataBase};
+use database::{AvailableComponents, CylinderClass, DataBase};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::utils;
 use ui::utils::CommandParser;
@@ -109,6 +109,22 @@ fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
             let position = select_position()?;
             let radius = utils::get_and_parse_string_single("Set radius (nm)")?;
             let height = utils::get_and_parse_string_single("Set height (nm)")?;
+
+            match def.class {
+            CylinderClass::Volume(None) => {
+                    let input = utils::get_input_string("Number of residues")?;
+                    let num_residues = utils::parse_string_single(&input)?;
+                    def.class = CylinderClass::Volume(Some(num_residues));
+                },
+                CylinderClass::Volume(Some(default_num_residues)) => {
+                    let input = utils::get_input_string(
+                        &format!("Number of residues (default: {})", default_num_residues)
+                    )?;
+                    let num_residues = utils::parse_string_single(&input).unwrap_or(default_num_residues);
+                    def.class = CylinderClass::Volume(Some(num_residues));
+                },
+                _ => (),
+            }
 
             def.position = Some(position);
             def.radius = Some(radius);
