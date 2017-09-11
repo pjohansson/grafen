@@ -201,14 +201,12 @@ pub struct Coord {
 use std::ops::{Add, Sub};
 
 impl Coord {
+    /// A coordinate at origo.
+    pub const ORIGO: Self = Coord { x: 0.0, y: 0.0, z: 0.0 };
+
     /// Construct a new coordinate.
     pub fn new(x: f64, y: f64, z: f64) -> Coord {
         Coord { x: x, y: y, z: z }
-    }
-
-    /// A coordinate at origo.
-    pub fn origo() -> Coord {
-        Coord { x: 0.0, y: 0.0, z: 0.0 }
     }
 
     /// Unpack the coordinate into a tuple.
@@ -277,7 +275,7 @@ mod tests {
 
     #[test]
     fn coord_origo_is_correct() {
-        assert_eq!(Coord::new(0.0, 0.0, 0.0), Coord::origo());
+        assert_eq!(Coord::new(0.0, 0.0, 0.0), Coord::ORIGO);
     }
 
     #[test]

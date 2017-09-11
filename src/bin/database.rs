@@ -242,7 +242,7 @@ impl AvailableComponents {
                         ))?;
 
                         CylinderConf {
-                            origin: Coord::origo(),
+                            origin: Coord::ORIGO,
                             radius,
                             height,
                             residue_base: conf.residue.clone(),

@@ -248,7 +248,7 @@ mod tests {
         let residue = setup_residue();
 
         let cylinder_conf = CylinderConf { 
-            origin: Coord::origo(),
+            origin: Coord::ORIGO,
             radius: radius,
             height: height,
             residue_base: residue,
