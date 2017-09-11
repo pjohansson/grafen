@@ -2,6 +2,8 @@
 //! into a `DataBase` which can be read from or saved to disk.
 
 use error::{GrafenCliError, Result};
+use ui::utils;
+use ui::utils::Describe;
 
 use grafen::cylinder::{Cylinder, CylinderConf};
 use grafen::substrate::{create_substrate, LatticeType, SheetConf};
@@ -36,8 +38,8 @@ impl DataBase {
     pub fn new() -> DataBase {
         DataBase {
             path: None,
-            residue_defs: Vec::new(),
-            component_defs: Vec::new(),
+            residue_defs: vec![],
+            component_defs: vec![],
         }
     }
 
@@ -46,13 +48,9 @@ impl DataBase {
         println!("Database path: {}", self.get_path_pretty());
         println!("");
 
-        println!("Component definitions:");
-        for (i, def) in self.component_defs.iter().enumerate() {
-            println!("{:4}. {}", i, def.describe());
-        }
-        println!("");
+        utils::print_group("Component definitions", &self.component_defs);
 
-        println!("Residue definitions:");
+        println!("[ Residue definitions ]");
         for (i, def) in self.residue_defs.iter().enumerate() {
             println!("{:4}. {}", i, def.code);
         }
@@ -140,14 +138,6 @@ pub enum AvailableComponents {
 }
 
 impl AvailableComponents {
-    /// Describe the components type with its name.
-    pub fn describe(&self) -> String {
-        match *self {
-            AvailableComponents::Sheet(_) => format!("(Sheet) {}", self.name()),
-            AvailableComponents::Cylinder(_) => format!("(Cylinder) {}", self.name()),
-        }
-    }
-
     /// Return a verbose description of the component that is to be created.
     pub fn describe_long(&self) -> String {
         match self {
@@ -262,6 +252,16 @@ impl AvailableComponents {
 
                 Ok(cylinder.translate(&position))
             },
+        }
+    }
+}
+
+impl Describe for AvailableComponents {
+    /// Describe the components type with its name.
+    fn describe(&self) -> String {
+        match *self {
+            AvailableComponents::Sheet(_) => format!("(Sheet) {}", self.name()),
+            AvailableComponents::Cylinder(_) => format!("(Cylinder) {}", self.name()),
         }
     }
 }

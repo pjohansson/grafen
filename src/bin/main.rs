@@ -54,6 +54,8 @@ impl Config {
 }
 
 fn main() {
+    println!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+
     let matches = clap_app!(grafen_cli =>
         (version: crate_version!())
         (author: crate_authors!())

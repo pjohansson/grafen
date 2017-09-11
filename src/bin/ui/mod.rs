@@ -7,7 +7,7 @@
 //! for creating `SheetConfEntry` and `SystemDefinition` are in need of improvement.
 
 #[macro_use]
-mod utils;
+pub mod utils;
 mod edit_database;
 mod define_components;
 
@@ -15,7 +15,7 @@ use super::Config;
 use database::AvailableComponents;
 use error::{GrafenCliError, Result};
 use output;
-use ui::utils::CommandParser;
+use ui::utils::{CommandParser, Describe};
 
 use grafen::system::{Component, Coord, ResidueBase};
 use std::error::Error;
@@ -27,6 +27,14 @@ pub struct ConstructedComponent {
     description: String,
     /// The component.
     pub component: Component,
+}
+
+impl utils::Describe for ConstructedComponent {
+    fn describe(&self) -> String {
+        format!("{} ({} residues at {})", self.description,
+                                          self.component.num_residues(),
+                                          self.component.origin)
+    }
 }
 
 #[derive(Debug)]
@@ -61,6 +69,12 @@ impl System {
         );
 
         Some(box_size)
+    }
+
+    fn describe(&self) {
+        //define_components::describe_system_definitions(&self.definitions);
+        utils::print_group("Defined components", &self.definitions);
+        utils::print_group("Constructed components", &self.constructed);
     }
 
     /// Iterate over the residues in a `System`.
@@ -163,8 +177,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     );
 
     loop {
-        define_components::describe_system_definitions(&system.definitions);
-        describe_created_components(&system.constructed);
+        system.describe();
 
         commands.print_menu();
         let input = utils::get_input_string("Selection")?;
@@ -213,25 +226,12 @@ fn construct_components(system: &mut System) -> Result<()> {
     let ref mut components = system.constructed;
 
     for def in definitions.drain(..) {
-        let description = def.describe_long();
+        let description = def.describe();
         let component = def.into_component()?;
         components.push(ConstructedComponent{ description, component });
     }
 
     Ok(())
-}
-
-fn describe_created_components(constructed: &[ConstructedComponent]) {
-    if constructed.is_empty() {
-        println!("(No components have been created)");
-    } else {
-        println!("Constructed system components:");
-        for (i, conf) in constructed.iter().enumerate() {
-            println!("{}. {}", i, &conf.description);
-        }
-    }
-
-    println!("");
 }
 
 #[cfg(test)]

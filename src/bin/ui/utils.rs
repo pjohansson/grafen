@@ -266,6 +266,25 @@ pub fn swap_items<T>(item_list: &mut Vec<T>, tail: &str) -> Result<(usize, usize
     }
 }
 
+pub trait Describe {
+    fn describe(&self) -> String;
+}
+
+/// Print a group's elements and a header.
+pub fn print_group<T: Describe>(title: &str, group: &[T]) {
+    println!("[ {} ]", title);
+
+    if group.is_empty() {
+        println!("(none)");
+    } else {
+        for (i, element) in group.iter().enumerate() {
+            println!("{}. {}", i, element.describe());
+        }
+    }
+
+    println!("");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

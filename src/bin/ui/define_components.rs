@@ -5,7 +5,7 @@
 use database::{AvailableComponents, CylinderClass, DataBase};
 use error::{GrafenCliError, Result, UIErrorKind};
 use ui::utils;
-use ui::utils::CommandParser;
+use ui::utils::{CommandParser, Describe};
 
 use grafen::system::Coord;
 use std::error::Error;
@@ -34,7 +34,8 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
     let backup = system_defs.clone();
 
     loop {
-        describe_system_definitions(&system_defs);
+        utils::print_group("Defined components", &system_defs);
+
         commands.print_menu();
         let input = utils::get_input_string("Selection")?;
         println!("");
@@ -76,19 +77,6 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
 
         println!("");
     }
-}
-
-/// Print the current system definitions to stdout.
-pub fn describe_system_definitions(system_defs: &[AvailableComponents]) {
-    if system_defs.is_empty() {
-        println!("(No systems have been defined)");
-    } else {
-        println!("System definitions:");
-        for (i, def) in system_defs.iter().enumerate() {
-            println!("{}. {}", i, def.describe_long());
-        }
-    }
-    println!("");
 }
 
 /// Prompt the user to fill in the missing information for a definition.
