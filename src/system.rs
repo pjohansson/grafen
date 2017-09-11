@@ -11,7 +11,9 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
+use std::error::Error;
 use std::fmt;
+use std::str::FromStr;
 
 #[derive(Clone, Debug)]
 /// A system component which consists of a list of residues,
@@ -282,9 +284,28 @@ impl PartialEq for Coord {
     }
 }
 
+impl FromStr for Coord {
+    type Err = String;
+
+    fn from_str(input: &str) -> Result<Coord, Self::Err> {
+        let parse_opt_value = |value: Option<&str>| {
+            value.ok_or("Not enough values to parse".to_string())
+                 .and_then(|v| v.parse::<f64>().map_err(|err| err.description().to_string()))
+        };
+
+        let mut split = input.split_whitespace();
+        let x = parse_opt_value(split.next())?;
+        let y = parse_opt_value(split.next())?;
+        let z = parse_opt_value(split.next())?;
+
+        return Ok(Coord { x, y, z})
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn coord_origo_is_correct() {
@@ -353,6 +374,15 @@ mod tests {
         assert_eq!("(0.0, 0.0, 0.0)", &format!("{}", coord));
     }
 
+    #[test]
+    fn coord_parsed_from_string() {
+        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("1.0 -1.0 2.0"));
+        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("1 -1.0 2"));
+        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("\t1.0 -1.0 2.0"));
+        assert!(Coord::from_str("").is_err());
+        assert!(Coord::from_str("2.0 1.0").is_err());
+    }
+
     fn setup_component(base: &ResidueBase, num: usize) -> Component {
         Component {
             origin: Coord::new(0.0, 0.0, 0.0),
@@ -393,7 +423,7 @@ mod tests {
         };
         let component = setup_component(&residue_base, 3);
 
-        assert_eq!(2, component.num_residues());
+        assert_eq!(3, component.num_residues());
     }
 
     #[test]
