@@ -3,13 +3,14 @@
 use database::{write_database, DataBase};
 use error::Result;
 use ui::utils;
-use ui::utils::CommandParser;
+use ui::utils::select_command;
 
+use dialoguer::Input;
 use std::error::Error;
 
 #[derive(Clone, Copy, Debug)]
 /// Editing commands.
-enum Command {
+enum DataBaseMenu {
     AddResidue,
     RemoveResidue,
     AddComponent,
@@ -20,19 +21,19 @@ enum Command {
     QuitAndSave,
     QuitWithoutSaving,
 }
+use self::DataBaseMenu::*;
 
-/// The main user menu.
-pub fn user_menu(database: &mut DataBase) -> Result<&str> {
-    let commands = command_parser!(
-        ("ra", Command::AddResidue, "Add a residue definition"),
-        ("rr", Command::RemoveResidue, "Remove a residue definition"),
-        ("sa", Command::AddComponent, "Add a component definition"),
-        ("sr", Command::RemoveComponent, "Remove a component definition"),
-        ("w", Command::WriteToDisk, "Write database to disk"),
-        ("c", Command::SetLocation, "Change output location of database"),
-        ("l", Command::ShowDatabase, "List database content"),
-        ("f", Command::QuitAndSave, "Finish editing database"),
-        ("a", Command::QuitWithoutSaving, "Abort editing and discard changes")
+pub fn user_menu(database: &mut DataBase) -> Result<String> {
+    let (commands, item_texts) = create_menu_items!(
+        (AddResidue, "Add a residue definition"),
+        (RemoveResidue, "Remove a residue definition"),
+        (AddComponent, "Add a component definition"),
+        (RemoveComponent, "Remove a component definition"),
+        (WriteToDisk, "Write database to disk"),
+        (SetLocation, "Change output location of database"),
+        (ShowDatabase, "List database content"),
+        (QuitAndSave, "Finish editing database"),
+        (QuitWithoutSaving, "Abort editing and discard changes")
     );
 
     let path_backup = database.path.clone();
@@ -44,77 +45,74 @@ pub fn user_menu(database: &mut DataBase) -> Result<&str> {
     println!("");
 
     loop {
-        commands.print_menu();
-        let input = utils::get_input_string("Selection")?;
+        let command = select_command(item_texts, commands)?;
 
-        if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
-            match cmd {
-                Command::AddResidue => {
-                    match define_residue::user_menu() {
-                        Ok(residue) => {
-                            println!("Added residue '{}' to database.", residue.code);
-                            database.residue_defs.push(residue);
-                        },
-                        Err(err) => println!("Could not create residue: {}", err.description()),
-                    }
-                },
-                Command::RemoveResidue => {
-                    match utils::remove_item(&mut database.residue_defs, &tail) {
-                        Ok(i) => println!("Removed residue with index {} from database.", i),
-                        Err(err) => println!("Could not remove residue: {}", err.description()),
-                    }
-                },
-                Command::AddComponent => {
-                    match define_component::user_menu(&database.residue_defs) {
-                        Ok(component) => {
-                            println!("Added component definition '{}' to database.",
-                                     component.name());
-                            database.component_defs.push(component);
-                        },
-                        Err(err) => println!("Could not create component: {}", err.description()),
-                    }
-                },
-                Command::RemoveComponent => {
-                    match utils::remove_item(&mut database.component_defs, &tail) {
-                        Ok(i) => println!("Removed substrate with index {} from database.", i),
-                        Err(err) => println!("Could not remove substrate: {}", err.description()),
-                    }
-                },
-                Command::WriteToDisk => {
-                    match write_database(&database) {
-                        Ok(_) => println!("Wrote database to '{}'.",
-                                          database.path.as_ref().unwrap().to_str().unwrap()),
-                        Err(err) => println!("Could not write database: {}", err.description()),
-                    }
-                },
-                Command::SetLocation => {
-                    match database.set_path(&tail) {
-                        Ok(_) => println!("Database path set to {}.",
-                                          database.get_path_pretty()),
-                        Err(err) => println!("Could not change database path: {}",
-                                             err.description()),
-                    }
-                },
-                Command::ShowDatabase => {
-                    println!("");
-                    database.describe();
-                },
-                Command::QuitAndSave => {
-                    return Ok("Finished editing database.");
-                },
-                Command::QuitWithoutSaving => {
-                    database.path = path_backup;
-                    database.residue_defs = residues_backup;
-                    database.component_defs = components_backup;
+        match command {
+            AddResidue => {
+                match define_residue::user_menu() {
+                    Ok(residue) => {
+                        println!("Added residue '{}' to database.", &residue.code);
+                        database.residue_defs.push(residue);
+                    },
+                    Err(err) => println!("Could not create residue: {}", err.description()),
+                }
+            },
+            RemoveResidue => {
+                unimplemented!("Waiting for `impl Describe` for `ResidueBase`");
+                /*
+                match utils::remove_item(&mut database.residue_defs, &tail) {
+                    Ok(i) => println!("Removed residue with index {} from database.", i),
+                    Err(err) => println!("Could not remove residue: {}", err.description()),
+                }
+                */
+            },
+            AddComponent => {
+                match define_component::user_menu(&database.residue_defs) {
+                    Ok(component) => {
+                        println!("Added component definition '{}' to database.",
+                                 component.name());
+                        database.component_defs.push(component);
+                    },
+                    // TODO: Add description of error for UIErrorKind
+                    Err(_) => println!("Could not create component"),
+                }
+            },
+            RemoveComponent => {
+                if let Err(err) =  utils::remove_items(&mut database.component_defs) {
+                    println!("error: Something went wrong when removing a component ({})", err);
+                }
+            },
+            WriteToDisk => {
+                match write_database(&database) {
+                    Ok(_) => println!("Wrote database to '{}'.",
+                                      database.path.as_ref().unwrap().to_str().unwrap()),
+                    Err(err) => println!("Could not write database: {}", err.description()),
+                }
+            },
+            SetLocation => {
+                let path = Input::new("New path").interact()?;
+                match database.set_path(&path) {
+                    Ok(_) => println!("Database path set to {}.",
+                                      database.get_path_pretty()),
+                    Err(err) => println!("Could not change database path: {}",
+                                         err.description()),
+                }
+            },
+            ShowDatabase => {
+                println!("");
+                database.describe();
+            },
+            QuitAndSave => {
+                return Ok("Finished editing database".to_string());
+            },
+            QuitWithoutSaving => {
+                database.path = path_backup;
+                database.residue_defs = residues_backup;
+                database.component_defs = components_backup;
 
-                    return Ok("Discarding changes to database.");
-                },
-            }
-        } else {
-            println!("Not a valid selection.");
+                return Ok("Discarding changes to database".to_string());
+            },
         }
-
-        println!("");
     }
 }
 
@@ -122,182 +120,194 @@ pub fn user_menu(database: &mut DataBase) -> Result<&str> {
 mod define_residue {
     //! Define a new `ResidueBase`.
 
-    use error::{GrafenCliError, Result, UIErrorKind};
-    use ui::utils;
-    use ui::utils::CommandParser;
+    use error::{GrafenCliError, Result, UIErrorKind, UIResult};
+    use ui::utils::{select_command, get_position_from_user};
 
-    use grafen::system::{Atom, Coord, ResidueBase};
-    use std::error::Error;
+    use dialoguer::Input;
+    use grafen::system::{Atom, ResidueBase};
+    use std::result;
 
-    #[derive(Clone, Copy, Debug)]
-    enum ResidueCommand {
-        SetName,
-        AddAtom,
-        RemoveAtom,
-        SwapAtoms,
-        ShowResidue,
-        QuitAndSave,
-        QuitWithoutSaving,
+    struct ResidueBuilder {
+        name: String,
+        atoms: Vec<Atom>,
     }
 
-    pub fn user_menu() -> Result<ResidueBase> {
-        let commands = command_parser!(
-            ("n", ResidueCommand::SetName, "Set residue name"),
-            ("at", ResidueCommand::AddAtom, "Add atom to residue"),
-            ("r", ResidueCommand::RemoveAtom, "Remove atom from residue"),
-            ("s", ResidueCommand::SwapAtoms, "Swap two atoms in list"),
-            ("l", ResidueCommand::ShowResidue, "List current residue data"),
-            ("f", ResidueCommand::QuitAndSave, "Finish and add residue to list"),
-            ("a", ResidueCommand::QuitWithoutSaving, "Abort and discard changes")
-        );
+    impl ResidueBuilder {
+        fn new() -> ResidueBuilder {
+            ResidueBuilder {
+                name: String::new(),
+                atoms: vec![],
+            }
+        }
 
-        println!("Creating a new residue.\n");
-
-        let mut name = String::new();
-        let mut atoms: Vec<Atom> = Vec::new();
-
-        loop {
-            commands.print_menu();
-            let input = utils::get_input_string("Selection")?;
-            println!("");
-
-            if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
-                match cmd {
-                    ResidueCommand::SetName => {
-                        name = tail.to_uppercase().to_string();
-                        println!("Set residue name to '{}'", &name);
-                    },
-                    ResidueCommand::AddAtom => {
-                        match parse_string_for_atom(&tail) {
-                            Ok(atom) => {
-                                println!("Added atom '{}' to residue.", &atom.code);
-                                atoms.push(atom);
-                            },
-                            Err(err) => println!("Could not add atom: {}", err.description()),
-                        }
-
-                    },
-                    ResidueCommand::RemoveAtom => {
-                        match utils::remove_item(&mut atoms, &tail) {
-                            Ok(i) => println!("Removed atom with index {} from residue.", i),
-                            Err(err) => println!("Could not remove atom: {}", err.description()),
-                        }
-                    },
-                    ResidueCommand::SwapAtoms => {
-                        match utils::swap_items(&mut atoms, &tail) {
-                            Ok((i, j)) => println!("Swapped atoms at index {} with atom at {}.",
-                                                   i, j),
-                            Err(err) => println!("Could not swap atoms: {}", err.description()),
-                        }
-                    },
-                    ResidueCommand::ShowResidue => {
-                        describe_residue(&name, &atoms);
-                    },
-                    ResidueCommand::QuitAndSave => {
-                        if name.is_empty() {
-                            println!("Cannot add residue: No name is set");
-                        } else if atoms.is_empty() {
-                            println!("Cannot add residue: No atoms are set");
-                        } else {
-                            return Ok(ResidueBase {
-                                code: name,
-                                atoms: atoms,
-                            });
-                        }
-                    }
-                    ResidueCommand::QuitWithoutSaving => {
-                        return Err(GrafenCliError::from(UIErrorKind::Abort));
-                    },
-                }
+        fn finalize(&self) -> result::Result<ResidueBase, &str> {
+            if self.name.is_empty() {
+                Err("Cannot add residue: No name is set")
+            } else if self.atoms.is_empty() {
+                Err("Cannot add residue: No atoms are set")
             } else {
-                println!("Not a valid selection.");
+                Ok(ResidueBase {
+                    code: self.name.clone(),
+                    atoms: self.atoms.clone(),
+                })
+            }
+        }
+
+        fn print(&self) {
+            println!("Name: '{}'", self.name);
+
+            println!("Atoms:");
+            for (i, atom) in self.atoms.iter().enumerate() {
+                println!("{:2}. {} at {}", i, atom.code, atom.position);
             }
 
             println!("");
         }
     }
 
-    fn parse_string_for_atom(input: &str) -> Result<Atom> {
-        let mut iter = input.splitn(2, ' ');
-        let name = iter.next().and_then(|s| {
-                if s.is_empty() {
-                    None
-                } else {
-                    Some(s)
+
+    #[derive(Clone, Copy, Debug)]
+    enum ResidueMenu {
+        SetName,
+        AddAtom,
+        RemoveAtom,
+        SwapAtoms,
+        QuitAndSave,
+        QuitWithoutSaving,
+    }
+    use self::ResidueMenu::*;
+
+    pub fn user_menu() -> Result<ResidueBase> {
+        let (commands, item_texts) = create_menu_items!(
+            (SetName, "Set residue name"),
+            (AddAtom, "Add atom to residue"),
+            (RemoveAtom, "Remove atom from residue"),
+            (SwapAtoms, "Swap two atoms in list"),
+            (QuitAndSave, "Finish and add residue to list"),
+            (QuitWithoutSaving, "Abort and discard changes")
+        );
+
+        println!("Creating a new residue.\n");
+        let mut builder = ResidueBuilder::new();
+
+        loop {
+            builder.print();
+
+            let command = select_command(item_texts, commands)?;
+
+            match command {
+                SetName => {
+                    match Input::new("Residue name").interact() {
+                        Ok(new_name) => {
+                            builder.name = new_name;
+                            println!("Set residue name to '{}'", &builder.name);
+                        },
+                        Err(_) => {
+                            println!("error: Could not read name");
+                        },
+                    }
+                },
+                AddAtom => {
+                    match create_atom() {
+                        Ok(atom) => {
+                            println!("Added atom '{}' to residue.", &atom.code);
+                            builder.atoms.push(atom);
+                        },
+                        // TODO: This should print an error description, too
+                        //Err(err) => println!("Could not add atom: {}", err.description()),
+                        Err(_) => println!("Could not add atom"),
+                    }
+                },
+                RemoveAtom => {
+                    // TODO: Implement Describe for Atom (and ResidueBase?) and redo this
+                    unimplemented!("Waiting for `impl Describe` for `Atom`");
+                    /*
+                    match utils::remove_item(&mut atoms, &tail) {
+                        Ok(i) => println!("Removed atom with index {} from residue.", i),
+                        Err(err) => println!("Could not remove atom: {}", err.description()),
+                    }
+                    */
+                },
+                SwapAtoms => {
+                    // TODO: Implement Describe for Atom (and ResidueBase?) and redo this
+                    unimplemented!("Waiting for `impl Describe` for `Atom`");
+                    /*
+                    if let Err(err) = utils::reorder_list(&mut atoms) {
+                        println!("error: Something went wrong when reordering the list ({})", err);
+                    }
+                    */
+                },
+                QuitAndSave => {
+                    match builder.finalize() {
+                        Ok(residue) => return Ok(residue),
+                        Err(msg) => println!("{}\n", msg),
+                    }
                 }
-            })
-            .ok_or(UIErrorKind::BadValue("No name was given".to_string()))?;
+                QuitWithoutSaving => {
+                    return Err(GrafenCliError::from(UIErrorKind::Abort));
+                },
+            }
+        }
+    }
 
-        let tail = iter.next().unwrap_or("");
-
-        let coords = utils::parse_string(&tail)?;
-        let &x = coords.get(0)
-                       .ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
-        let &y = coords.get(1)
-                       .ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
-        let &z = coords.get(2)
-                       .ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
+    fn create_atom() -> UIResult<Atom> {
+        let name = Input::new("Atom name").interact()?;
+        let position = get_position_from_user(None)?;
 
         Ok(Atom {
             code: name.to_uppercase().to_string(),
-            position: Coord::new(x, y, z),
+            position: position,
         })
-    }
-
-    fn describe_residue(name: &str, atoms: &[Atom]) {
-        println!("Residue name: '{}'", name);
-        println!("Atoms:");
-        for (i, atom) in atoms.iter().enumerate() {
-            let (x, y, z) = atom.position.to_tuple();
-            println!("{:4}. {} at ({:.1}, {:.1}, {:.1})", i, atom.code, x, y, z);
-        }
     }
 
     #[cfg(test)]
     mod tests {
         use super::*;
+        use grafen::system::Coord;
 
         #[test]
-        fn parse_atom_string() {
-            let atom = Atom { code: "A1".to_string(), position: Coord::new(1.0, 2.0, 0.0) };
-            assert_eq!(atom, parse_string_for_atom("A1 1 2 0").unwrap());
-        }
+        fn residue_builder_is_ok_if_all_are_set() {
+            let mut builder = ResidueBuilder {
+                name: "".to_string(),
+                atoms: vec![],
+            };
 
-        #[test]
-        fn parse_atoms_without_name_or_some_values_is_error() {
-            assert!(parse_string_for_atom("\t\n").is_err());
-            assert!(parse_string_for_atom("\tname\n 1.0").is_err());
-            assert!(parse_string_for_atom("\tname 1.0\t2.0").is_err());
-            assert!(parse_string_for_atom("\tname 1.0 2.0 3").is_ok());
-            assert!(parse_string_for_atom("\tname 1.0 2.0 a").is_err());
-        }
+            assert!(builder.finalize().is_err());
 
-        #[test]
-        fn parse_atoms_sets_name_to_uppercase() {
-            assert_eq!("AT1", parse_string_for_atom("at1 1 2 0").unwrap().code);
+            builder.name = "is_set".to_string();
+            assert!(builder.finalize().is_err());
+
+            builder.atoms.push(Atom { code: "A".to_string(), position: Coord::ORIGO });
+            assert!(builder.finalize().is_ok());
         }
     }
 }
 
 mod define_component {
-    //! Define a new `SheetConfEntry`.
-
     use database::{AvailableComponents, Direction, CylinderCap, CylinderClass, CylinderConfEntry, SheetConfEntry};
-    use error::{GrafenCliError, Result};
-    use ui::utils;
-    use ui::utils::CommandParser;
+    use error::{UIResult, UIErrorKind};
+    use ui::utils::select_command;
 
+    use dialoguer::{Checkboxes, Input, Select};
     use grafen::substrate::LatticeType;
     use grafen::system::ResidueBase;
+    use std::result;
 
-    #[derive(Clone, Copy, Debug)]
-    /// Available lattices to construct from. Each of these require
-    /// a separate constructor since they have different qualities in
-    /// their corresponding `LatticeType` unit.
-    enum LatticeCommand {
-        Triclinic,
-        Hexagonal,
-        PoissonDisc,
+    /***********************
+     * Component selection *
+     ***********************/
+
+    /// Error enum to handle the case when we return to a previous menu to change a component,
+    /// not because an error was encountered.
+    enum ChangeOrError {
+        ChangeComponent,
+        Error(UIErrorKind),
+    }
+
+    impl From<UIErrorKind> for ChangeOrError {
+        fn from(err: UIErrorKind) -> ChangeOrError {
+            ChangeOrError::Error(err)
+        }
     }
 
     #[derive(Clone, Copy, Debug)]
@@ -305,218 +315,449 @@ mod define_component {
     enum ComponentSelect {
         Sheet,
         Cylinder,
+        Abort,
     }
+    use self::ComponentSelect::*;
 
-    pub fn user_menu(residue_list: &[ResidueBase]) -> Result<AvailableComponents> {
-        match select_component_type() {
-            Some(ComponentSelect::Sheet) => {
-                let name = utils::get_input_string("Substrate name")
-                    .and_then(|string| {
-                        if string.is_empty() {
-                            Err(GrafenCliError::UIError("No name was entered".to_string()))
-                        } else {
-                            Ok(string)
-                        }
-                    })
-                    .map_err(|err| GrafenCliError::from(err))?;
-                println!("");
 
-                let residue = select_residue(&residue_list)?;
-                println!("");
-                let lattice = select_lattice()?;
-                println!("");
-                let std_z = select_deviation_along_z()?;
-                println!("");
+     /// This menu changes the main component type and then calls that type's construction menu.
+    pub fn user_menu(residue_list: &[ResidueBase]) -> UIResult<AvailableComponents> {
+        loop {
+            let component_type = select_component_type()?;
 
-                Ok(AvailableComponents::Sheet(SheetConfEntry {
-                    name,
-                    lattice,
-                    residue,
-                    std_z,
-                    size: None,
-                    position: None
-                }))
-            },
+            let result = match component_type {
+                Sheet => create_sheet(&residue_list),
+                Cylinder => create_cylinder(&residue_list),
+                Abort => return Err(UIErrorKind::Abort),
+            };
 
-            Some(ComponentSelect::Cylinder) => {
-                let name = utils::get_input_string("Cylinder name")
-                    .and_then(|string| {
-                        if string.is_empty() {
-                            Err(GrafenCliError::UIError("No name was entered".to_string()))
-                        } else {
-                            Ok(string)
-                        }
-                    })
-                    .map_err(|err| GrafenCliError::from(err))?;
-                println!("");
+            match result {
+                // All is good!
+                Ok(component) => return Ok(component),
 
-                // Use a simplified enum to create the list, since CylinderClass::Volume has a usize.
-                #[derive(Clone, Copy)]
-                enum SelectClass { Sheet, Volume }
+                // User asked to change a component.
+                Err(ChangeOrError::ChangeComponent) => (),
 
-                let cylinder_class_commands = command_parser_enum!(
-                    (SelectClass::Sheet, "Sheet"),
-                    (SelectClass::Volume, "Volume")
-                );
-                cylinder_class_commands.print_menu();
-                let input = utils::get_input_string("Cylinder class")?;
+                // User aborted the component creation.
+                Err(ChangeOrError::Error(UIErrorKind::Abort)) => return Err(UIErrorKind::Abort),
 
-                match cylinder_class_commands.get_selection(&input) {
-                    Some(SelectClass::Sheet) => {
-                        let residue = select_residue(&residue_list)?;
-                        println!("");
-                        let lattice = select_lattice()?;
-                        println!("");
-
-                        let cap_commands = command_parser_enum!(
-                            (CylinderCap::Top, "Top"),
-                            (CylinderCap::Bottom, "Bottom"),
-                            (CylinderCap::Both, "Both")
-                        );
-                        cap_commands.print_menu();
-                        let input = utils::get_input_string("Cylinder cap (default: none)")?;
-                        let cap = cap_commands.get_selection(&input);
-
-                        let direction_commands = command_parser!(
-                            ("x", Direction::X, ""),
-                            ("y", Direction::Y, ""),
-                            ("z", Direction::Z, "")
-                        );
-                        let input = utils::get_input_string("Cylinder direction (x/y/z, default: z)")?;
-                        let alignment = direction_commands
-                            .get_selection(&input)
-                            .unwrap_or(Direction::Z);
-
-                        Ok(AvailableComponents::Cylinder(CylinderConfEntry {
-                            name,
-                            residue,
-                            alignment,
-                            cap: cap,
-                            class: CylinderClass::Sheet(lattice),
-                            radius: None,
-                            height: None,
-                            position: None,
-                        }))
-                    },
-                    Some(SelectClass::Volume) => {
-                        let residue = select_residue(&residue_list)?;
-                        println!("");
-
-                        let direction_commands = command_parser!(
-                            ("x", Direction::X, ""),
-                            ("y", Direction::Y, ""),
-                            ("z", Direction::Z, "")
-                        );
-                        let input = utils::get_input_string("Cylinder direction (x/y/z, default: z)")?;
-                        let alignment = direction_commands
-                            .get_selection(&input)
-                            .unwrap_or(Direction::Z);
-
-                        Ok(AvailableComponents::Cylinder(CylinderConfEntry {
-                            name,
-                            residue,
-                            alignment,
-                            cap: None,
-                            class: CylinderClass::Volume(None),
-                            radius: None,
-                            height: None,
-                            position: None,
-                        }))
-                    },
-                    None => Err(GrafenCliError::UIError("Could not select a cylinder class".to_string())),
-                }
-            },
-
-            None => {
-                Err(GrafenCliError::UIError("Could not select a component".to_string()))
-            },
+                // Something went wrong when constructing a component. Reloop the menu.
+                Err(ChangeOrError::Error(_)) => eprintln!("could not create component"),
+            }
         }
     }
 
-    fn select_component_type() -> Option<ComponentSelect> {
-        let commands = command_parser_enum!(
-            (ComponentSelect::Sheet, "Sheet"),
-            (ComponentSelect::Cylinder, "Cylinder")
-        );
-        commands.print_menu();
-        utils::get_input_string("Selection").ok().and_then(|input| commands.get_selection(&input))
-    }
-
-    fn select_residue(residue_list: &[ResidueBase]) -> Result<ResidueBase> {
-        println!("Available residues:");
-        for (i, residue) in residue_list.iter().enumerate() {
-            println!("{:4}. {}", i, residue.code);
-        }
-        println!("");
-
-        let input = utils::get_input_string("Selection")?;
-        let index = utils::parse_string_for_index(&input, &residue_list)?;
-
-        Ok(residue_list[index].clone())
-    }
-
-    fn select_lattice() -> Result<LatticeType> {
-        let lattice_list = vec![
-            (LatticeCommand::Triclinic, "Triclinic lattice: two base vector lengths and an angle in-between"),
-            (LatticeCommand::Hexagonal, "Hexagonal lattice: a honeycomb grid with a spacing"),
-            (LatticeCommand::PoissonDisc, "Poisson disc: Randomly generated points with a density")
+    fn select_component_type() -> UIResult<ComponentSelect> {
+        let (choices, item_texts) = create_menu_items![
+            (Sheet, "Sheet"),
+            (Cylinder, "Cylinder"),
+            (Abort, "(Abort)")
         ];
 
-        println!("Available lattices:");
-        for (i, lattice) in lattice_list.iter().enumerate() {
-            println!("{:4}. {}", i, lattice.1);
+        eprintln!("Component type:");
+        select_command(item_texts, choices).map_err(|err| UIErrorKind::from(err))
+    }
+
+    /**********************
+     * Sheet construction *
+     **********************/
+
+    #[derive(Clone, Copy, Debug)]
+    enum SheetMenu {
+        ChangeComponent,
+        SetName,
+        SetLattice,
+        SetResidue,
+        SetVarianceZ,
+        QuitAndSave,
+        QuitWithoutSaving,
+    }
+
+    struct SheetBuilder {
+        name: String,
+        lattice: LatticeType,
+        residue: ResidueBase,
+        std_z: Option<f64>,
+    }
+
+    impl SheetBuilder {
+        fn initialize(residue_list: &[ResidueBase]) -> UIResult<SheetBuilder> {
+            let lattice = select_lattice()?;
+            let residue = select_residue(&residue_list)?;
+
+            Ok(SheetBuilder {
+                name: String::new(),
+                lattice,
+                residue,
+                std_z: None,
+            })
         }
-        println!("");
 
-        let input = utils::get_input_string("Selection")?;
-        let index = utils::parse_string_for_index(&input, &lattice_list)?;
+        fn finalize(&self) -> result::Result<AvailableComponents, &str> {
+            if self.name.is_empty() {
+                return Err("Cannot add component: No name is set")
+            } else {
+                Ok(AvailableComponents::Sheet(SheetConfEntry {
+                    name: self.name.clone(),
+                    lattice: self.lattice.clone(),
+                    residue: self.residue.clone(),
+                    std_z: self.std_z,
+                    size: None,
+                    position: None,
+                }))
+            }
+        }
 
-        match lattice_list[index].0 {
-            LatticeCommand::Triclinic => {
-                println!("A triclinic lattice is constructed from two base ");
-                println!("vectors of length a and b, separated by an angle γ.");
-                println!("");
+        fn print_state(&self) {
+            eprintln!("");
+            eprintln!("Name: {}", &self.name);
+            eprintln!("Lattice: {:?}", &self.lattice);
+            eprintln!("Residue: {}", &self.residue.code);
+            eprintln!("Z-variance: {}", &self.std_z.unwrap_or(0.0));
+            eprintln!("");
+        }
+    }
 
-                let input = utils::get_input_string("Input length 'a' (nm)")?;
-                let a = utils::parse_string_single(&input)?;
-                let input = utils::get_input_string("Input length 'b' (nm)")?;
-                let b = utils::parse_string_single(&input)?;
-                let input = utils::get_input_string("Input angle 'γ' (deg.)")?;
-                let gamma = utils::parse_string_single(&input)?;
+    fn create_sheet(residue_list: &[ResidueBase])
+            -> result::Result<AvailableComponents, ChangeOrError> {
+        use self::SheetMenu::*;
+
+        let (commands, item_texts) = create_menu_items![
+            (ChangeComponent, "Change component type"),
+            (SetName, "Set name"),
+            (SetResidue, "Set residue"),
+            (SetLattice, "Set lattice"),
+            (SetVarianceZ, "Set variance of residue positions along z"),
+            (QuitAndSave, "Finalize component definition and return"),
+            (QuitWithoutSaving, "Abort")
+        ];
+
+        let mut builder = SheetBuilder::initialize(&residue_list)?;
+
+        loop {
+            builder.print_state();
+
+            let command = select_command(item_texts, commands)
+                .map_err(|err| UIErrorKind::from(err))?;
+
+            match command {
+                ChangeComponent => return Err(ChangeOrError::ChangeComponent),
+                SetName => match Input::new("Component name").interact() {
+                    Ok(new_name) => {
+                        builder.name = new_name;
+                    },
+                    Err(_) => {
+                        println!("error: Could not read name");
+                    },
+                },
+                SetResidue => match select_residue(&residue_list) {
+                    Ok(new_residue) => {
+                        builder.residue = new_residue;
+                    },
+                    Err(_) => eprintln!("error: Could not select new residue"),
+                },
+                SetLattice => match select_lattice() {
+                    Ok(new_lattice) => {
+                        builder.lattice = new_lattice;
+                    },
+                    Err(_) => eprintln!("error: Could not select new lattice"),
+                },
+                SetVarianceZ => match get_variance() {
+                    Ok(new_std_z) => {
+                        builder.std_z = new_std_z;
+                    },
+                    Err(_) => eprintln!("error: Could not read new variance"),
+                },
+                QuitAndSave => match builder.finalize() {
+                    Ok(component) => return Ok(component),
+                    Err(msg) => eprintln!("{}", msg),
+                },
+                QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
+            }
+        }
+    }
+
+    fn get_variance() -> UIResult<Option<f64>> {
+        let std = Input::new("Standard deviation 'σ' (variance: σ^2)")
+            .default("0")
+            .interact()?
+            .parse::<f64>()?;
+
+        if std == 0.0 {
+            Ok(None)
+        } else {
+            Ok(Some(std))
+        }
+    }
+
+    /*************************
+     * Cylinder construction *
+     *************************/
+
+    #[derive(Clone, Copy, Debug)]
+    enum CylinderMenu {
+        ChangeComponent,
+        ChangeCylinderType,
+        SetName,
+        SetResidue,
+        SetCap,
+        SetAlignment,
+        QuitAndSave,
+        QuitWithoutSaving,
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    /// Types of cylinders to construct.
+    ///
+    /// This is separate from `CylinderClass` in that this does not keep any extra data.
+    enum CylinderSelection {
+        Sheet,
+        Volume,
+    }
+
+    struct CylinderBuilder {
+        name: String,
+        cylinder_type: CylinderClass,
+        residue: ResidueBase,
+        cap: Option<CylinderCap>,
+        alignment: Direction,
+    }
+
+    impl CylinderBuilder {
+        fn initialize(residue_list: &[ResidueBase]) -> UIResult<CylinderBuilder> {
+            let cylinder_type = select_cylinder_type()?;
+            let residue = select_residue(residue_list)?;
+
+            Ok(CylinderBuilder {
+                name: String::new(),
+                cylinder_type,
+                residue,
+                cap: None,
+                alignment: Direction::Z,
+            })
+        }
+
+        fn finalize(&self) -> result::Result<AvailableComponents, &str> {
+            if self.name.is_empty() {
+                return Err("Cannot add component: No name is set")
+            } else {
+                Ok(AvailableComponents::Cylinder(CylinderConfEntry {
+                    name: self.name.clone(),
+                    residue: self.residue.clone(),
+                    alignment: self.alignment,
+                    cap: self.cap,
+                    class: self.cylinder_type.clone(),
+                    radius: None,
+                    height: None,
+                    position: None,
+                }))
+            }
+        }
+
+        fn print_state(&self) {
+            eprintln!("");
+            eprintln!("Name: {}", &self.name);
+
+            match self.cylinder_type {
+                CylinderClass::Sheet(lattice) => {
+                    eprintln!("Type: Cylinder Sheet");
+                    eprintln!("Lattice: {:?}", lattice);
+                    eprintln!("Residue: {}", self.residue.code);
+
+                    // Unwrap the value from the Option<_>
+                    eprintln!("Cap: {}", self.cap.map(|c| {
+                            format!("{}", c)
+                        }).unwrap_or("None".to_string()));
+                },
+                CylinderClass::Volume(_) => {
+                    eprintln!("Type: Cylinder Volume");
+                    eprintln!("Residue: {}", self.residue.code);
+                },
+            }
+
+            eprintln!("Alignment: {}", self.alignment);
+            eprintln!("");
+        }
+    }
+
+    fn create_cylinder(residue_list: &[ResidueBase]) -> result::Result<AvailableComponents, ChangeOrError> {
+        use self::CylinderMenu::*;
+
+        let (commands, item_texts) = create_menu_items![
+            (ChangeComponent, "Change component type"),
+            (ChangeCylinderType, "Change cylinder type"),
+            (SetName, "Set name"),
+            (SetResidue, "Set residue"),
+            (SetCap, "Cap either cylinder edge (Cylinder Sheet)"),
+            (SetAlignment, "Set cylinder main axis alignment"),
+            (QuitAndSave, "Finalize component definition and return"),
+            (QuitWithoutSaving, "Abort")
+        ];
+
+        let mut builder = CylinderBuilder::initialize(&residue_list)?;
+
+        loop {
+            builder.print_state();
+
+            let command = select_command(item_texts, commands)
+                .map_err(|err| UIErrorKind::from(err))?;
+
+            match command {
+                ChangeComponent => return Err(ChangeOrError::ChangeComponent),
+                ChangeCylinderType => match select_cylinder_type() {
+                    Ok(new_type) => {
+                        builder.cylinder_type = new_type;
+                    },
+                    Err(_) => eprintln!("error: Could not select new cylinder type"),
+                },
+                SetName => match Input::new("Component name").interact() {
+                    Ok(new_name) => {
+                        builder.name = new_name;
+                    },
+                    Err(_) => {
+                        println!("error: Could not read name");
+                    },
+                },
+                SetResidue => match select_residue(&residue_list) {
+                    Ok(new_residue) => {
+                        builder.residue = new_residue;
+                    },
+                    Err(_) => eprintln!("error: Could not select new residue"),
+                },
+                SetCap => match select_cap() {
+                    Ok(new_cap) => {
+                        builder.cap = new_cap;
+                    },
+                    Err(_) => eprintln!("error: Could not select new cap"),
+                },
+                SetAlignment => match select_direction() {
+                    Ok(new_direction) => {
+                        builder.alignment = new_direction;
+                    },
+                    Err(_) => eprintln!("error: Could not select new direction"),
+                },
+                QuitAndSave => match builder.finalize() {
+                    Ok(component) => return Ok(component),
+                    Err(msg) => eprintln!("{}", msg),
+                },
+                QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
+            }
+        }
+    }
+
+    fn select_cylinder_type() -> UIResult<CylinderClass> {
+        use self::CylinderSelection::*;
+
+        let (classes, item_texts) = create_menu_items![
+            (Sheet, "Sheet"),
+            (Volume, "Volume")
+        ];
+
+        let command = select_command(item_texts, classes)?;
+
+        match command {
+            Sheet => {
+                let lattice = select_lattice()?;
+                Ok(CylinderClass::Sheet(lattice))
+            },
+            Volume => Ok(CylinderClass::Volume(None)),
+        }
+    }
+
+    fn select_cap() -> UIResult<Option<CylinderCap>> {
+        let choices = &[
+            "Bottom",
+            "Top"
+        ];
+
+        eprintln!("Set caps on cylinder sides ([space] select, [enter] confirm):");
+        let selections = Checkboxes::new().items(choices).interact()?;
+
+        match (selections.contains(&0), selections.contains(&1)) {
+            (true, true) => Ok(Some(CylinderCap::Both)),
+            (true, false) => Ok(Some(CylinderCap::Bottom)),
+            (false, true) => Ok(Some(CylinderCap::Top)),
+            _ => Ok(None),
+        }
+    }
+
+    fn select_direction() -> UIResult<Direction> {
+        use database::Direction::*;
+
+        let (choices, item_texts) = create_menu_items![
+            (X, "X"),
+            (Y, "Y"),
+            (Z, "Z")
+        ];
+
+        select_command(item_texts, choices).map_err(|err| UIErrorKind::from(err))
+    }
+
+    /************************************
+     * Selection of lattice and residue *
+     ************************************/
+
+    #[derive(Clone, Copy, Debug)]
+    /// Available lattices to construct from. Each of these require
+    /// a separate constructor since they have different qualities in
+    /// their corresponding `LatticeType` unit.
+    enum LatticeSelection {
+        Triclinic,
+        Hexagonal,
+        PoissonDisc,
+    }
+
+    fn select_residue(residue_list: &[ResidueBase]) -> UIResult<ResidueBase> {
+        // TODO: Rewrite this as soon as `Describe` is implemented for `ResidueBase`
+        let item_texts: Vec<&str> = residue_list
+            .iter()
+            .map(|residue| residue.code.as_ref())
+            .collect();
+        let selection = Select::new().items(&item_texts).default(0).interact()?;
+
+        Ok(residue_list[selection].clone())
+    }
+
+    fn select_lattice() -> UIResult<LatticeType> {
+        use self::LatticeSelection::*;
+
+        let (choices, item_texts) = create_menu_items![
+            (Triclinic, "Triclinic lattice: two base vector lengths and an in-between angle"),
+            (Hexagonal, "Hexagonal lattice: a honeycomb grid with a spacing"),
+            (PoissonDisc, "Poisson disc: Randomly generated points with a density")
+        ];
+
+        let lattice = select_command(item_texts, choices)?;
+
+        match lattice {
+            Triclinic => {
+                eprintln!("A triclinic lattice is constructed from two base ");
+                eprintln!("vectors of length a and b, separated by an angle γ.");
+                eprintln!("");
+
+                let a = Input::new("Length 'a'").interact()?.parse::<f64>()?;
+                let b = Input::new("Length 'b'").interact()?.parse::<f64>()?;
+                let gamma = Input::new("Angle 'γ' (deg.)").interact()?.parse::<f64>()?;
 
                 Ok(LatticeType::Triclinic { a, b, gamma })
             },
+            Hexagonal => {
+                eprintln!("A hexagonal lattice is a honeycomb grid with an input side length 'a'.");
+                eprintln!("");
 
-            LatticeCommand::Hexagonal => {
-                println!("A hexagonal lattice is a honeycomb grid with an input side length.");
-                println!("");
-
-                let input = utils::get_input_string("Input side length (nm)")?;
-                let a = utils::parse_string_single(&input)?;
+                let a = Input::new("Spacing 'a'").interact()?.parse::<f64>()?;
 
                 Ok(LatticeType::Hexagonal { a })
             },
+            PoissonDisc => {
+                eprintln!("A Poisson disc is a generated set of points with an even distribution.");
+                eprintln!("They are generated with an input density 'ρ' in points per area.");
+                eprintln!("");
 
-            LatticeCommand::PoissonDisc => {
-                println!("A Poisson disc is a generated set of points with an even distribution.");
-                println!("They are generated with an input density in points per area.");
-                println!("");
-
-                let input = utils::get_input_string("Input density (1/nm^2)")?;
-                let density = utils::parse_string_single(&input)?;
+                let density = Input::new("Density 'ρ'").interact()?.parse::<f64>()?;
 
                 Ok(LatticeType::PoissonDisc { density })
             },
-        }
-    }
-
-    fn select_deviation_along_z() -> Result<Option<f64>> {
-        let query = "Distribute residue positions along z with this deviation in nm (default: No)";
-        let selection = utils::get_input_string(query)?;
-
-        match utils::parse_string_single(&selection) {
-            Ok(value) => Ok(Some(value)),
-            _ => Ok(None),
         }
     }
 }

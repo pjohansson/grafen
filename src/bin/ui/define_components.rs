@@ -3,89 +3,83 @@
 //! This interface could use a lot of improvement.
 
 use database::{AvailableComponents, CylinderClass, DataBase};
-use error::{GrafenCliError, Result, UIErrorKind};
+use error::{Result, UIResult};
 use ui::utils;
-use ui::utils::{CommandParser, Describe};
 
-use grafen::system::Coord;
-use std::error::Error;
+use dialoguer::Input;
 
 #[derive(Clone, Copy, Debug)]
 /// User commands for defining the system.
-enum Command {
+enum DefineMenu {
     DefineSystem,
     RemoveSystem,
-    SwapSystems,
+    ReorderList,
     QuitAndSave,
     QuitWithoutSaving,
 }
+use self::DefineMenu::*;
 
 /// Edit the list of system definitions to construct from.
 pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableComponents>)
         -> Result<()> {
-    let commands = command_parser!(
-        ("d", Command::DefineSystem, "Define a system to create"),
-        ("r", Command::RemoveSystem, "Remove a system from the list"),
-        ("s", Command::SwapSystems, "Swap the order of two systems"),
-        ("f", Command::QuitAndSave, "Finalize editing and return"),
-        ("a", Command::QuitWithoutSaving, "Abort and discard changes to list")
-    );
+    let (commands, item_texts) = create_menu_items![
+        (DefineSystem, "Define a system to create"),
+        (RemoveSystem, "Remove a system from the list"),
+        (ReorderList, "Swap the order of two systems"),
+        (QuitAndSave, "Finalize editing and return"),
+        (QuitWithoutSaving, "Abort and discard changes to list")
+    ];
 
     let backup = system_defs.clone();
 
     loop {
         utils::print_group("Defined components", &system_defs);
+        let command = utils::select_command(item_texts, commands)?;
 
-        commands.print_menu();
-        let input = utils::get_input_string("Selection")?;
-        println!("");
+        match command {
+            DefineSystem => {
+                match create_definition(&database) {
+                    Ok(def) => system_defs.push(def),
+                    // TODO: This should give an error description once a proper error class
+                    // for UI Errors has been added.
+                    Err(_) => println!("Could not create definition"),
+                }
+            },
+            RemoveSystem => {
+                if let Err(err) = utils::remove_items(&mut system_defs) {
+                    println!("error: Something went wrong when removing a system ({})", err);
+                }
+            },
+            ReorderList => {
+                if let Err(err) = utils::reorder_list(&mut system_defs) {
+                    println!("error: Something went wrong when reordering the list ({})", err);
+                }
+            },
+            QuitAndSave => {
+                return Ok(());
+            },
+            QuitWithoutSaving => {
+                system_defs.clear();
+                system_defs.extend_from_slice(&backup);
 
-        if let Some((cmd, tail)) = commands.get_selection_and_tail(&input) {
-            match cmd {
-                Command::DefineSystem => {
-                    match create_definition(&database) {
-                        Ok(def) => system_defs.push(def),
-                        Err(err) => println!("Could not create definition: {}", err.description()),
-                    }
-                },
-                Command::RemoveSystem => {
-                    match utils::remove_item(&mut system_defs, &tail) {
-                        Ok(i) => println!("Removed system at index {}.", i),
-                        Err(err) => println!("Could not remove system: {}", err.description()),
-                    }
-                },
-                Command::SwapSystems => {
-                    match utils::swap_items(&mut system_defs, &tail) {
-                        Ok((i, j)) => println!("Swapped system at index {} with system at {}.",
-                                               i, j),
-                        Err(err) => println!("Could not swap systems: {}", err.description()),
-                    }
-                },
-                Command::QuitAndSave => {
-                    break Ok(())
-                },
-                Command::QuitWithoutSaving => {
-                    system_defs.clear();
-                    system_defs.extend_from_slice(&backup);
-
-                    break Ok(())
-                },
-            }
-        } else {
-            println!("Not a valid selection.");
-        }
-
-        println!("");
+                return Ok(());
+            },
+        };
     }
 }
 
+
 /// Prompt the user to fill in the missing information for a definition.
-fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
+fn create_definition(database: &DataBase) -> UIResult<AvailableComponents> {
     use database::AvailableComponents::*;
 
-    match select_component(&database) {
-        Ok(Sheet(mut def)) => {
-            let position = select_position()?;
+    println!("Available components:");
+    let selection = utils::select_item(&database.component_defs, 0)?;
+    let component = database.component_defs[selection].clone();
+
+    match component {
+        Sheet(mut def) => {
+            let position = utils::get_position_from_user(Some("0 0 0"))?;
             let size = select_size()?;
 
             def.position = Some(position);
@@ -93,25 +87,23 @@ fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
 
             Ok(Sheet(def))
         },
-        Ok(Cylinder(mut def)) => {
-            let position = select_position()?;
-            let radius = utils::get_and_parse_string_single("Set radius (nm)")?;
-            let height = utils::get_and_parse_string_single("Set height (nm)")?;
+        Cylinder(mut def) => {
+            let position = utils::get_position_from_user(Some("0 0 0"))?;
+            let radius = Input::new("Radius").interact()?.parse::<f64>()?;
+            let height = Input::new("Height").interact()?.parse::<f64>()?;
 
-            match def.class {
-            CylinderClass::Volume(None) => {
-                    let input = utils::get_input_string("Number of residues")?;
-                    let num_residues = utils::parse_string_single(&input)?;
-                    def.class = CylinderClass::Volume(Some(num_residues));
-                },
-                CylinderClass::Volume(Some(default_num_residues)) => {
-                    let input = utils::get_input_string(
-                        &format!("Number of residues (default: {})", default_num_residues)
-                    )?;
-                    let num_residues = utils::parse_string_single(&input).unwrap_or(default_num_residues);
-                    def.class = CylinderClass::Volume(Some(num_residues));
-                },
-                _ => (),
+            // For volumes we need a number of residues to fill it with which
+            // isn't necessarily saved in the database.
+            if let CylinderClass::Volume(opt_num_residues) = def.class {
+                let mut input = Input::new("Number of residues");
+
+                // In case a default value exists in the database
+                if let Some(default_num_residues) = opt_num_residues {
+                    input.default(&format!("{}", default_num_residues));
+                }
+
+                let num_residues = input.interact()?.parse::<usize>()?;
+                def.class = CylinderClass::Volume(Some(num_residues));
             }
 
             def.position = Some(position);
@@ -119,48 +111,14 @@ fn create_definition(database: &DataBase) -> Result<AvailableComponents> {
             def.height = Some(height);
 
             Ok(Cylinder(def))
-        },
-        err @ Err(_) => err,
+        }
     }
 }
 
-/// Prompt the user for a component from the list in the `DataBase`.
-fn select_component(database: &DataBase) -> Result<AvailableComponents> {
-    println!("Available components:");
-    for (i, sub) in database.component_defs.iter().enumerate() {
-        println!("{}. {}", i, &sub.describe());
-    }
-    println!("");
-
-    let selection = utils::get_input_string("Select component")?;
-    let index = utils::parse_string_for_index(&selection, &database.component_defs)?;
-
-    database.component_defs
-        .get(index)
-        .ok_or(GrafenCliError::UIError(format!("'{}' is not a valid index", &selection)))
-        .map(|comp| comp.clone())
-}
-
-/// Get a `Coord` either from the user or by default at (0, 0, 0). Ugly?
-fn select_position() -> Result<Coord> {
-    let selection = utils::get_input_string("Change position (default: (0.0, 0.0, 0.0))")?;
-    if selection.is_empty() {
-        return Ok(Coord::new(0.0, 0.0, 0.0));
-    }
-
-    let coords = utils::parse_string(&selection)?;
-    let &x = coords.get(0).ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
-    let &y = coords.get(1).ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
-    let &z = coords.get(2).ok_or(UIErrorKind::BadValue("3 positions are required".to_string()))?;
-
-    Ok(Coord::new(x, y, z))
-}
-
-/// Get a 2D size. Ugly.
-fn select_size() -> Result<(f64, f64)> {
-    let size = utils::get_and_parse_string("Set size (nm^2)")?;
-    let &dx = size.get(0).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
-    let &dy = size.get(1).ok_or(UIErrorKind::BadValue("2 values are required".to_string()))?;
+/// Get a 2D size.
+fn select_size() -> UIResult<(f64, f64)> {
+    let dx = Input::new("Length (ΔX)").interact()?.parse::<f64>()?;
+    let dy = Input::new("Width (ΔY)").interact()?.parse::<f64>()?;
 
     Ok((dx, dy))
 }

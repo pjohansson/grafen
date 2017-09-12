@@ -8,7 +8,10 @@ use ui::utils::Describe;
 use grafen::cylinder::{Cylinder, CylinderConf};
 use grafen::substrate::{create_substrate, LatticeType, SheetConf};
 use grafen::system::{Coord, Component, ResidueBase, IntoComponent, Translate};
+
 use serde_json;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -315,12 +318,32 @@ impl Direction {
     }
 }
 
+impl Display for Direction {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            Direction::X => write!(f, "X"),
+            Direction::Y => write!(f, "Y"),
+            Direction::Z => write!(f, "Z"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 /// Cylinders can be capped in either or both ends.
 pub enum CylinderCap {
     Top,
     Bottom,
     Both,
+}
+
+impl Display for CylinderCap {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            CylinderCap::Top => write!(f, "Top"),
+            CylinderCap::Bottom => write!(f, "Bottom"),
+            CylinderCap::Both => write!(f, "Both"),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]

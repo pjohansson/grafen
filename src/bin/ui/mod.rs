@@ -13,9 +13,9 @@ mod define_components;
 
 use super::Config;
 use database::AvailableComponents;
-use error::{GrafenCliError, Result};
+use error::Result;
 use output;
-use ui::utils::{CommandParser, Describe};
+use ui::utils::Describe;
 
 use grafen::system::{Component, Coord, ResidueBase};
 use std::error::Error;
@@ -139,16 +139,17 @@ impl<'a> Iterator for CoordsAndResiduesIterator<'a> {
     }
 }
 
-
 #[derive(Clone, Copy, Debug)]
 /// User commands for defining the system.
-enum Command {
+enum MainMenu {
     DefineComponents,
     ConstructComponents,
     EditDatabase,
     SaveSystem,
     Quit,
 }
+use self::MainMenu::*;
+
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -168,67 +169,53 @@ enum Command {
 pub fn user_menu(mut config: &mut Config) -> Result<()> {
     let mut system = System { box_size: None, constructed: vec![], definitions: vec![] };
 
-    let commands = command_parser!(
-        ("de", Command::DefineComponents, "Define the list of components to construct"),
-        ("co", Command::ConstructComponents, "Construct components from all definitions"),
-        ("db", Command::EditDatabase, "Edit the database of residue and object definitions"),
-        ("save", Command::SaveSystem, "Save the constructed components to disk as a system"),
-        ("quit", Command::Quit, "Quit the program")
-    );
+    let (commands, item_texts) = create_menu_items![
+        (DefineComponents, "Define the list of components to construct"),
+        (ConstructComponents, "Construct components from all definitions"),
+        (EditDatabase, "Edit the database of residue and object definitions"),
+        (SaveSystem, "Save the constructed components to disk as a system"),
+        (Quit, "Quit the program")
+    ];
 
     loop {
-        system.describe();
+        let command = utils::select_command(item_texts, commands)?;
 
-        commands.print_menu();
-        let input = utils::get_input_string("Selection")?;
-        println!("");
+        let result = match command {
+            DefineComponents => {
+                define_components::user_menu(&config.database, &mut system.definitions)
+                    .map(|_| "Finished editing list of definitions".to_string())
+            },
+            ConstructComponents => {
+                construct_components(&mut system)
+                    .map(|_| "Successfully constructed all components".to_string())
+            },
+            EditDatabase => {
+                edit_database::user_menu(&mut config.database)
+            },
+            SaveSystem => {
+                output::write_gromos(&system, &config)
+                    .map(|_| "Saved system to disk".to_string())
+            },
+            Quit => {
+                return Ok(());
+            },
+        };
 
-        if let Some((cmd, _)) = commands.get_selection_and_tail(&input) {
-            match cmd {
-                Command::DefineComponents => {
-                    match define_components::user_menu(&config.database, &mut system.definitions) {
-                        Ok(_) => println!("Finished editing list of definitions."),
-                        Err(err) => println!("Could not create definition: {}", err.description()),
-                    }
-                },
-                Command::ConstructComponents => {
-                    match construct_components(&mut system) {
-                        Ok(_) => println!("Successfully constructed all components."),
-                        Err(err) => println!("Could not construct all components: {}", err.description()),
-                    }
-                },
-                Command::EditDatabase => {
-                    match edit_database::user_menu(&mut config.database) {
-                        Ok(msg) => println!("{}", msg),
-                        Err(err) => println!("Error when editing database: {}", err.description()),
-                    }
-                },
-                Command::SaveSystem => {
-                    match output::write_gromos(&system, &config) {
-                        Ok(()) => println!("Saved system to disk."),
-                        Err(msg) => println!("Error when saving system: {}", msg),
-                    }
-                },
-                Command::Quit => {
-                    return Err(GrafenCliError::QuitWithoutSaving);
-                },
-            }
-        } else {
-            println!("Not a valid selection.");
+        match result {
+            Ok(msg) => { eprintln!("{}", msg); },
+            Err(err) => { eprintln!("error: {}", err.description()); },
         }
 
-        println!("");
+        system.describe();
     }
 }
 
 fn construct_components(system: &mut System) -> Result<()> {
-    let ref mut definitions = system.definitions;
-    let ref mut components = system.constructed;
-
-    for def in definitions.drain(..) {
+    for def in system.definitions.drain(..) {
         let description = def.describe();
         let component = def.into_component()?;
-        components.push(ConstructedComponent{ description, component });
+
+        system.constructed.push(ConstructedComponent{ description, component });
     }
 
     Ok(())
