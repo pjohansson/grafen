@@ -1,3 +1,7 @@
+0.8
+===
+* The user interface has been reworked, using `dialoguer` instead of plain text selection.
+
 0.7
 ===
 * The command line interface has been reworked to allow for new types of objects.
