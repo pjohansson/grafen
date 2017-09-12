@@ -68,7 +68,7 @@ pub fn select_item<T: Describe>(items: &[T], default: usize) -> UIResult<usize> 
 
 /// Get a `Coord` either from the user or by default at (0, 0, 0)
 pub fn get_position_from_user(default: Option<&str>) -> UIResult<Coord> {
-    let mut input = Input::new("Position (x y z)");
+    let mut input = Input::new("Position (x y z nm)");
 
     if let Some(string) = default {
         input.default(&string);

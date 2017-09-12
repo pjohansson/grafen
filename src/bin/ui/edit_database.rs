@@ -478,7 +478,7 @@ mod define_component {
     }
 
     fn get_variance() -> UIResult<Option<f64>> {
-        let std = Input::new("Standard deviation 'σ' (variance: σ^2)")
+        let std = Input::new("Standard deviation 'σ' of distribution (nm)")
             .default("0")
             .interact()?
             .parse::<f64>()?;
@@ -732,11 +732,11 @@ mod define_component {
         match lattice {
             Triclinic => {
                 eprintln!("A triclinic lattice is constructed from two base ");
-                eprintln!("vectors of length a and b, separated by an angle γ.");
+                eprintln!("vectors of length 'a' and 'b', separated by an angle 'γ'.");
                 eprintln!("");
 
-                let a = Input::new("Length 'a'").interact()?.parse::<f64>()?;
-                let b = Input::new("Length 'b'").interact()?.parse::<f64>()?;
+                let a = Input::new("Length 'a' (nm)").interact()?.parse::<f64>()?;
+                let b = Input::new("Length 'b' (nm)").interact()?.parse::<f64>()?;
                 let gamma = Input::new("Angle 'γ' (deg.)").interact()?.parse::<f64>()?;
 
                 Ok(LatticeType::Triclinic { a, b, gamma })
@@ -745,16 +745,16 @@ mod define_component {
                 eprintln!("A hexagonal lattice is a honeycomb grid with an input side length 'a'.");
                 eprintln!("");
 
-                let a = Input::new("Spacing 'a'").interact()?.parse::<f64>()?;
+                let a = Input::new("Spacing 'a' (nm)").interact()?.parse::<f64>()?;
 
                 Ok(LatticeType::Hexagonal { a })
             },
             PoissonDisc => {
                 eprintln!("A Poisson disc is a generated set of points with an even distribution.");
-                eprintln!("They are generated with an input density 'ρ' in points per area.");
+                eprintln!("They are generated with an input density 'ρ' points per area.");
                 eprintln!("");
 
-                let density = Input::new("Density 'ρ'").interact()?.parse::<f64>()?;
+                let density = Input::new("Density 'ρ' (1/nm^2)").interact()?.parse::<f64>()?;
 
                 Ok(LatticeType::PoissonDisc { density })
             },

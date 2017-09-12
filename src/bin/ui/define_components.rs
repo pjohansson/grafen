@@ -89,8 +89,8 @@ fn create_definition(database: &DataBase) -> UIResult<AvailableComponents> {
         },
         Cylinder(mut def) => {
             let position = utils::get_position_from_user(Some("0 0 0"))?;
-            let radius = Input::new("Radius").interact()?.parse::<f64>()?;
-            let height = Input::new("Height").interact()?.parse::<f64>()?;
+            let radius = Input::new("Radius (nm)").interact()?.parse::<f64>()?;
+            let height = Input::new("Height (nm)").interact()?.parse::<f64>()?;
 
             // For volumes we need a number of residues to fill it with which
             // isn't necessarily saved in the database.
@@ -117,8 +117,8 @@ fn create_definition(database: &DataBase) -> UIResult<AvailableComponents> {
 
 /// Get a 2D size.
 fn select_size() -> UIResult<(f64, f64)> {
-    let dx = Input::new("Length (ΔX)").interact()?.parse::<f64>()?;
-    let dy = Input::new("Width (ΔY)").interact()?.parse::<f64>()?;
+    let dx = Input::new("Length ΔX (nm)").interact()?.parse::<f64>()?;
+    let dy = Input::new("Width ΔY (nm)").interact()?.parse::<f64>()?;
 
     Ok((dx, dy))
 }
