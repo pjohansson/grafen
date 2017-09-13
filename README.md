@@ -7,22 +7,17 @@ This is a pet project to help me set up simulation systems for my research. It i
 # Usage
 ```
 USAGE:
-    grafen [OPTIONS] <PATH>
+    grafen [OPTIONS]
 
 FLAGS:
     -h, --help       Prints help information
     -V, --version    Prints version information
 
 OPTIONS:
-    -d, --database <STR>    Path to database
-    -t, --title <STR>       Title of output system
-
-ARGS:
-    <PATH>    Output GROMOS file
+    -d, --database <PATH>    Path to database
+    -o, --output <PATH>      Output GROMOS configuration file (conf.gro)
+    -t, --title <STR>        Title of output system
 ```
-
-# Library
-See the [documentation](https://docs.rs/crate/grafen) for usage examples.
 
 # Available Substrates
 Substrate definitions are read from a JSON database. An example is provided
@@ -37,6 +32,9 @@ The spacing between every atom is 0.142 nm.
 A monolayer of rigid SiO2 molecules set in a triclinic formation with
 with spacing 0.450 nm along both base vectors and an angle of 60 degrees
 between them.
+
+# Development
+See the [documentation](https://docs.rs/crate/grafen).
 
 # License
 The program is unlicensed. See [unlicense.org](http://unlicense.org) for details.

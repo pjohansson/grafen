@@ -52,9 +52,7 @@ impl Config {
 }
 
 fn main() {
-    println!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-
-    let matches = clap_app!(grafen_cli =>
+    let matches = clap_app!(grafen =>
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
@@ -62,6 +60,8 @@ fn main() {
         (@arg title: -t --title [STR] +takes_value "Title of output system")
         (@arg database: -d --database [PATH] +takes_value "Path to database")
     ).get_matches();
+
+    eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
     if let Err(err) = Config::from_matches(matches).and_then(|mut conf| ui::user_menu(&mut conf)) {
         eprintln!("{}", err);
