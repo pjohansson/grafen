@@ -1,13 +1,13 @@
 [![crates.io](https://img.shields.io/crates/v/grafen.svg)](https://crates.io/crates/grafen) [![docs.rs](https://img.shields.io/badge/docs.rs-documentation-orange.svg)](https://docs.rs/crate/grafen) [![Build Status](https://travis-ci.org/pjohansson/grafen.svg?branch=master)](https://travis-ci.org/pjohansson/grafen)
 
-Create graphene and other substrates for use in molecular dynamics simulations. 
+Create graphene and other substrates for use in molecular dynamics simulations.
 
 This is a pet project to help me set up simulation systems for my research. It is focused on formats used by [Gromacs](http://www.gromacs.org/).
 
 # Usage
 ```
 USAGE:
-    grafen_cli [OPTIONS] <PATH>
+    grafen [OPTIONS] <PATH>
 
 FLAGS:
     -h, --help       Prints help information

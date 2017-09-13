@@ -1,6 +1,6 @@
 [package]
 name = "grafen"
-version = "0.8.0-dev"
+version = "0.8.0"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
 description = "Create graphene and other substrates for use in molecular dynamics simulations."
 repository = "https://github.com/pjohansson/grafen"
@@ -24,4 +24,4 @@ serde_derive = "^1.0.8"
 
 [[bin]]
 path = "src/bin/main.rs"
-name = "grafen_cli"
+name = "grafen"
