@@ -1,5 +1,7 @@
 //! Describe objects in an informative way.
 
+use std::fmt::Write;
+
 /// A verbose description of an object. Moreso than `Display` should typically be.
 /// Maybe the distinction is unnecessary? If so, change it sometime.
 ///
@@ -8,18 +10,15 @@ pub trait Describe {
     fn describe(&self) -> String;
 }
 
-/// Print a group's elements and a header.
-/// TODO: This is now temporary a duplicate of `utils::print_group`. Fix this.
-pub fn print_group<T: Describe>(title: &str, group: &[T]) {
-    eprintln!("[ {} ]", title);
+/// Describe a list of items.
+pub fn describe_list<T: Describe>(header: &str, items: &[T]) -> String {
+    let mut description = String::new();
 
-    if group.is_empty() {
-        eprintln!("(none)");
-    } else {
-        for (i, element) in group.iter().enumerate() {
-            eprintln!("{}. {}", i, element.describe());
-        }
+    write!(description, "[ {} ]\n", header).expect("Could not construct a description string");
+    for (i, item) in items.iter().enumerate() {
+        write!(description, "{:2}: {}\n", i, item.describe())
+            .expect("Could not construct a description string");
     }
 
-    eprintln!("");
+    description
 }

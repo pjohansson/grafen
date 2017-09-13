@@ -6,6 +6,7 @@ use error::{Result, UIResult};
 use ui::utils;
 
 use grafen::database::{AvailableComponents, CylinderClass, DataBase};
+use grafen::describe::describe_list;
 use dialoguer::Input;
 
 #[derive(Clone, Copy, Debug)]
@@ -33,7 +34,8 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
     let backup = system_defs.clone();
 
     loop {
-        utils::print_group("Defined components", &system_defs);
+        eprintln!("{}", describe_list("Defined components", &system_defs));
+
         let command = utils::select_command(item_texts, commands)?;
 
         match command {
@@ -42,17 +44,17 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
                     Ok(def) => system_defs.push(def),
                     // TODO: This should give an error description once a proper error class
                     // for UI Errors has been added.
-                    Err(_) => println!("Could not create definition"),
+                    Err(_) => eprintln!("Could not create definition"),
                 }
             },
             RemoveSystem => {
                 if let Err(err) = utils::remove_items(&mut system_defs) {
-                    println!("error: Something went wrong when removing a system ({})", err);
+                    eprintln!("error: Something went wrong when removing a system ({})", err);
                 }
             },
             ReorderList => {
                 if let Err(err) = utils::reorder_list(&mut system_defs) {
-                    println!("error: Something went wrong when reordering the list ({})", err);
+                    eprintln!("error: Something went wrong when reordering the list ({})", err);
                 }
             },
             QuitAndSave => {
@@ -61,10 +63,13 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
             QuitWithoutSaving => {
                 system_defs.clear();
                 system_defs.extend_from_slice(&backup);
+                eprintln!("Discarding changes to list of definitions");
 
                 return Ok(());
             },
         };
+
+        eprintln!("");
     }
 }
 
@@ -73,7 +78,7 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
 fn create_definition(database: &DataBase) -> UIResult<AvailableComponents> {
     use grafen::database::AvailableComponents::*;
 
-    println!("Available components:");
+    eprintln!("Available components:");
     let selection = utils::select_item(&database.component_defs, 0)?;
     let component = database.component_defs[selection].clone();
 

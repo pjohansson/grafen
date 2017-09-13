@@ -6,8 +6,7 @@
 //! greatly by knowing more about human interface design. In particular the systems
 //! for creating `SheetConfEntry` and `SystemDefinition` are in need of improvement.
 
-#[macro_use]
-pub mod utils;
+#[macro_use] pub mod utils;
 mod edit_database;
 mod define_components;
 
@@ -16,7 +15,7 @@ use error::Result;
 use output;
 
 use grafen::database::AvailableComponents;
-use grafen::describe::Describe;
+use grafen::describe::{describe_list, Describe};
 use grafen::system::{Component, Coord, ResidueBase};
 use std::error::Error;
 
@@ -31,9 +30,10 @@ pub struct ConstructedComponent {
 
 impl Describe for ConstructedComponent {
     fn describe(&self) -> String {
-        format!("{} ({} residues at {})", self.description,
-                                          self.component.num_residues(),
-                                          self.component.origin)
+        format!("{} ({} residues at {})",
+            self.description,
+            self.component.num_residues(),
+            self.component.origin)
     }
 }
 
@@ -71,14 +71,13 @@ impl System {
         Some(box_size)
     }
 
+    /// Describe the current system.
     fn describe(&self) {
-        //define_components::describe_system_definitions(&self.definitions);
-        utils::print_group("Defined components", &self.definitions);
-        utils::print_group("Constructed components", &self.constructed);
+        eprintln!("{}", describe_list("Defined components", &self.definitions));
+        eprintln!("{}", describe_list("Constructed components", &self.constructed));
     }
 
     /// Iterate over the residues in a `System`.
-    ///
     /// Yields the `Coord` and `ResidueBase` for each residue, as the tuple `CoordAndResidue`.
     pub fn iter_residues(&self) -> ResidueIter {
         CoordsAndResiduesIterator::new(&self.constructed)
@@ -178,6 +177,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     ];
 
     loop {
+        system.describe();
         let command = utils::select_command(item_texts, commands)?;
 
         let result = match command {
@@ -206,7 +206,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
             Err(err) => { eprintln!("error: {}", err.description()); },
         }
 
-        system.describe();
+        eprintln!("");
     }
 }
 

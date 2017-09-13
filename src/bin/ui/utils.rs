@@ -43,10 +43,13 @@ fn select_string(items: &[String], default: usize) -> UIResult<usize> {
         select.item(&item);
     }
 
+    // Add an option to return without selecting an index
+    // TODO: This should be optional, somehow. Could use a separate function?
+    select.item("(Return)");
+
     let index = select.default(default).interact()?;
 
-    // Return is at the last index, thus we check is our selected is before that here.
-    if index < items.len() - 1 {
+    if index < items.len() {
         Ok(index)
     } else {
         Err(UIErrorKind::Abort)
@@ -58,24 +61,9 @@ fn select_string(items: &[String], default: usize) -> UIResult<usize> {
 /// Since the items have to be able to be displayed, they need to implement the `Describe`
 /// trait. This is meant for the user, rather than the typical `Display`.
 pub fn select_item<T: Describe>(items: &[T], default: usize) -> UIResult<usize> {
-    let mut item_texts: Vec<_> = items.iter().map(|item| item.describe()).collect();
-
-    // Add an option to return without selecting an index
-    // TODO: This should be optional, somehow. Could use a separate function?
-    item_texts.push("(Return)".to_string());
+    let item_texts: Vec<_> = items.iter().map(|item| item.describe()).collect();
 
     select_string(&item_texts, default)
-}
-
-/// Get a `Coord` either from the user or by default at (0, 0, 0)
-pub fn get_position_from_user(default: Option<&str>) -> UIResult<Coord> {
-    let mut input = Input::new("Position (x y z nm)");
-
-    if let Some(string) = default {
-        input.default(&string);
-    }
-
-    Coord::from_str(&input.interact()?).map_err(|err| UIErrorKind::from(&err))
 }
 
 /// Prompt the user to remove items from a list.
@@ -129,17 +117,13 @@ pub fn reorder_list<T: Describe>(item_list: &mut Vec<T>) -> Result<()> {
     }
 }
 
-/// Print a group's elements and a header.
-pub fn print_group<T: Describe>(title: &str, group: &[T]) {
-    eprintln!("[ {} ]", title);
+/// Get a `Coord` either from the user or by default at (0, 0, 0)
+pub fn get_position_from_user(default: Option<&str>) -> UIResult<Coord> {
+    let mut input = Input::new("Position (x y z nm)");
 
-    if group.is_empty() {
-        eprintln!("(none)");
-    } else {
-        for (i, element) in group.iter().enumerate() {
-            eprintln!("{}. {}", i, element.describe());
-        }
+    if let Some(string) = default {
+        input.default(&string);
     }
 
-    eprintln!("");
+    Coord::from_str(&input.interact()?).map_err(|err| UIErrorKind::from(&err))
 }

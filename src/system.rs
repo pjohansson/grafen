@@ -11,6 +11,8 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
+use describe::Describe;
+
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
@@ -129,11 +131,23 @@ pub struct Atom {
     pub position: Coord,
 }
 
+impl Describe for Atom {
+    fn describe(&self) -> String {
+        format!("{}", self.code)
+    }
+}
+
 /// A base for generating atoms belonging to a residue.
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ResidueBase {
     pub code: String,
     pub atoms: Vec<Atom>,
+}
+
+impl Describe for ResidueBase {
+    fn describe(&self) -> String {
+        format!("{} ({} atoms)", self.code, self.atoms.len())
+    }
 }
 
 #[macro_export]

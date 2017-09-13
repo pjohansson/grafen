@@ -4,7 +4,7 @@
 //use error::{GrafenCliError, Result};
 
 use cylinder::{Cylinder, CylinderConf};
-use describe::{print_group, Describe};
+use describe::{describe_list, Describe};
 use error::GrafenError;
 use substrate::{create_substrate, LatticeType, SheetConf};
 use system::{Coord, Component, ResidueBase, IntoComponent, Translate};
@@ -54,15 +54,9 @@ impl DataBase {
     /// Print the `DataBase` content to stdout.
     /// TODO: This function name collides with the `Describe` trait. Consider implementing that.
     pub fn describe(&self) {
-        println!("Database path: {}", self.get_path_pretty());
-        println!("");
-
-        print_group("Component definitions", &self.component_defs);
-
-        println!("[ Residue definitions ]");
-        for (i, def) in self.residue_defs.iter().enumerate() {
-            println!("{:4}. {}", i, def.code);
-        }
+        eprintln!("Database path: {}\n", self.get_path_pretty());
+        eprintln!("{}", describe_list("Component definitions", &self.component_defs));
+        eprintln!("{}", describe_list("Residue definitions", &self.residue_defs));
     }
 
     /// Get the database path enclosed in single quotes if it exists,

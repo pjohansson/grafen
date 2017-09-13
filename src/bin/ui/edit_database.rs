@@ -1,8 +1,7 @@
 //! Edit a `DataBase`.
 
 use error::Result;
-use ui::utils;
-use ui::utils::select_command;
+use ui::utils::{remove_items, select_command};
 
 use grafen::database::{write_database, DataBase};
 
@@ -18,7 +17,6 @@ enum DataBaseMenu {
     RemoveComponent,
     WriteToDisk,
     SetLocation,
-    ShowDatabase,
     QuitAndSave,
     QuitWithoutSaving,
 }
@@ -32,7 +30,6 @@ pub fn user_menu(database: &mut DataBase) -> Result<String> {
         (RemoveComponent, "Remove a component definition"),
         (WriteToDisk, "Write database to disk"),
         (SetLocation, "Change output location of database"),
-        (ShowDatabase, "List database content"),
         (QuitAndSave, "Finish editing database"),
         (QuitWithoutSaving, "Abort editing and discard changes")
     );
@@ -41,67 +38,52 @@ pub fn user_menu(database: &mut DataBase) -> Result<String> {
     let residues_backup = database.residue_defs.clone();
     let components_backup = database.component_defs.clone();
 
-    println!("Editing the current database.\n");
-    database.describe();
-    println!("");
-
     loop {
+        database.describe();
+
         let command = select_command(item_texts, commands)?;
 
         match command {
             AddResidue => {
                 match define_residue::user_menu() {
                     Ok(residue) => {
-                        println!("Added residue '{}' to database.", &residue.code);
                         database.residue_defs.push(residue);
                     },
-                    Err(err) => println!("Could not create residue: {}", err.description()),
+                    Err(err) => eprintln!("Could not create residue: {}", err.description()),
                 }
             },
             RemoveResidue => {
-                unimplemented!("Waiting for `impl Describe` for `ResidueBase`");
-                /*
-                match utils::remove_item(&mut database.residue_defs, &tail) {
-                    Ok(i) => println!("Removed residue with index {} from database.", i),
-                    Err(err) => println!("Could not remove residue: {}", err.description()),
+                if let Err(err) = remove_items(&mut database.residue_defs) {
+                    eprintln!("error: Something went wrong when removing a residue ({})", err);
                 }
-                */
             },
             AddComponent => {
                 match define_component::user_menu(&database.residue_defs) {
                     Ok(component) => {
-                        println!("Added component definition '{}' to database.",
-                                 component.name());
                         database.component_defs.push(component);
                     },
                     // TODO: Add description of error for UIErrorKind
-                    Err(_) => println!("Could not create component"),
+                    Err(_) => eprintln!("Could not create component"),
                 }
             },
             RemoveComponent => {
-                if let Err(err) =  utils::remove_items(&mut database.component_defs) {
-                    println!("error: Something went wrong when removing a component ({})", err);
+                if let Err(err) =  remove_items(&mut database.component_defs) {
+                    eprintln!("error: Something went wrong when removing a component ({})", err);
                 }
             },
             WriteToDisk => {
                 match write_database(&database) {
-                    Ok(_) => println!("Wrote database to '{}'.",
+                    Ok(_) => eprintln!("Wrote database to '{}'.",
                                       database.path.as_ref().unwrap().to_str().unwrap()),
-                    Err(err) => println!("Could not write database: {}", err.description()),
+                    Err(err) => eprintln!("Could not write database: {}", err.description()),
                 }
             },
             SetLocation => {
                 let path = Input::new("New path").interact()?;
-                match database.set_path(&path) {
-                    Ok(_) => println!("Database path set to {}.",
-                                      database.get_path_pretty()),
+                if let Err(_) = database.set_path(&path) {
                     // TODO: Describe error
-                    Err(_) => println!("Could not change database path"),
+                    eprintln!("Could not change database path");
                 }
-            },
-            ShowDatabase => {
-                println!("");
-                database.describe();
             },
             QuitAndSave => {
                 return Ok("Finished editing database".to_string());
@@ -122,10 +104,12 @@ mod define_residue {
     //! Define a new `ResidueBase`.
 
     use error::{GrafenCliError, Result, UIErrorKind, UIResult};
-    use ui::utils::{select_command, get_position_from_user};
+    use ui::utils::{remove_items, reorder_list, select_command, get_position_from_user};
+
+    use grafen::describe::describe_list;
+    use grafen::system::{Atom, ResidueBase};
 
     use dialoguer::Input;
-    use grafen::system::{Atom, ResidueBase};
     use std::result;
 
     struct ResidueBuilder {
@@ -154,15 +138,9 @@ mod define_residue {
             }
         }
 
-        fn print(&self) {
-            println!("Name: '{}'", self.name);
-
-            println!("Atoms:");
-            for (i, atom) in self.atoms.iter().enumerate() {
-                println!("{:2}. {} at {}", i, atom.code, atom.position);
-            }
-
-            println!("");
+        fn print_state(&self) {
+            eprintln!("Name: {}", self.name);
+            eprintln!("{}", describe_list("Atoms", &self.atoms));
         }
     }
 
@@ -172,7 +150,7 @@ mod define_residue {
         SetName,
         AddAtom,
         RemoveAtom,
-        SwapAtoms,
+        ReorderAtoms,
         QuitAndSave,
         QuitWithoutSaving,
     }
@@ -183,7 +161,7 @@ mod define_residue {
             (SetName, "Set residue name"),
             (AddAtom, "Add atom to residue"),
             (RemoveAtom, "Remove atom from residue"),
-            (SwapAtoms, "Swap two atoms in list"),
+            (ReorderAtoms, "Reorder atom list"),
             (QuitAndSave, "Finish and add residue to list"),
             (QuitWithoutSaving, "Abort and discard changes")
         );
@@ -192,7 +170,7 @@ mod define_residue {
         let mut builder = ResidueBuilder::new();
 
         loop {
-            builder.print();
+            builder.print_state();
 
             let command = select_command(item_texts, commands)?;
 
@@ -201,53 +179,44 @@ mod define_residue {
                     match Input::new("Residue name").interact() {
                         Ok(new_name) => {
                             builder.name = new_name;
-                            println!("Set residue name to '{}'", &builder.name);
                         },
-                        Err(_) => {
-                            println!("error: Could not read name");
-                        },
+                        Err(_) => eprintln!("error: Could not read name"),
                     }
                 },
                 AddAtom => {
                     match create_atom() {
                         Ok(atom) => {
-                            println!("Added atom '{}' to residue.", &atom.code);
                             builder.atoms.push(atom);
                         },
                         // TODO: This should print an error description, too
                         //Err(err) => println!("Could not add atom: {}", err.description()),
-                        Err(_) => println!("Could not add atom"),
+                        Err(_) => eprintln!("Could not add atom"),
                     }
                 },
                 RemoveAtom => {
-                    // TODO: Implement Describe for Atom (and ResidueBase?) and redo this
-                    unimplemented!("Waiting for `impl Describe` for `Atom`");
-                    /*
-                    match utils::remove_item(&mut atoms, &tail) {
-                        Ok(i) => println!("Removed atom with index {} from residue.", i),
-                        Err(err) => println!("Could not remove atom: {}", err.description()),
+                    eprintln!("Remove atoms:");
+                    if let Err(err) = remove_items(&mut builder.atoms) {
+                        eprintln!("Could not remove atom: {}", err);
                     }
-                    */
                 },
-                SwapAtoms => {
-                    // TODO: Implement Describe for Atom (and ResidueBase?) and redo this
-                    unimplemented!("Waiting for `impl Describe` for `Atom`");
-                    /*
-                    if let Err(err) = utils::reorder_list(&mut atoms) {
-                        println!("error: Something went wrong when reordering the list ({})", err);
+                ReorderAtoms => {
+                    eprintln!("Reorder atoms:");
+                    if let Err(err) = reorder_list(&mut builder.atoms) {
+                        eprintln!("error: Something went wrong when reordering the list ({})", err);
                     }
-                    */
                 },
                 QuitAndSave => {
                     match builder.finalize() {
                         Ok(residue) => return Ok(residue),
-                        Err(msg) => println!("{}\n", msg),
+                        Err(msg) => eprintln!("{}", msg),
                     }
                 }
                 QuitWithoutSaving => {
                     return Err(GrafenCliError::from(UIErrorKind::Abort));
                 },
             }
+
+            eprintln!("");
         }
     }
 
@@ -556,7 +525,6 @@ mod define_component {
         }
 
         fn print_state(&self) {
-            eprintln!("");
             eprintln!("Name: {}", &self.name);
 
             match self.cylinder_type {
@@ -616,7 +584,7 @@ mod define_component {
                         builder.name = new_name;
                     },
                     Err(_) => {
-                        println!("error: Could not read name");
+                        eprintln!("error: Could not read name");
                     },
                 },
                 SetResidue => match select_residue(&residue_list) {
@@ -643,6 +611,8 @@ mod define_component {
                 },
                 QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
             }
+
+            eprintln!("");
         }
     }
 
