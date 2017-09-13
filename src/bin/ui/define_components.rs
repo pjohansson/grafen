@@ -2,10 +2,10 @@
 //!
 //! This interface could use a lot of improvement.
 
-use database::{AvailableComponents, CylinderClass, DataBase};
 use error::{Result, UIResult};
 use ui::utils;
 
+use grafen::database::{AvailableComponents, CylinderClass, DataBase};
 use dialoguer::Input;
 
 #[derive(Clone, Copy, Debug)]
@@ -71,7 +71,7 @@ pub fn user_menu(database: &DataBase, mut system_defs: &mut Vec<AvailableCompone
 
 /// Prompt the user to fill in the missing information for a definition.
 fn create_definition(database: &DataBase) -> UIResult<AvailableComponents> {
-    use database::AvailableComponents::*;
+    use grafen::database::AvailableComponents::*;
 
     println!("Available components:");
     let selection = utils::select_item(&database.component_defs, 0)?;

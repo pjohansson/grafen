@@ -1,9 +1,10 @@
 //! Write systems to disk.
 
-use error::Result;
-use grafen::system::Coord;
 use super::Config;
+use error::Result;
 use ui::System;
+
+use grafen::system::Coord;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};

@@ -12,11 +12,11 @@ mod edit_database;
 mod define_components;
 
 use super::Config;
-use database::AvailableComponents;
 use error::Result;
 use output;
-use ui::utils::Describe;
 
+use grafen::database::AvailableComponents;
+use grafen::describe::Describe;
 use grafen::system::{Component, Coord, ResidueBase};
 use std::error::Error;
 
@@ -29,7 +29,7 @@ pub struct ConstructedComponent {
     pub component: Component,
 }
 
-impl utils::Describe for ConstructedComponent {
+impl Describe for ConstructedComponent {
     fn describe(&self) -> String {
         format!("{} ({} residues at {})", self.description,
                                           self.component.num_residues(),

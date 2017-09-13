@@ -1,13 +1,13 @@
 //! Collect definitions for `ResidueBase` and `SheetConf` objects
 //! into a `DataBase` which can be read from or saved to disk.
 
-use error::{GrafenCliError, Result};
-use ui::utils;
-use ui::utils::Describe;
+//use error::{GrafenCliError, Result};
 
-use grafen::cylinder::{Cylinder, CylinderConf};
-use grafen::substrate::{create_substrate, LatticeType, SheetConf};
-use grafen::system::{Coord, Component, ResidueBase, IntoComponent, Translate};
+use cylinder::{Cylinder, CylinderConf};
+use describe::{print_group, Describe};
+use error::GrafenError;
+use substrate::{create_substrate, LatticeType, SheetConf};
+use system::{Coord, Component, ResidueBase, IntoComponent, Translate};
 
 use serde_json;
 use std::fmt;
@@ -18,6 +18,11 @@ use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
 use std::fs::File;
 use std::result;
+
+#[derive(Copy, Clone, Debug)]
+pub enum DataBaseError {
+    BadPath,
+}
 
 #[derive(Deserialize, Serialize)]
 /// A collection of residues and substrate configurations
@@ -47,11 +52,12 @@ impl DataBase {
     }
 
     /// Print the `DataBase` content to stdout.
+    /// TODO: This function name collides with the `Describe` trait. Consider implementing that.
     pub fn describe(&self) {
         println!("Database path: {}", self.get_path_pretty());
         println!("");
 
-        utils::print_group("Component definitions", &self.component_defs);
+        print_group("Component definitions", &self.component_defs);
 
         println!("[ Residue definitions ]");
         for (i, def) in self.residue_defs.iter().enumerate() {
@@ -70,7 +76,7 @@ impl DataBase {
 
     /// Set a new path for the `DataBase`. The input path is asserted to
     /// be a non-empty file and the extension is set to 'json'.
-    pub fn set_path<T>(&mut self, new_path: &T) -> Result<()>
+    pub fn set_path<T>(&mut self, new_path: &T) -> Result<(), DataBaseError>
             where T: ?Sized + AsRef<OsStr> {
         let mut path = PathBuf::from(new_path);
 
@@ -79,9 +85,7 @@ impl DataBase {
             self.path = Some(path);
             Ok(())
         } else {
-            Err(GrafenCliError::IoError(
-                io::Error::new(io::ErrorKind::NotFound, "Input path is not a filename")
-            ))
+            Err(DataBaseError::BadPath)
         }
     }
 
@@ -90,7 +94,7 @@ impl DataBase {
     /// This and the `to_writer` method are defined to enable a unit
     /// test which ensures that the behaviour for reading and writing
     /// a `DataBase` is consistent.
-    fn from_reader<R: Read>(reader: R) -> result::Result<DataBase, io::Error> {
+    fn from_reader<R: Read>(reader: R) -> Result<DataBase, io::Error> {
         serde_json::from_reader(reader).map_err(|e| io::Error::from(e))
     }
 
@@ -102,7 +106,7 @@ impl DataBase {
 
 /// Read a `DataBase` from a JSON formatted file.
 /// The owned path is set to the input path.
-pub fn read_database(from_path: &str) -> result::Result<DataBase, io::Error> {
+pub fn read_database(from_path: &str) -> Result<DataBase, io::Error> {
     let path = Path::new(from_path);
     let buffer = File::open(&path)?;
 
@@ -114,7 +118,7 @@ pub fn read_database(from_path: &str) -> result::Result<DataBase, io::Error> {
 
 /// Write a `DataBase` as a JSON formatted file.
 /// The function writes to that owned by the object.
-pub fn write_database(database: &DataBase) -> result::Result<(), io::Error> {
+pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
     if let Some(ref path) = database.path {
         let mut buffer = File::create(&path)?;
         database.to_writer(&mut buffer)?;
@@ -169,7 +173,7 @@ impl AvailableComponents {
     }
 
     /// Construct the component from the definition.
-    pub fn into_component(self) -> Result<Component> {
+    pub fn into_component(self) -> Result<Component, GrafenError> {
         use ::std::f64::consts::PI;
 
         match self {
@@ -182,9 +186,9 @@ impl AvailableComponents {
             },
             AvailableComponents::Cylinder(conf) => {
                 let radius = conf.radius
-                    .ok_or(GrafenCliError::RunError("A cylinder radius was not set".to_string()))?;
+                    .ok_or(GrafenError::RunError("A cylinder radius was not set".to_string()))?;
                 let height = conf.height
-                    .ok_or(GrafenCliError::RunError("A cylinder height was not set".to_string()))?;
+                    .ok_or(GrafenError::RunError("A cylinder height was not set".to_string()))?;
                 let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
 
                 let cylinder = match conf.class {
@@ -230,7 +234,7 @@ impl AvailableComponents {
                     },
                     CylinderClass::Volume(opt_num_residues) => {
                         let num_residues = opt_num_residues.ok_or(
-                            GrafenCliError::UIError(
+                            GrafenError::RunError(
                                 "No number of residues to fill the cylinder with is set".to_string()
                         ))?;
 
@@ -293,7 +297,7 @@ pub struct SheetConfEntry {
 
 impl SheetConfEntry {
     /// Supply a size to construct a `SheetConf` definition.
-    pub fn to_conf(&self) -> Result<SheetConf> {
+    pub fn to_conf(&self) -> Result<SheetConf, GrafenError> {
         if let Some(size) = self.size {
             Ok(SheetConf {
                 lattice: self.lattice.clone(),
@@ -302,7 +306,7 @@ impl SheetConfEntry {
                 std_z: self.std_z,
             })
         } else {
-            Err(GrafenCliError::ConstructError("No size was set for the sheet".to_string()))
+            Err(GrafenError::RunError("No size was set for the sheet".to_string()))
         }
     }
 }
@@ -394,7 +398,7 @@ pub struct CylinderConfEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use grafen::system::*;
+    use system::*;
 
     #[test]
     fn substrate_conf_entry_into_conf() {

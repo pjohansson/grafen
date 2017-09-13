@@ -1,22 +1,19 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
 
 extern crate ansi_term;
-#[macro_use]
-extern crate clap;
+#[macro_use] extern crate clap;
 extern crate dialoguer;
 extern crate grafen;
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
 
 mod error;
-mod database;
 mod output;
 mod ui;
 
-use database::{read_database, DataBase};
 use error::Result;
+
+use grafen::database::{read_database, DataBase};
 
 use std::process;
 use std::path::PathBuf;

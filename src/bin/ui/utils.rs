@@ -2,6 +2,7 @@
 
 use error::{GrafenCliError, Result, UIErrorKind, UIResult};
 
+use grafen::describe::Describe;
 use grafen::system::Coord;
 use dialoguer::{Input, Select};
 use std::str::FromStr;
@@ -126,14 +127,6 @@ pub fn reorder_list<T: Describe>(item_list: &mut Vec<T>) -> Result<()> {
             },
         }
     }
-}
-
-/// A verbose description of an object. Moreso than `Display` should typically be.
-/// Maybe the distinction is unnecessary? If so, change it sometime.
-///
-/// TODO: Consider adding a `describe_long` or similar method.
-pub trait Describe {
-    fn describe(&self) -> String;
 }
 
 /// Print a group's elements and a header.

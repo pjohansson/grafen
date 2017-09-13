@@ -1,9 +1,10 @@
 //! Edit a `DataBase`.
 
-use database::{write_database, DataBase};
 use error::Result;
 use ui::utils;
 use ui::utils::select_command;
+
+use grafen::database::{write_database, DataBase};
 
 use dialoguer::Input;
 use std::error::Error;
@@ -94,8 +95,8 @@ pub fn user_menu(database: &mut DataBase) -> Result<String> {
                 match database.set_path(&path) {
                     Ok(_) => println!("Database path set to {}.",
                                       database.get_path_pretty()),
-                    Err(err) => println!("Could not change database path: {}",
-                                         err.description()),
+                    // TODO: Describe error
+                    Err(_) => println!("Could not change database path"),
                 }
             },
             ShowDatabase => {
@@ -284,11 +285,11 @@ mod define_residue {
 }
 
 mod define_component {
-    use database::{AvailableComponents, Direction, CylinderCap, CylinderClass, CylinderConfEntry, SheetConfEntry};
     use error::{UIResult, UIErrorKind};
     use ui::utils::select_command;
 
     use dialoguer::{Checkboxes, Input, Select};
+    use grafen::database::{AvailableComponents, Direction, CylinderCap, CylinderClass, CylinderConfEntry, SheetConfEntry};
     use grafen::substrate::LatticeType;
     use grafen::system::ResidueBase;
     use std::result;
@@ -682,7 +683,7 @@ mod define_component {
     }
 
     fn select_direction() -> UIResult<Direction> {
-        use database::Direction::*;
+        use grafen::database::Direction::*;
 
         let (choices, item_texts) = create_menu_items![
             (X, "X"),
