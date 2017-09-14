@@ -45,6 +45,33 @@ impl Coord {
         (dx.x * dx.x + dx.y * dx.y + dx.z * dx.z).sqrt()
     }
 
+    /// Calculate the cylindrical distance between two coordinates along an input `Direction`.
+    /// Returns the 2-tuple (radius, height).
+    ///
+    /// # Examples:
+    /// ```
+    /// # use grafen::coord::{Coord, Direction};
+    /// let coord1 = Coord::new(0.0, 0.0, 0.0);
+    /// let coord2 = Coord::new(3.0, 4.0, 1.0);
+    /// let (dr, dh) = coord1.distance_cylindrical(coord2, Direction::Z);
+    ///
+    /// assert_eq!((5.0, 1.0), (dr, dh));
+    pub fn distance_cylindrical(self, other: Coord, dir: Direction) -> (f64, f64) {
+        use self::Direction::*;
+
+        // Get the in-plane (radius) generalized coordinate differences a, b
+        // and generalized height (directed) difference h
+        let (a, b, dh) = match dir {
+            X => (self.y - other.y, self.z - other.z, other.x - self.x),
+            Y => (self.x - other.x, self.z - other.z, other.y - self.y),
+            Z => (self.x - other.x, self.y - other.y, other.z - self.z),
+        };
+
+        let dr = (a * a + b * b).sqrt();
+
+        (dr, dh)
+    }
+
     /// Return the coordinate with its position adjusted to lie within the input box.
     ///
     /// If an input box size side is 0.0 (or smaller) the coordinate is not changed.
@@ -265,5 +292,15 @@ mod tests {
 
         coord1 -= coord2;
         assert_eq!(Coord::ORIGO, coord1);
+    }
+
+    #[test]
+    fn coord_distance_along_plane() {
+        let mut coord1 = Coord::new(0.0, 0.0, 0.0);
+        let mut coord2 = Coord::new(1.0, 1.0, 5.0);
+
+        assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::X));
+        assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::Y));
+        assert_eq!((2.0f64.sqrt(), 5.0), coord1.distance_cylindrical(coord2, Direction::Z));
     }
 }
