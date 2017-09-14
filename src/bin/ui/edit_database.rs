@@ -258,7 +258,8 @@ mod define_component {
     use ui::utils::select_command;
 
     use dialoguer::{Checkboxes, Input, Select};
-    use grafen::database::{AvailableComponents, Direction, CylinderCap, CylinderClass, CylinderConfEntry, SheetConfEntry};
+    use grafen::coord::Direction;
+    use grafen::database::{AvailableComponents, CylinderCap, CylinderClass, CylinderConfEntry, SheetConfEntry};
     use grafen::substrate::LatticeType;
     use grafen::system::ResidueBase;
     use std::result;
@@ -653,7 +654,7 @@ mod define_component {
     }
 
     fn select_direction() -> UIResult<Direction> {
-        use grafen::database::Direction::*;
+        use grafen::coord::Direction::*;
 
         let (choices, item_texts) = create_menu_items![
             (X, "X"),

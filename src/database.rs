@@ -3,7 +3,7 @@
 
 //use error::{GrafenCliError, Result};
 
-use coord::{Coord, Translate};
+use coord::{Coord, Direction, Translate};
 use cylinder::{Cylinder, CylinderConf};
 use describe::{describe_list, Describe};
 use error::GrafenError;
@@ -302,27 +302,6 @@ impl SheetConfEntry {
             })
         } else {
             Err(GrafenError::RunError("No size was set for the sheet".to_string()))
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
-/// Component direction axis. Eg. for `Cylinder`s this is the cylinder axis.
-/// For a `Sheet` it could be the normal.
-pub enum Direction { X, Y, Z }
-
-impl Direction {
-    fn default_cylinder() -> Direction {
-        Direction::Z
-    }
-}
-
-impl Display for Direction {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match *self {
-            Direction::X => write!(f, "X"),
-            Direction::Y => write!(f, "Y"),
-            Direction::Z => write!(f, "Z"),
         }
     }
 }

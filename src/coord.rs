@@ -2,7 +2,7 @@
 
 use std::error::Error;
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Sub, SubAssign, Neg};
 use std::str::FromStr;
 
@@ -67,7 +67,7 @@ impl Coord {
 }
 
 impl Display for Coord {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "({:.1}, {:.1}, {:.1})", self.x, self.y, self.z)
     }
 }
@@ -142,6 +142,28 @@ impl FromStr for Coord {
         let z = parse_opt_value(split.next())?;
 
         return Ok(Coord { x, y, z})
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+/// Component direction axis. Eg. for `Cylinder`s this is the cylinder axis.
+/// For a `Sheet` the normal.
+pub enum Direction { X, Y, Z }
+
+impl Direction {
+    /// Default alignment of a cylinder.
+    pub fn default_cylinder() -> Direction {
+        Direction::Z
+    }
+}
+
+impl Display for Direction {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            Direction::X => write!(f, "X"),
+            Direction::Y => write!(f, "Y"),
+            Direction::Z => write!(f, "Z"),
+        }
     }
 }
 
