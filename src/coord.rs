@@ -147,7 +147,7 @@ impl FromStr for Coord {
 
 /// Trait denoting the ability to `Translate` an object with a `Coord`.
 pub trait Translate {
-    fn translate(self, &Coord) -> Self;
+    fn translate(self, Coord) -> Self;
 }
 
 #[cfg(test)]

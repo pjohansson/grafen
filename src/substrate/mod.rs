@@ -139,8 +139,8 @@ impl IntoComponent for Sheet {
 }
 
 impl Translate for Sheet {
-    fn translate(mut self, trans: &Coord) -> Sheet {
-        self.origin = self.origin + *trans;
+    fn translate(mut self, trans: Coord) -> Sheet {
+        self.origin += trans;
         self
     }
 }
@@ -273,7 +273,7 @@ mod tests {
         let translate = Coord::new(1.0, 2.0, 3.0);
 
         let sheet = Sheet { origin, size, residue_base, residue_coords }
-            .translate(&Coord::new(1.0, 2.0, 3.0));
+            .translate(Coord::new(1.0, 2.0, 3.0));
 
         assert_eq!(size, sheet.size);
         assert_eq!(origin + translate, sheet.origin);

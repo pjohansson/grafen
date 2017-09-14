@@ -139,8 +139,8 @@ impl IntoComponent for Cylinder {
 }
 
 impl Translate for Cylinder {
-    fn translate(mut self, trans: &Coord) -> Self {
-        self.origin = self.origin + *trans;
+    fn translate(mut self, trans: Coord) -> Self {
+        self.origin += trans;
         self
     }
 }
@@ -201,7 +201,7 @@ mod tests {
     fn offset_sheet_origin_gives_offset_cylinder() {
         let residue = setup_residue();
         let shift = Coord::new(1.0, 2.0, 3.0);
-        let sheet = setup_sheet(&residue).translate(&shift);
+        let sheet = setup_sheet(&residue).translate(shift);
 
         let cylinder = Cylinder::from_sheet(&sheet);
         assert_eq!(cylinder.origin, sheet.origin);

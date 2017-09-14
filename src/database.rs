@@ -177,7 +177,7 @@ impl AvailableComponents {
                 let sheet = conf.to_conf()?;
                 let component = create_substrate(&sheet)?;
 
-                Ok(component.translate(&position).into_component())
+                Ok(component.translate(position).into_component())
             },
             AvailableComponents::Cylinder(conf) => {
                 let radius = conf.radius
