@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::fmt;
 use std::fmt::Display;
-use std::ops::{Add, Sub};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Neg};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -75,19 +75,47 @@ impl Display for Coord {
 impl Add for Coord {
     type Output = Coord;
 
-    fn add(self, other: Coord) -> Coord {
+    fn add(self, other: Coord) -> Self::Output {
         Coord::new(self.x + other.x, self.y + other.y, self.z + other.z)
     }
 
 }
 
+impl AddAssign for Coord {
+    fn add_assign(&mut self, other: Coord) {
+        *self = Coord {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        };
+    }
+}
+
 impl Sub for Coord {
     type Output = Coord;
 
-    fn sub(self, other: Coord) -> Coord {
+    fn sub(self, other: Coord) -> Self::Output {
         Coord::new(self.x - other.x, self.y - other.y, self.z - other.z)
     }
 
+}
+
+impl SubAssign for Coord {
+    fn sub_assign(&mut self, other: Coord) {
+        *self = Coord {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        };
+    }
+}
+
+impl Neg for Coord {
+    type Output = Coord;
+
+    fn neg(self) -> Self::Output {
+        Coord { x: -self.x, y: -self.y, z: -self.z }
+    }
 }
 
 impl PartialEq for Coord {
@@ -130,14 +158,6 @@ mod tests {
     #[test]
     fn coord_origo_is_correct() {
         assert_eq!(Coord::new(0.0, 0.0, 0.0), Coord::ORIGO);
-    }
-
-    #[test]
-    fn coord_addition_and_subtraction() {
-        let coord = Coord::new(0.0, 1.0, 2.0);
-        assert_eq!(Coord::new(0.0, 2.0, 4.0), coord + coord);
-        assert_eq!(Coord::new(0.0, 0.0, 0.0), coord - coord);
-
     }
 
     #[test]
@@ -201,5 +221,27 @@ mod tests {
         assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("\t1.0 -1.0 2.0"));
         assert!(Coord::from_str("").is_err());
         assert!(Coord::from_str("2.0 1.0").is_err());
+    }
+
+    #[test]
+    fn coord_operators() {
+        let coord1 = Coord::new(0.0, 1.0, 2.0);
+        let coord2 = Coord::new(3.0, 4.0, 5.0);
+
+        assert_eq!(Coord::new(3.0, 5.0, 7.0), coord1 + coord2);
+        assert_eq!(Coord::new(3.0, 3.0, 3.0), coord2 - coord1);
+        assert_eq!(Coord::new(0.0, -1.0, -2.0), -coord1);
+    }
+
+    #[test]
+    fn coord_assign_operators() {
+        let mut coord1 = Coord::ORIGO;
+        let coord2 = Coord::new(1.0, 2.0, 3.0);
+
+        coord1 += coord2;
+        assert_eq!(coord2, coord1);
+
+        coord1 -= coord2;
+        assert_eq!(Coord::ORIGO, coord1);
     }
 }
