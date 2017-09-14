@@ -4,7 +4,7 @@ use super::Config;
 use error::Result;
 use ui::System;
 
-use grafen::system::Coord;
+use grafen::coord::Coord;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};

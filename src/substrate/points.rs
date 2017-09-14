@@ -4,7 +4,8 @@
 //! of the points belong in this module.
 
 use rand;
-use system::Coord;
+
+use coord::Coord;
 
 /// A collection of points to broadcast residues onto.
 pub struct Points {

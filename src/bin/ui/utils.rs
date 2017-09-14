@@ -2,8 +2,9 @@
 
 use error::{GrafenCliError, Result, UIErrorKind, UIResult};
 
+use grafen::coord::Coord;
 use grafen::describe::Describe;
-use grafen::system::Coord;
+
 use dialoguer::{Input, Select};
 use std::str::FromStr;
 

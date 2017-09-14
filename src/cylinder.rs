@@ -2,8 +2,10 @@
 
 use rand;
 use rand::distributions::IndependentSample;
+
+use coord::{Coord, Translate};
 use substrate::Sheet;
-use system::{Coord, Component, IntoComponent, ResidueBase, Translate};
+use system::{Component, IntoComponent, ResidueBase};
 
 #[derive(Clone, Debug)]
 /// A cylinder configuration.
@@ -22,7 +24,7 @@ pub struct CylinderConf {
 impl CylinderConf {
     /// Fill a cylinder with a number of residues and return it directed along the z axis.
     ///
-    /// The residues coordinates are generated from a uniform random distribution. 
+    /// The residues coordinates are generated from a uniform random distribution.
     /// Not particularly fancy or good, but will do for now.
     pub fn fill_z(&self, num_residues: usize) -> Cylinder {
         use ::std::f64::consts::PI;
@@ -247,7 +249,7 @@ mod tests {
         let height = 5.0;
         let residue = setup_residue();
 
-        let cylinder_conf = CylinderConf { 
+        let cylinder_conf = CylinderConf {
             origin: Coord::ORIGO,
             radius: radius,
             height: height,

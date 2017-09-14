@@ -14,9 +14,10 @@ use super::Config;
 use error::Result;
 use output;
 
+use grafen::coord::Coord;
 use grafen::database::AvailableComponents;
 use grafen::describe::{describe_list, Describe};
-use grafen::system::{Component, Coord, ResidueBase};
+use grafen::system::{Component, ResidueBase};
 use std::error::Error;
 
 #[derive(Debug)]

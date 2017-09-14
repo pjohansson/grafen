@@ -233,7 +233,7 @@ mod define_residue {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use grafen::system::Coord;
+        use grafen::coord::Coord;
 
         #[test]
         fn residue_builder_is_ok_if_all_are_set() {

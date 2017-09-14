@@ -5,7 +5,8 @@
 //!
 //! ```
 //! # use grafen::substrate::{create_substrate, LatticeType, SheetConf};
-//! # use grafen::system::{Atom, Coord, ResidueBase};
+//! # use grafen::coord::Coord;
+//! # use grafen::system::{Atom, ResidueBase};
 //! // Define the molecule as a Residue.
 //! let residue_base = ResidueBase {
 //!     code: "HMOL".to_string(),
@@ -31,6 +32,7 @@ mod distribution;
 mod lattice;
 mod points;
 
+use coord::{Coord, Translate};
 use error::{GrafenError, Result};
 use substrate::distribution::PoissonDistribution;
 use substrate::lattice::Lattice;

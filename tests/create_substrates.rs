@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate grafen;
 
-use grafen::system::{Atom, Coord, ResidueBase};
+use grafen::coord::Coord;
+use grafen::system::{Atom, ResidueBase};
 use grafen::substrate::{LatticeType, SheetConf};
 
 #[test]

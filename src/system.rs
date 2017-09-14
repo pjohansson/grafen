@@ -11,11 +11,8 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
+use coord::Coord;
 use describe::Describe;
-
-use std::error::Error;
-use std::fmt;
-use std::str::FromStr;
 
 #[derive(Clone, Debug)]
 /// A system component which consists of a list of residues,
@@ -116,11 +113,6 @@ pub trait IntoComponent {
     fn num_atoms(&self) -> usize;
 }
 
-/// Trait denoting the ability to `Translate` an object with a `Coord`.
-pub trait Translate {
-    fn translate(self, &Coord) -> Self;
-}
-
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 /// Every atom in a residue has their own code and relative
 /// position some base coordinate.
@@ -160,7 +152,8 @@ impl Describe for ResidueBase {
 /// # Examples
 /// ```
 /// # #[macro_use] extern crate grafen;
-/// # use grafen::system::{Atom, Coord, ResidueBase};
+/// # use grafen::coord::Coord;
+/// # use grafen::system::{Atom, ResidueBase};
 /// # fn main() {
 /// let expect = ResidueBase {
 ///     code: "RES".to_string(),
@@ -203,199 +196,9 @@ macro_rules! resbase {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-/// A three-dimensional coordinate.
-///
-/// # Examples
-/// ```
-/// # use grafen::system::Coord;
-/// let coord1 = Coord::new(1.0, 0.0, 1.0);
-/// let coord2 = Coord::new(0.5, 0.5, 0.5);
-///
-/// assert_eq!(Coord::new(1.5, 0.5, 1.5), coord1 + coord2);
-/// assert_eq!(Coord::new(0.5, -0.5, 0.5), coord1 - coord2);
-/// ```
-pub struct Coord {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-use std::ops::{Add, Sub};
-
-impl Coord {
-    /// A coordinate at origo.
-    pub const ORIGO: Self = Coord { x: 0.0, y: 0.0, z: 0.0 };
-
-    /// Construct a new coordinate.
-    pub fn new(x: f64, y: f64, z: f64) -> Coord {
-        Coord { x: x, y: y, z: z }
-    }
-
-    /// Unpack the coordinate into a tuple.
-    pub fn to_tuple(&self) -> (f64, f64, f64) {
-        (self.x, self.y, self.z)
-    }
-
-    /// Calculate the absolute distance between two coordinates.
-    pub fn distance(self, other: Coord) -> f64 {
-        let dx = self - other;
-
-        (dx.x * dx.x + dx.y * dx.y + dx.z * dx.z).sqrt()
-    }
-
-    /// Return the coordinate with its position adjusted to lie within the input box.
-    ///
-    /// If an input box size side is 0.0 (or smaller) the coordinate is not changed.
-    pub fn with_pbc(self, box_size: Coord) -> Coord {
-        let do_pbc = |mut c: f64, size: f64| {
-            if size <= 0.0 {
-                c
-            } else {
-                while c < 0.0 {
-                    c += size;
-                }
-
-                c % size
-            }
-        };
-
-        let (x, y, z) = self.to_tuple();
-        Coord::new(do_pbc(x, box_size.x), do_pbc(y, box_size.y), do_pbc(z, box_size.z))
-    }
-}
-
-impl fmt::Display for Coord {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({:.1}, {:.1}, {:.1})", self.x, self.y, self.z)
-    }
-}
-
-impl Add for Coord {
-    type Output = Coord;
-
-    fn add(self, other: Coord) -> Coord {
-        Coord::new(self.x + other.x, self.y + other.y, self.z + other.z)
-    }
-
-}
-
-impl Sub for Coord {
-    type Output = Coord;
-
-    fn sub(self, other: Coord) -> Coord {
-        Coord::new(self.x - other.x, self.y - other.y, self.z - other.z)
-    }
-
-}
-
-impl PartialEq for Coord {
-    fn eq(&self, other: &Coord) -> bool {
-        let atol = 1e-9;
-        (self.x - other.x).abs() < atol
-            && (self.y - other.y).abs() < atol
-            && (self.z - other.z).abs() < atol
-    }
-}
-
-impl FromStr for Coord {
-    type Err = String;
-
-    fn from_str(input: &str) -> Result<Coord, Self::Err> {
-        let parse_opt_value = |value: Option<&str>| {
-            value.ok_or("Not enough values to parse".to_string())
-                 .and_then(|v| v.parse::<f64>().map_err(|err| err.description().to_string()))
-        };
-
-        let mut split = input.split_whitespace();
-        let x = parse_opt_value(split.next())?;
-        let y = parse_opt_value(split.next())?;
-        let z = parse_opt_value(split.next())?;
-
-        return Ok(Coord { x, y, z})
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
-
-    #[test]
-    fn coord_origo_is_correct() {
-        assert_eq!(Coord::new(0.0, 0.0, 0.0), Coord::ORIGO);
-    }
-
-    #[test]
-    fn coord_addition_and_subtraction() {
-        let coord = Coord::new(0.0, 1.0, 2.0);
-        assert_eq!(Coord::new(0.0, 2.0, 4.0), coord + coord);
-        assert_eq!(Coord::new(0.0, 0.0, 0.0), coord - coord);
-
-    }
-
-    #[test]
-    fn coord_eq_tolerance_small_deviation_passes() {
-        // Allow for some deviation when testing for equality, since floating point
-        // numbers are stupid.
-        let coord = Coord::new(0.0, 0.0, 0.0);
-        assert_eq!(coord, Coord::new(1e-10, 2e-10, 3e-10));
-    }
-
-    #[test]
-    #[should_panic]
-    fn coord_eq_tolerance_larger_deviation_does_not() {
-        let coord = Coord::new(0.0, 0.0, 0.0);
-        assert_eq!(coord, Coord::new(1e-9, 2e-9, 3e-9));
-    }
-
-    #[test]
-    fn coord_distance_calc() {
-        let coord1 = Coord::new(1.0, 1.0, 1.0);
-        let coord2 = Coord::new(3.0, 3.0, 2.0);
-
-        assert_eq!(3.0, Coord::distance(coord1, coord2));
-        assert_eq!(3.0, coord1.distance(coord2));
-    }
-
-    #[test]
-    fn coord_to_tuple() {
-        let coord = Coord::new(1.0, 2.0, 3.0);
-        assert_eq!((1.0, 2.0, 3.0), coord.to_tuple());
-    }
-
-    #[test]
-    fn coord_with_set_pbc() {
-        let box_size = Coord::new(2.0, 4.0, 6.0);
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(3.0, 1.0, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 0.5, 1.0), Coord::new(1.0, 4.5, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 13.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(-1.0, 1.0, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 3.0, 1.0), Coord::new(1.0, -1.0, 1.0).with_pbc(box_size));
-    }
-
-    #[test]
-    fn coords_adjusted_by_pbc_with_size_0_does_not_change() {
-        let box_size = Coord::new(0.0, 0.0, 0.0);
-        let coord = Coord::new(1.0, 2.0, 3.0);
-        assert_eq!(coord, coord.with_pbc(box_size));
-    }
-
-    #[test]
-    fn coord_display_format() {
-        let coord = Coord::ORIGO;
-        assert_eq!("(0.0, 0.0, 0.0)", &format!("{}", coord));
-    }
-
-    #[test]
-    fn coord_parsed_from_string() {
-        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("1.0 -1.0 2.0"));
-        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("1 -1.0 2"));
-        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("\t1.0 -1.0 2.0"));
-        assert!(Coord::from_str("").is_err());
-        assert!(Coord::from_str("2.0 1.0").is_err());
-    }
 
     fn setup_component(base: &ResidueBase, num: usize) -> Component {
         Component {

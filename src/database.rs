@@ -3,11 +3,12 @@
 
 //use error::{GrafenCliError, Result};
 
+use coord::{Coord, Translate};
 use cylinder::{Cylinder, CylinderConf};
 use describe::{describe_list, Describe};
 use error::GrafenError;
 use substrate::{create_substrate, LatticeType, SheetConf};
-use system::{Coord, Component, ResidueBase, IntoComponent, Translate};
+use system::{Component, ResidueBase, IntoComponent};
 
 use serde_json;
 use std::fmt;
