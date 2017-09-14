@@ -1,20 +1,16 @@
-//! Collect definitions for `ResidueBase` and `SheetConf` objects
+//! Collect definitions for `Residue` and `SheetConf` objects
 //! into a `DataBase` which can be read from or saved to disk.
 
-//use error::{GrafenCliError, Result};
-
-use coord::{Coord, Direction, Translate};
-use cylinder::{Cylinder, CylinderConf};
-use describe::{describe_list, Describe};
-use error::GrafenError;
-use substrate::{create_substrate, LatticeType, SheetConf};
-use system::{Component, ResidueBase, IntoComponent};
+use coord::{Coord, Translate};
+use describe::{describe_list_short, describe_list, Describe};
+use iterator::AtomIterItem;
+use surface;
+use system::{Component, Residue};
+use volume;
 
 use serde_json;
-use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::Write;
 use std::io;
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::ffi::OsStr;
 use std::fs::File;
@@ -25,7 +21,167 @@ pub enum DataBaseError {
     BadPath,
 }
 
-#[derive(Deserialize, Serialize)]
+#[macro_export]
+/// Macro to wrap every object constructor into an enum with desired traits.
+///
+/// The traits are those important for the creation and display of system components.
+/// The enum is used to hold created objects of different types in one container,
+/// sharing one interface.
+///
+/// Implements `Describe`, `Component` and `Translate` for the enum.
+///
+/// # Requires
+/// Wrapped objects have to implement the above traits and `Clone`, `Debug`,
+/// `Deserialize` and `Serialize` (the last two from `serde`).
+///
+/// # Examples
+/// Create two objects and let the macro create the wrapper and implement the traits for it.
+///
+/// ```
+/// # #[macro_use] extern crate grafen;
+/// # extern crate serde_json;
+/// # #[macro_use] extern crate serde_derive;
+/// # use grafen::coord::{Coord, Translate};
+/// # use grafen::describe::Describe;
+/// # use grafen::iterator::{AtomIterator, AtomIterItem};
+/// # use grafen::system::{Component, Residue};
+/// #
+/// #[derive(Clone, Debug, Deserialize, Serialize)]
+/// pub struct StructOne {
+///     origin: Coord,
+///     residue: Option<Residue>,
+///     coords: Vec<Coord>
+/// }
+///
+/// #[derive(Clone, Debug, Deserialize, Serialize)]
+/// pub struct StructTwo {
+///     origin: Coord,
+///     residue: Option<Residue>,
+///     coords: Vec<Coord>
+/// }
+/// 
+/// // Not shown: implement required traits
+/// # impl StructOne { fn calc_box_size(&self) -> Coord { Coord::default() } }
+/// # impl StructTwo { fn calc_box_size(&self) -> Coord { Coord::default() } }
+/// # impl Describe for StructOne { 
+/// #     fn describe(&self) -> String { "StructOne".to_string() } 
+/// #     fn describe_short(&self) -> String { self.describe() } 
+/// # }
+/// # impl Describe for StructTwo { 
+/// #     fn describe(&self) -> String { "StructTwo".to_string() } 
+/// #     fn describe_short(&self) -> String { self.describe() } 
+/// # }
+/// # impl_component![StructOne, StructTwo];
+/// # impl_translate![StructOne, StructTwo];
+///
+/// // Construct the wrapping enum container
+/// create_entry_wrapper![
+///     Wrapper, // enum identifier
+///     (StructOne => One), // Wrapper::One(StructOne)
+///     (StructTwo => Two)  // Wrapper::Two(StructTwo)
+/// ];
+///
+/// #
+/// # fn main() {
+/// let objects = vec![
+///     Wrapper::One(StructOne {
+///         origin: Coord::default(),
+///         residue: None,
+///         coords: vec![]
+///     }),
+///     Wrapper::Two(StructTwo {
+///         origin: Coord::default(),
+///         residue: None,
+///         coords: vec![]
+///     })
+/// ];
+///
+/// assert_eq!("StructOne", &objects[0].describe());
+/// assert_eq!(None, objects[0].iter_atoms().next());
+///
+/// assert_eq!("StructTwo", &objects[1].describe());
+/// assert_eq!(None, objects[1].iter_atoms().next());
+/// # }
+/// ```
+macro_rules! create_entry_wrapper {
+    (
+        $name:ident, // enum Identifier
+        $( ($class:path => $entry:ident) ),+ // Identifier::Entry(Class)
+    ) => {
+        #[derive(Clone, Debug, Deserialize, Serialize)]
+        /// Wrapper for accessing a shared interface from different components constructors.
+        pub enum $name {
+            $(
+                $entry($class),
+            )*
+        }
+
+        impl Describe for $name {
+            fn describe(&self) -> String {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.describe(),
+                    )*
+                }
+            }
+
+            fn describe_short(&self) -> String {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.describe_short(),
+                    )*
+                }
+            }
+        }
+
+        impl<'a> Component<'a> for $name {
+            fn box_size(&self) -> Coord {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.box_size(),
+                    )*
+                }
+            }
+
+            fn iter_atoms(&'a self) -> AtomIterItem {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.iter_atoms(),
+                    )*
+                }
+            }
+
+            fn num_atoms(&self) -> u64 {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.num_atoms(),
+                    )*
+                }
+            }
+        }
+
+        impl Translate for $name {
+            fn translate(self, coord: Coord) -> Self {
+                match self {
+                    $(
+                        $name::$entry(object) => $name::$entry(object.translate(coord)),
+                    )*
+                }
+            }
+        }
+    }
+}
+
+// Our wrapper for object constructors is `ComponentEntry`. Use the macro to construct it.
+create_entry_wrapper![
+    ComponentEntry,
+    (volume::Cuboid => VolumeCuboid),
+    (volume::Cylinder => VolumeCylinder),
+    (surface::Sheet => SurfaceSheet),
+    (surface::Cylinder => SurfaceCylinder)
+];
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 /// A collection of residues and substrate configurations
 /// which can be saved to and read from disk.
 pub struct DataBase {
@@ -34,12 +190,12 @@ pub struct DataBase {
     pub path: Option<PathBuf>,
 
     #[serde(rename = "residue_definitions", default = "Vec::new")]
-    /// Definitions of `ResidueBase` objects.
-    pub residue_defs: Vec<ResidueBase>,
+    /// Definitions of `Residue` objects.
+    pub residue_defs: Vec<Residue>,
 
     #[serde(rename = "component_definitions", default = "Vec::new")]
-    /// Definitions of components.
-    pub component_defs: Vec<AvailableComponents>,
+    /// New component constructors.
+    pub component_defs: Vec<ComponentEntry>,
 }
 
 impl DataBase {
@@ -52,14 +208,6 @@ impl DataBase {
         }
     }
 
-    /// Print the `DataBase` content to stdout.
-    /// TODO: This function name collides with the `Describe` trait. Consider implementing that.
-    pub fn describe(&self) {
-        eprintln!("Database path: {}\n", self.get_path_pretty());
-        eprintln!("{}", describe_list("Component definitions", &self.component_defs));
-        eprintln!("{}", describe_list("Residue definitions", &self.residue_defs));
-    }
-
     /// Get the database path enclosed in single quotes if it exists,
     /// otherwise the unenclosed string "None".
     pub fn get_path_pretty(&self) -> String {
@@ -70,7 +218,7 @@ impl DataBase {
     }
 
     /// Set a new path for the `DataBase`. The input path is asserted to
-    /// be a non-empty file and the extension is set to 'json'.
+    /// be a file and the extension is set to 'json'.
     pub fn set_path<T>(&mut self, new_path: &T) -> Result<(), DataBaseError>
             where T: ?Sized + AsRef<OsStr> {
         let mut path = PathBuf::from(new_path);
@@ -89,13 +237,30 @@ impl DataBase {
     /// This and the `to_writer` method are defined to enable a unit
     /// test which ensures that the behaviour for reading and writing
     /// a `DataBase` is consistent.
-    fn from_reader<R: Read>(reader: R) -> Result<DataBase, io::Error> {
+    fn from_reader<R: io::Read>(reader: R) -> Result<DataBase, io::Error> {
         serde_json::from_reader(reader).map_err(|e| io::Error::from(e))
     }
 
     /// Write a `DataBase` as a JSON formatted object to an input writer.
-    fn to_writer<W: Write>(&self, writer: &mut W) -> result::Result<(), io::Error> {
+    fn to_writer<W: io::Write>(&self, writer: &mut W) -> result::Result<(), io::Error> {
         serde_json::to_writer_pretty(writer, self).map_err(|e| io::Error::from(e))
+    }
+}
+
+impl Describe for DataBase {
+    fn describe(&self) -> String {
+        let mut description = String::new();
+        const ERR: &'static str = "Could not construct a string";
+
+        writeln!(description, "Database path: {}\n", self.get_path_pretty()).expect(ERR);
+        writeln!(description, "{}", describe_list_short("Component definitions", &self.component_defs)).expect(ERR);
+        writeln!(description, "{}", describe_list("Residue definitions", &self.residue_defs)).expect(ERR);
+
+        description
+    }
+
+    fn describe_short(&self) -> String {
+        self.describe()
     }
 }
 
@@ -127,302 +292,14 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
     )
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-/// List of components that can be constructed.
-///
-/// To add a new type of component that can be constructed:
-/// 1. Define an entry which can be serialized in the `DataBase`.
-/// 2. Add the entry to this enum.
-/// 3. Implement the required methods using a pattern match.
-pub enum AvailableComponents {
-    Sheet(SheetConfEntry),
-    Cylinder(CylinderConfEntry),
-}
-
-impl AvailableComponents {
-    /// Return a verbose description of the component that is to be created.
-    pub fn describe_long(&self) -> String {
-        match self {
-            &AvailableComponents::Sheet(ref conf) => {
-                let (dx, dy) = conf.size.unwrap_or((0.0, 0.0));
-                let (x0, y0, z0) = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0)).to_tuple();
-                format!("Sheet of {} and size ({:.2}, {:.2}) at position ({:.2}, {:.2}, {:.2})",
-                        conf.residue.code, dx, dy, x0, y0, z0)
-            },
-            &AvailableComponents::Cylinder(ref conf) => {
-                let radius = conf.radius.unwrap_or(0.0);
-                let height = conf.height.unwrap_or(0.0);
-                let (x0, y0, z0) = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0)).to_tuple();
-                format!("Cylinder of {} with radius {:.2} and height {:.2} at position ({:.2}, {:.2}, {:.2})",
-                        conf.residue.code, radius, height, x0, y0, z0)
-            },
-        }
-    }
-
-    /// Return a name for the component.
-    pub fn name(&self) -> &str {
-        match *self {
-            AvailableComponents::Sheet(ref conf) => &conf.name,
-            AvailableComponents::Cylinder(ref conf) => &conf.name,
-        }
-    }
-
-    /// Construct the component from the definition.
-    pub fn into_component(self) -> Result<Component, GrafenError> {
-        use ::std::f64::consts::PI;
-
-        match self {
-            AvailableComponents::Sheet(conf) => {
-                let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
-                let sheet = conf.to_conf()?;
-                let component = create_substrate(&sheet)?;
-
-                Ok(component.translate(position).into_component())
-            },
-            AvailableComponents::Cylinder(conf) => {
-                let radius = conf.radius
-                    .ok_or(GrafenError::RunError("A cylinder radius was not set".to_string()))?;
-                let height = conf.height
-                    .ok_or(GrafenError::RunError("A cylinder height was not set".to_string()))?;
-                let position = conf.position.unwrap_or(Coord::new(0.0, 0.0, 0.0));
-
-                let cylinder = match conf.class {
-                    CylinderClass::Sheet(ref lattice) => {
-                            let mut sheet_conf = SheetConf {
-                            lattice: lattice.clone(),
-                            residue: conf.residue.clone(),
-                            size: (2.0 * PI * radius, height),
-                            std_z: None,
-                        };
-                        let sheet = create_substrate(&sheet_conf)?;
-
-                        // Create the cylinder rotated to align along the z axis during construction.
-                        // This is to easily set the bottom and top caps.
-                        let mut cylinder = Cylinder::from_sheet(&sheet).into_component().rotate_x();
-
-                        if let Some(cap) = conf.cap {
-                            // Cut circles of the same material to work as bottom and top caps.
-                            // Make them of slightly smaller radius to not overlap coordinates.
-                            // TODO: This should be improved. IDEA: No offset, rotate circle
-                            // and score nearest neighbor distance or something. Expensive, though.
-                            const OFFSET: f64 = 0.0;
-                            sheet_conf.size = (2.0 * radius, 2.0 * radius);
-                            let circle_sheet = create_substrate(&sheet_conf)?;
-
-                            let bottom = circle_sheet.into_circle(radius - OFFSET).into_component();
-                            let top = bottom.clone().translate(&Coord::new(0.0, 0.0, height));
-
-                            match cap {
-                                CylinderCap::Bottom => {
-                                    cylinder.extend(bottom);
-                                },
-                                CylinderCap::Top => {
-                                    cylinder.extend(top);
-                                },
-                                CylinderCap::Both => {
-                                    cylinder.extend(bottom);
-                                    cylinder.extend(top);
-                                },
-                            }
-                        }
-                        cylinder
-                    },
-                    CylinderClass::Volume(opt_num_residues) => {
-                        let num_residues = opt_num_residues.ok_or(
-                            GrafenError::RunError(
-                                "No number of residues to fill the cylinder with is set".to_string()
-                        ))?;
-
-                        CylinderConf {
-                            origin: Coord::ORIGO,
-                            radius,
-                            height,
-                            residue_base: conf.residue.clone(),
-                        }
-                        .fill_z(num_residues)
-                        .into_component()
-                    },
-                };
-
-                // Rotate it to the final position.
-                // TODO: A proper general rotate function would be good here.
-                let cylinder = match conf.alignment {
-                    Direction::X => cylinder.rotate_y().rotate_y().rotate_y(),
-                    Direction::Y => cylinder.rotate_x().rotate_x().rotate_x(),
-                    Direction::Z => cylinder,
-                };
-
-                Ok(cylinder.translate(&position))
-            },
-        }
-    }
-}
-
-impl Describe for AvailableComponents {
-    /// Describe the components type with its name.
-    fn describe(&self) -> String {
-        match *self {
-            AvailableComponents::Sheet(_) => format!("(Sheet) {}", self.name()),
-            AvailableComponents::Cylinder(_) => format!("(Cylinder) {}", self.name()),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-/// A definition (catalog entry) for a `SheetConf`.
-///
-/// See `SheetConf` for more information. The final configuration
-/// requires a size, which is not kept in the definition.
-pub struct SheetConfEntry {
-    /// Definition name.
-    pub name: String,
-    /// Lattice constructor.
-    pub lattice: LatticeType,
-    /// Base residue.
-    pub residue: ResidueBase,
-    /// Optional distribution of positions along z.
-    pub std_z: Option<f64>,
-    #[serde(skip)]
-    /// Size of sheet.
-    pub size: Option<(f64, f64)>,
-    #[serde(skip)]
-    /// Position of sheet.
-    pub position: Option<Coord>,
-}
-
-impl SheetConfEntry {
-    /// Supply a size to construct a `SheetConf` definition.
-    pub fn to_conf(&self) -> Result<SheetConf, GrafenError> {
-        if let Some(size) = self.size {
-            Ok(SheetConf {
-                lattice: self.lattice.clone(),
-                residue: self.residue.clone(),
-                size,
-                std_z: self.std_z,
-            })
-        } else {
-            Err(GrafenError::RunError("No size was set for the sheet".to_string()))
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
-/// Cylinders can be capped in either or both ends.
-pub enum CylinderCap {
-    Top,
-    Bottom,
-    Both,
-}
-
-impl Display for CylinderCap {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match *self {
-            CylinderCap::Top => write!(f, "Top"),
-            CylinderCap::Bottom => write!(f, "Bottom"),
-            CylinderCap::Both => write!(f, "Both"),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
-/// Cylinders can either be a volume (residues inside) or a sheet (residues) on the outside.
-pub enum CylinderClass {
-    /// The cylinder is a folded sheet of an input lattice type.
-    ///
-    /// The number of residues is a result of which lattice is created.
-    Sheet(LatticeType),
-    /// The cylinder is filled with some residues.
-    ///
-    /// The number of residues are given directly to fill it with. It is an option since
-    /// it should not actually be read from or saved to disk in the database. I believe
-    /// this requires a custom de/serialize function? Works for now at least, but is not
-    /// pretty.
-    ///
-    /// TODO: Ensure that the number of residues is not de/serialized.
-    Volume(Option<usize>),
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-/// A catalog entry for a `CylinderConf`.
-///
-/// The final configuration requires a radius and height, not stored in this. But should it be?
-pub struct CylinderConfEntry {
-    /// Definition name.
-    pub name: String,
-    /// Base residue.
-    pub residue: ResidueBase,
-    #[serde(default = "Direction::default_cylinder")]
-    /// Cylinder axis alignment.
-    pub alignment: Direction,
-    /// Cylinder cap.
-    pub cap: Option<CylinderCap>,
-    /// Cylinder is a layer or a filled volume.
-    pub class: CylinderClass,
-    #[serde(skip)]
-    /// Cylinder radius.
-    pub radius: Option<f64>,
-    #[serde(skip)]
-    /// Cylinder height.
-    pub height: Option<f64>,
-    #[serde(skip)]
-    /// Position of cylinder.
-    pub position: Option<Coord>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use system::*;
 
     #[test]
-    fn substrate_conf_entry_into_conf() {
-        let base = ResidueBase {
-            code: "RES".to_string(),
-            atoms: vec![
-                Atom { code: "A".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-            ]
-        };
-        let (size_x, size_y) = (2.0, 3.0);
-
-        let conf = SheetConfEntry {
-                    name: "".to_string(),
-                    lattice: LatticeType::Hexagonal { a: 1.0 },
-                    residue: base.clone(),
-                    std_z: Some(0.5),
-                    size: Some((size_x, size_y)),
-                    position: None,
-        }.to_conf().unwrap();
-
-        assert_eq!(LatticeType::Hexagonal { a: 1.0 }, conf.lattice);
-        assert_eq!(base, conf.residue);
-        assert_eq!((size_x, size_y), conf.size);
-        assert_eq!(Some(0.5), conf.std_z);
-    }
-
-    #[test]
-    fn substrate_conf_entry_without_size_is_err() {
-        let base = ResidueBase {
-            code: "RES".to_string(),
-            atoms: vec![
-                Atom { code: "A".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-            ]
-        };
-
-        let conf = SheetConfEntry {
-                    name: "".to_string(),
-                    lattice: LatticeType::Hexagonal { a: 1.0 },
-                    residue: base,
-                    std_z: None,
-                    size: None,
-                    position: None,
-        }.to_conf();
-
-        assert!(conf.is_err());
-    }
-
-    #[test]
     fn serialize_and_deserialize_residue_entry() {
-        let base = ResidueBase {
+        let base = Residue {
             code: "RES".to_string(),
             atoms: vec![
                 Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
@@ -431,48 +308,9 @@ mod tests {
         };
 
         let serialized = serde_json::to_string(&base).unwrap();
-        let deserialized: ResidueBase = serde_json::from_str(&serialized).unwrap();
+        let deserialized: Residue = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(base, deserialized);
-    }
-
-    #[test]
-    fn serialize_and_deserialize_substrateconf_entry() {
-        let base = ResidueBase {
-            code: "RES".to_string(),
-            atoms: vec![
-                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-                Atom { code: "A2".to_string(), position: Coord::new(3.0, 4.0, 5.0) },
-            ]
-        };
-
-        let mut conf = SheetConfEntry {
-            name: "Test".to_string(),
-            lattice: LatticeType::PoissonDisc { density: 1.0 },
-            residue: base,
-            std_z: None,
-            size: None,
-            position: None,
-        };
-
-        let serialized = serde_json::to_string(&conf).unwrap();
-        let deserialized: SheetConfEntry = serde_json::from_str(&serialized).unwrap();
-
-        assert_eq!(conf, deserialized);
-
-        // std is saved
-        conf.std_z = Some(1.0);
-        let serialized = serde_json::to_string(&conf).unwrap();
-        let deserialized: SheetConfEntry = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(conf, deserialized);
-
-        // size and position is not
-        conf.size = Some((10.0, 5.0));
-        conf.position = Some(Coord::new(0.0, 0.0, 0.0));
-        let serialized = serde_json::to_string(&conf).unwrap();
-        let deserialized: SheetConfEntry = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(None, deserialized.size);
-        assert_eq!(None, deserialized.position);
     }
 
     #[test]
@@ -484,7 +322,7 @@ mod tests {
 
     #[test]
     fn read_and_write_database() {
-        let base = ResidueBase {
+        let base = Residue {
             code: "RES".to_string(),
             atoms: vec![
                 Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
@@ -492,19 +330,10 @@ mod tests {
             ]
         };
 
-        let conf = SheetConfEntry {
-            name: "Test".to_string(),
-            lattice: LatticeType::PoissonDisc { density: 1.0 },
-            residue: base.clone(),
-            std_z: None,
-            size: None,
-            position: None,
-        };
-
         let database = DataBase {
             path: Some(PathBuf::from("This/will/be/removed")),
             residue_defs: vec![base.clone()],
-            component_defs: vec![AvailableComponents::Sheet(conf.clone())],
+            component_defs: vec![],
         };
 
         let mut serialized: Vec<u8> = Vec::new();
@@ -513,7 +342,6 @@ mod tests {
 
         assert_eq!(None, deserialized.path);
         assert_eq!(database.residue_defs, deserialized.residue_defs);
-        assert_eq!(database.component_defs, deserialized.component_defs);
     }
 
     #[test]

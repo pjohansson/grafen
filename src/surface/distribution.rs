@@ -5,7 +5,7 @@ use rand::distributions::IndependentSample;
 use std::cmp;
 
 use coord::Coord;
-use substrate::points::Points;
+use surface::points::Points;
 
 pub struct PoissonDistribution;
 

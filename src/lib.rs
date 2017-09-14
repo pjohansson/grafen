@@ -4,10 +4,12 @@ extern crate rand;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;
 
+#[macro_use] pub mod coord;
+#[macro_use] pub mod system;
+
 pub mod describe;
-pub mod coord;
-pub mod cylinder;
 pub mod database;
 pub mod error;
-pub mod substrate;
-pub mod system;
+pub mod iterator;
+pub mod surface;
+pub mod volume;
