@@ -172,6 +172,12 @@ impl FromStr for Coord {
     }
 }
 
+impl Periodic for Coord {
+    fn pbc_multiply(&self, nx: usize, ny: usize, nz: usize) -> Coord {
+        Coord { x: self.x * nx as f64, y: self.y * ny as f64, z: self.z * nz as f64 }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 /// Component direction axis. Eg. for `Cylinder`s this is the cylinder axis.
 /// For a `Sheet` the normal.
@@ -198,6 +204,13 @@ impl Display for Direction {
 pub trait Translate {
     fn translate(self, Coord) -> Self;
 }
+
+/// Trait denoting periodic boundary condition operations on objects.
+pub trait Periodic {
+    /// Extend an object by some integer amounts.
+    fn pbc_multiply(&self, nx: usize, ny: usize, nz: usize) -> Self;
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -302,5 +315,11 @@ mod tests {
         assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::X));
         assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::Y));
         assert_eq!((2.0f64.sqrt(), 5.0), coord1.distance_cylindrical(coord2, Direction::Z));
+    }
+
+    #[test]
+    fn periodic_multiple_of_coords() {
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        assert_eq!(Coord::new(2.0, 6.0, 12.0), coord.pbc_multiply(2, 3, 4));
     }
 }
