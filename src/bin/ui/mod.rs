@@ -63,7 +63,7 @@ impl System {
         let box_size = self.constructed.iter().fold(
             Coord::new(0.0, 0.0, 0.0), |acc, conf| {
                 let (x1, y1, z1) = acc.to_tuple();
-                let (x2, y2, z2) = conf.component.box_size.to_tuple();
+                let (x2, y2, z2) = (conf.component.box_size + conf.component.origin).to_tuple();
 
                 Coord::new(x1.max(x2), y1.max(y2), z1.max(z2))
             }
@@ -308,6 +308,29 @@ mod tests {
     fn box_size_is_largest_in_each_direction() {
         let system = setup_system();
         assert_eq!(Some(Coord::new(10.0, 5.0, 7.0)), system.calc_box_size());
+    }
+
+    #[test]
+    fn box_size_accounts_for_component_origin() {
+        let (base_one, _) = setup_base_residues();
+
+        let system = System {
+            box_size: None,
+            definitions: vec![],
+            constructed: vec![
+                ConstructedComponent {
+                    description: "None".to_string(),
+                    component: Component {
+                        box_size: Coord::new(1.0, 1.0, 1.0),
+                        origin: Coord::new(1.0, 2.0, 3.0),
+                        residue_base: base_one,
+                        residue_coords: vec![],
+                    },
+                },
+            ]
+        };
+
+        assert_eq!(Some(Coord::new(2.0, 3.0, 4.0)), system.calc_box_size());
     }
 
     #[test]
