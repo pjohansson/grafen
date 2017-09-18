@@ -27,19 +27,32 @@ impl CylinderConf {
     /// The residues coordinates are generated from a uniform random distribution.
     /// Not particularly fancy or good, but will do for now.
     pub fn fill_z(&self, num_residues: usize) -> Cylinder {
-        use ::std::f64::consts::PI;
+        //use ::std::f64::consts::PI;
         let mut rng = rand::thread_rng();
 
-        let range_radius = rand::distributions::Range::new(0.0, self.radius);
+        let range_radius = rand::distributions::Range::new(-self.radius, self.radius);
         let range_height = rand::distributions::Range::new(0.0, self.height);
-        let range_angle = rand::distributions::Range::new(0.0, 2.0 * PI);
+        //let range_angle = rand::distributions::Range::new(0.0, 2.0 * PI);
+
+        let radius2 = self.radius.powi(2);
 
         let mut gen_coord = | | {
-            let radius = range_radius.ind_sample(&mut rng);
-            let angle = range_angle.ind_sample(&mut rng);
+            // TODO: Use a proper PDF to generate the radius weighted to ensure
+            // an even distribution in the circle. That is, the weight should be
+            // the circumference for each value.
+            let (x, y) = loop {
+                let x = range_radius.ind_sample(&mut rng);
+                let y = range_radius.ind_sample(&mut rng);
 
-            let x = radius * angle.cos();
-            let y = radius * angle.sin();
+                if x.powi(2) + y.powi(2) <= radius2 {
+                    break (x, y);
+                }
+            };
+
+            //let angle = range_angle.ind_sample(&mut rng);
+
+            //let x = radius * angle.cos();
+            //let y = radius * angle.sin();
             let z = range_height.ind_sample(&mut rng);
 
             Coord::new(x, y, z)
