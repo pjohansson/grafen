@@ -178,7 +178,7 @@ mod define_residue {
                 SetName => {
                     match Input::new("Residue name").interact() {
                         Ok(new_name) => {
-                            builder.name = new_name;
+                            builder.name = new_name.trim().to_string();
                         },
                         Err(_) => eprintln!("error: Could not read name"),
                     }
@@ -221,7 +221,7 @@ mod define_residue {
     }
 
     fn create_atom() -> UIResult<Atom> {
-        let name = Input::new("Atom name").interact()?;
+        let name = Input::new("Atom name").interact()?.trim().to_string();
         let position = get_position_from_user(None)?;
 
         Ok(Atom {
@@ -414,7 +414,7 @@ mod define_component {
                 ChangeComponent => return Err(ChangeOrError::ChangeComponent),
                 SetName => match Input::new("Component name").interact() {
                     Ok(new_name) => {
-                        builder.name = new_name;
+                        builder.name = new_name.trim().to_string();
                     },
                     Err(_) => {
                         println!("error: Could not read name");
@@ -451,6 +451,7 @@ mod define_component {
         let std = Input::new("Standard deviation 'σ' of distribution (nm)")
             .default("0")
             .interact()?
+            .trim()
             .parse::<f64>()?;
 
         if std == 0.0 {
@@ -581,7 +582,7 @@ mod define_component {
                 },
                 SetName => match Input::new("Component name").interact() {
                     Ok(new_name) => {
-                        builder.name = new_name;
+                        builder.name = new_name.trim().to_string();
                     },
                     Err(_) => {
                         eprintln!("error: Could not read name");
@@ -706,9 +707,9 @@ mod define_component {
                 eprintln!("vectors of length 'a' and 'b', separated by an angle 'γ'.");
                 eprintln!("");
 
-                let a = Input::new("Length 'a' (nm)").interact()?.parse::<f64>()?;
-                let b = Input::new("Length 'b' (nm)").interact()?.parse::<f64>()?;
-                let gamma = Input::new("Angle 'γ' (deg.)").interact()?.parse::<f64>()?;
+                let a = Input::new("Length 'a' (nm)").interact()?.trim().parse::<f64>()?;
+                let b = Input::new("Length 'b' (nm)").interact()?.trim().parse::<f64>()?;
+                let gamma = Input::new("Angle 'γ' (deg.)").interact()?.trim().parse::<f64>()?;
 
                 Ok(LatticeType::Triclinic { a, b, gamma })
             },
@@ -716,7 +717,7 @@ mod define_component {
                 eprintln!("A hexagonal lattice is a honeycomb grid with an input side length 'a'.");
                 eprintln!("");
 
-                let a = Input::new("Spacing 'a' (nm)").interact()?.parse::<f64>()?;
+                let a = Input::new("Spacing 'a' (nm)").interact()?.trim().parse::<f64>()?;
 
                 Ok(LatticeType::Hexagonal { a })
             },
@@ -725,7 +726,7 @@ mod define_component {
                 eprintln!("They are generated with an input density 'ρ' points per area.");
                 eprintln!("");
 
-                let density = Input::new("Density 'ρ' (1/nm^2)").interact()?.parse::<f64>()?;
+                let density = Input::new("Density 'ρ' (1/nm^2)").interact()?.trim().parse::<f64>()?;
 
                 Ok(LatticeType::PoissonDisc { density })
             },
