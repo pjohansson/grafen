@@ -88,24 +88,24 @@ impl System {
         let mut string = String::new();
 
         // This really should never have to be used.
-        const ERR_STRING: &'static str = "Could not construct a string for describing the box size";
+        const ERR: &'static str = "Could not construct a string for describing the box size";
 
         match self.box_size {
             Some(box_size) => {
-                write!(string, "{} (manually set)", format_box_size(box_size)).expect(&ERR_STRING);
+                write!(string, "{} (manually set)", format_box_size(box_size)).expect(&ERR);
             },
 
             None => match self.calc_box_size() {
                 Some(box_size) => {
-                    write!(string, "{} (suggested)", format_box_size(box_size)).expect(&ERR_STRING);
+                    write!(string, "{} (suggested)", format_box_size(box_size)).expect(&ERR);
                 },
                 None => {
-                    write!(string, "None").expect(&ERR_STRING);
+                    write!(string, "None").expect(&ERR);
                 },
             }
         }
 
-        write!(string, "\n").expect(&ERR_STRING);
+        write!(string, "\n").expect(&ERR);
 
         string
     }
@@ -179,10 +179,9 @@ enum MainMenu {
     SetBoxSize,
     EditDatabase,
     SaveSystem,
-    Quit,
+    Exit,
 }
 use self::MainMenu::*;
-
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -208,7 +207,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
         (SetBoxSize, "Set system box size"),
         (EditDatabase, "Edit the database of residue and object definitions"),
         (SaveSystem, "Save the constructed components to disk as a system"),
-        (Quit, "Quit the program")
+        (Exit, "Exit the program")
     ];
 
     loop {
@@ -234,7 +233,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
                 output::write_gromos(&system, &config)
                     .map(|_| "Saved system to disk".to_string())
             },
-            Quit => {
+            Exit => {
                 return Ok(());
             },
         };
