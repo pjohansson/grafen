@@ -13,12 +13,15 @@ mod define_components;
 use super::Config;
 use error::Result;
 use output;
+use ui::utils::{get_coord_from_user, select_command};
 
 use grafen::coord::Coord;
 use grafen::database::AvailableComponents;
 use grafen::describe::{describe_list, Describe};
 use grafen::system::{Component, ResidueBase};
+
 use std::error::Error;
+use std::fmt::Write;
 
 #[derive(Debug)]
 /// A `Component` which has been constructed along with a descriptive string.
@@ -76,6 +79,35 @@ impl System {
     fn describe(&self) {
         eprintln!("{}", describe_list("Defined components", &self.definitions));
         eprintln!("{}", describe_list("Constructed components", &self.constructed));
+        eprintln!("Box size: {}", self.describe_box_size());
+    }
+
+    /// Describe the box size. Discern whether or not it has been set manually
+    /// or calculated from the system's components.
+    fn describe_box_size(&self) -> String {
+        let mut string = String::new();
+
+        // This really should never have to be used.
+        const ERR_STRING: &'static str = "Could not construct a string for describing the box size";
+
+        match self.box_size {
+            Some(box_size) => {
+                write!(string, "{} (manually set)", format_box_size(box_size)).expect(&ERR_STRING);
+            },
+
+            None => match self.calc_box_size() {
+                Some(box_size) => {
+                    write!(string, "{} (suggested)", format_box_size(box_size)).expect(&ERR_STRING);
+                },
+                None => {
+                    write!(string, "None").expect(&ERR_STRING);
+                },
+            }
+        }
+
+        write!(string, "\n").expect(&ERR_STRING);
+
+        string
     }
 
     /// Iterate over the residues in a `System`.
@@ -144,6 +176,7 @@ impl<'a> Iterator for CoordsAndResiduesIterator<'a> {
 enum MainMenu {
     DefineComponents,
     ConstructComponents,
+    SetBoxSize,
     EditDatabase,
     SaveSystem,
     Quit,
@@ -172,6 +205,7 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     let (commands, item_texts) = create_menu_items![
         (DefineComponents, "Define the list of components to construct"),
         (ConstructComponents, "Construct components from all definitions"),
+        (SetBoxSize, "Set system box size"),
         (EditDatabase, "Edit the database of residue and object definitions"),
         (SaveSystem, "Save the constructed components to disk as a system"),
         (Quit, "Quit the program")
@@ -190,6 +224,9 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
                 construct_components(&mut system)
                     .map(|_| "Successfully constructed all components".to_string())
             },
+            SetBoxSize => {
+                set_box_size(&mut system.box_size)
+            }
             EditDatabase => {
                 edit_database::user_menu(&mut config.database)
             },
@@ -220,6 +257,36 @@ fn construct_components(system: &mut System) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn format_box_size(box_size: Coord) -> String {
+    format!("{:.2} x {:.2} x {:.2} nm^3", box_size.x, box_size.y, box_size.z)
+}
+
+fn set_box_size(current: &mut Option<Coord>) -> Result<String> {
+    #[derive(Clone, Copy, Debug)]
+    enum Method { Auto, Manual, Abort }
+
+    let (commands, item_texts) = create_menu_items![
+        (Method::Auto, "Calculate system size automatically from components"),
+        (Method::Manual, "Set system size manually"),
+        (Method::Abort, "(Return)")
+    ];
+
+    match select_command(item_texts, commands)? {
+        Method::Auto => {
+            *current = None;
+
+            Ok("System size set automatically".to_string())
+        },
+        Method::Manual => {
+            let new_box_size = get_coord_from_user("New size", None)?;
+            *current = Some(new_box_size);
+
+            Ok("Updated box size".to_string())
+        },
+        Method::Abort => Ok("Box size unchanged".to_string())
+    }
 }
 
 #[cfg(test)]

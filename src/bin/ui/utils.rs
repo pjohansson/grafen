@@ -118,9 +118,14 @@ pub fn reorder_list<T: Describe>(item_list: &mut Vec<T>) -> Result<()> {
     }
 }
 
-/// Get a `Coord` either from the user or by default at (0, 0, 0)
+/// Get a position either from the user. Optionally with a default.
 pub fn get_position_from_user(default: Option<&str>) -> UIResult<Coord> {
-    let mut input = Input::new("Position (x y z nm)");
+    get_coord_from_user("Position", default)
+}
+
+/// Get a `Coord` either from the user. Optionally with a default.
+pub fn get_coord_from_user(description: &str, default: Option<&str>) -> UIResult<Coord> {
+    let mut input = Input::new(&format!("{} (x y z nm)", description));
 
     if let Some(string) = default {
         input.default(&string);
