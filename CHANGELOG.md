@@ -5,6 +5,7 @@
 * Objects are added to the `DataBase` using a static dispatcher enum as a wrapper. This wrapper lets all objects exist in one `Vec`. It is created using the new macro `create_entry_wrapper` which passes through all the required implementations.
 * Object definitions now contain all the information required to process and use them. Instead of containing as little information as possible and then have a separate object wrap them with more methods for `DataBase` use, etc. This second layer is unnecessarily confusing (although we still need one separate layer for the static dispatch, but as per above this is fully transparent).
 * The `ResidueBase` object has been renamed to `Residue`.
+* `System` has been moved to `system` and improved to user proper methods for yielding information for output. This includes implementing `iter_atoms` through the `Component` trait which links to all components` methods of that name and merges them to a single whole.
 
 0.8
 ===

@@ -19,6 +19,88 @@ use iterator::AtomIterItem;
 use std::fmt::Write;
 use std::path::PathBuf;
 
+/// Main structure of a constructed system with several components.
+pub struct System {
+    /// Title of system.
+    pub title: String,
+    /// Path to which the system will be written.
+    pub output_path: PathBuf,
+    /// Database with component and residue definitions.
+    pub database: DataBase,
+    /// List of constructed components.
+    pub components: Vec<ComponentEntry>,
+}
+
+impl<'a> Component<'a> for System {
+    /// Calculate the total box size of the system as the maximum size along each axis
+    /// from all components.
+    fn box_size(&self) -> Coord {
+        self.components
+            .iter()
+            .map(|object| object.box_size())
+            .fold(Coord::new(0.0, 0.0, 0.0), |max_size, current| {
+                Coord {
+                    x: max_size.x.max(current.x),
+                    y: max_size.y.max(current.y),
+                    z: max_size.z.max(current.z),
+                }
+            })
+    }
+
+    /// Return an `Iterator` over all atoms in the whole system as `CurrentAtom` objects.
+    ///
+    /// Corrects residue and atom index numbers to be system-absolute instead
+    /// of for each component.
+    fn iter_atoms(&'a self) -> AtomIterItem {
+        // We want to return system-wide atom and residue indices. The atom index
+        // is easy to increase by one for each iterated atom, but to update the residue
+        // index we have to see if it has changed from the previous iteration.
+        struct Indices { atom: u64, residue: u64, last_residue: u64 }
+
+        Box::new(self.components
+            .iter()
+            .flat_map(|object| object.iter_atoms())
+            .scan(Indices { atom: 0, residue: 0, last_residue: 0 }, |state, mut current| {
+                // Find out if the component residue number has increased, if so update it
+                if current.residue_index != state.last_residue {
+                    state.last_residue = current.residue_index;
+                    state.residue += 1;
+                }
+
+                // Set the absolute atom and residue indices to the object
+                current.atom_index = state.atom;
+                current.residue_index = state.residue;
+
+                state.atom += 1;
+
+                Some(current)
+            })
+        )
+    }
+
+    /// Calculate the total number of atoms in the system.
+    fn num_atoms(&self) -> u64 {
+        self.components.iter().map(|object| object.num_atoms()).sum()
+    }
+}
+
+impl Describe for System {
+    fn describe(&self) -> String {
+        let mut description = String::new();
+
+        writeln!(description, "Title: '{}'", self.title).unwrap();
+        writeln!(description, "Output path: {}", self.output_path.to_str().unwrap_or("(Not set)")).unwrap();
+        writeln!(description, "").unwrap();
+        writeln!(description, "{}", describe_list("Components", &self.components)).unwrap();
+
+        description
+    }
+
+    fn describe_short(&self) -> String {
+        self.describe()
+    }
+}
+
 /// Methods for yielding atoms and output information from constructed objects.
 pub trait Component<'a> {
     /// Return the size of the object's bounding box seen from origo.
@@ -70,81 +152,6 @@ macro_rules! impl_component {
                 }
             }
         )*
-    }
-}
-
-/// Main structure of a constructed system with several components.
-pub struct System {
-    /// Title of system.
-    pub title: String,
-    /// Path to which the system will be written.
-    pub output_path: PathBuf,
-    /// Database with component and residue definitions.
-    pub database: DataBase,
-    /// List of constructed components.
-    pub components: Vec<ComponentEntry>,
-}
-
-impl<'a> Component<'a> for System {
-    fn box_size(&self) -> Coord {
-        self.components
-            .iter()
-            .map(|object| object.box_size())
-            .fold(Coord::new(0.0, 0.0, 0.0), |max_size, current| {
-                Coord {
-                    x: max_size.x.max(current.x),
-                    y: max_size.y.max(current.y),
-                    z: max_size.z.max(current.z),
-                }
-            })
-    }
-
-    fn iter_atoms(&'a self) -> AtomIterItem {
-        // We want to return system-wide atom and residue indices. The atom index
-        // is easy to increase by one for each iterated atom, but to update the residue
-        // index we have to see if it has changed from the previous iteration.
-        struct Indices { atom: u64, residue: u64, last_residue: u64 }
-
-        Box::new(self.components
-            .iter()
-            .flat_map(|object| object.iter_atoms())
-            .scan(Indices { atom: 0, residue: 0, last_residue: 0 }, |state, mut current| {
-                // Find out if the component residue number has increased, if so update it
-                if current.residue_index != state.last_residue {
-                    state.last_residue = current.residue_index;
-                    state.residue += 1;
-                }
-
-                // Set the absolute atom and residue indices to the object
-                current.atom_index = state.atom;
-                current.residue_index = state.residue;
-
-                state.atom += 1;
-
-                Some(current)
-            })
-        )
-    }
-
-    fn num_atoms(&self) -> u64 {
-        self.components.iter().map(|object| object.num_atoms()).sum()
-    }
-}
-
-impl Describe for System {
-    fn describe(&self) -> String {
-        let mut description = String::new();
-
-        writeln!(description, "Title: '{}'", self.title).unwrap();
-        writeln!(description, "Output path: {}", self.output_path.to_str().unwrap_or("(Not set)")).unwrap();
-        writeln!(description, "").unwrap();
-        writeln!(description, "{}", describe_list("Components", &self.components)).unwrap();
-
-        description
-    }
-
-    fn describe_short(&self) -> String {
-        self.describe()
     }
 }
 
