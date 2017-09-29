@@ -1,3 +1,11 @@
+0.9
+===
+* Rewrite of the object construction framework. Instead of a messy matching to different object types using `IntoComponent`, the simple trait `Component` has been redone to yield all necessary information from objects.
+* In particular `Component` prescribed the method `iter_atoms` which yields all atoms in a component with their indices as required for output to disk.
+* Objects are added to the `DataBase` using a static dispatcher enum as a wrapper. This wrapper lets all objects exist in one `Vec`. It is created using the new macro `create_entry_wrapper` which passes through all the required implementations.
+* Object definitions now contain all the information required to process and use them. Instead of containing as little information as possible and then have a separate object wrap them with more methods for `DataBase` use, etc. This second layer is unnecessarily confusing (although we still need one separate layer for the static dispatch, but as per above this is fully transparent).
+* The `ResidueBase` object has been renamed to `Residue`.
+
 0.8
 ===
 * The user interface has been reworked, using `dialoguer` instead of plain text selection.

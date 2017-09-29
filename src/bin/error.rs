@@ -46,7 +46,7 @@ impl From<ParseIntError> for UIErrorKind {
     }
 }
 
-impl<'a, T: Display> From<&'a T> for UIErrorKind {
+impl<'a, T: Display + ?Sized> From<&'a T> for UIErrorKind {
     fn from(err: &'a T) -> UIErrorKind {
         UIErrorKind::BadValue(err.to_string())
     }

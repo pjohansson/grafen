@@ -63,7 +63,7 @@ fn main() {
 
     eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
-    if let Err(err) = Config::from_matches(matches).and_then(|mut conf| ui::user_menu(&mut conf)) {
+    if let Err(err) = Config::from_matches(matches).and_then(|conf| ui::user_menu(conf)) {
         eprintln!("{}", err);
         process::exit(1);
     }

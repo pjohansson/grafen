@@ -1,185 +1,30 @@
 //! The main user interface from which the user will define systems to create.
 //! They can also access and modify the `DataBase` of components to use in their
 //! systems.
-//!
-//! This is implemented as a *very* basic text interface. This could be improved
-//! greatly by knowing more about human interface design. In particular the systems
-//! for creating `SheetConfEntry` and `SystemDefinition` are in need of improvement.
 
-#[macro_use] pub mod utils;
+#[macro_use] mod utils;
 mod edit_database;
-mod define_components;
 
 use super::Config;
-use error::Result;
+use error::{GrafenCliError, Result, UIErrorKind};
 use output;
-use ui::utils::{get_coord_from_user, select_command};
+use ui::utils::{get_value_from_user, get_position_from_user, print_description,
+                remove_items, reorder_list, select_command, select_item};
 
-use grafen::coord::Coord;
-use grafen::database::AvailableComponents;
-use grafen::describe::{describe_list, Describe};
-use grafen::system::{Component, ResidueBase};
+use grafen::database::*;
+use grafen::system::*;
 
 use std::error::Error;
-use std::fmt::Write;
-
-#[derive(Debug)]
-/// A `Component` which has been constructed along with a descriptive string.
-pub struct ConstructedComponent {
-    /// Description of the component.
-    description: String,
-    /// The component.
-    pub component: Component,
-}
-
-impl Describe for ConstructedComponent {
-    fn describe(&self) -> String {
-        format!("{} ({} residues at {})",
-            self.description,
-            self.component.num_residues(),
-            self.component.origin)
-    }
-}
-
-#[derive(Debug)]
-/// All `ConstructedComponent`s and `ComponentDefinition`s are kept in this
-/// `System` which keeps track of those and other meta information.
-pub struct System {
-    /// System box size. Either set by the user or calculated from the components.
-    pub box_size: Option<Coord>,
-    /// Component definitions.
-    pub definitions: Vec<AvailableComponents>,
-    /// Components and their descriptions belonging to the system.
-    pub constructed: Vec<ConstructedComponent>,
-}
-
-impl System {
-    /// Calculate the box size from the system components. The largest extension along each
-    /// direction is used for the final box size.
-    ///
-    /// Returns None if no components exist in the system.
-    pub fn calc_box_size(&self) -> Option<Coord> {
-        if self.constructed.is_empty() {
-            return None;
-        }
-
-        let box_size = self.constructed.iter().fold(
-            Coord::new(0.0, 0.0, 0.0), |acc, conf| {
-                let (x1, y1, z1) = acc.to_tuple();
-                let (x2, y2, z2) = (conf.component.box_size + conf.component.origin).to_tuple();
-
-                Coord::new(x1.max(x2), y1.max(y2), z1.max(z2))
-            }
-        );
-
-        Some(box_size)
-    }
-
-    /// Describe the current system.
-    fn describe(&self) {
-        eprintln!("{}", describe_list("Defined components", &self.definitions));
-        eprintln!("{}", describe_list("Constructed components", &self.constructed));
-        eprintln!("Box size: {}", self.describe_box_size());
-    }
-
-    /// Describe the box size. Discern whether or not it has been set manually
-    /// or calculated from the system's components.
-    fn describe_box_size(&self) -> String {
-        let mut string = String::new();
-
-        // This really should never have to be used.
-        const ERR: &'static str = "Could not construct a string for describing the box size";
-
-        match self.box_size {
-            Some(box_size) => {
-                write!(string, "{} (manually set)", format_box_size(box_size)).expect(&ERR);
-            },
-
-            None => match self.calc_box_size() {
-                Some(box_size) => {
-                    write!(string, "{} (suggested)", format_box_size(box_size)).expect(&ERR);
-                },
-                None => {
-                    write!(string, "None").expect(&ERR);
-                },
-            }
-        }
-
-        write!(string, "\n").expect(&ERR);
-
-        string
-    }
-
-    /// Iterate over the residues in a `System`.
-    /// Yields the `Coord` and `ResidueBase` for each residue, as the tuple `CoordAndResidue`.
-    pub fn iter_residues(&self) -> ResidueIter {
-        CoordsAndResiduesIterator::new(&self.constructed)
-    }
-
-    /// Calculate the number of atoms in the system.
-    pub fn num_atoms(&self) -> usize {
-        self.constructed.iter().map(|conf| {
-            conf.component.residue_base.atoms.len() * conf.component.residue_coords.len()
-        }).sum()
-    }
-}
-
-/// We want to be able to iterate over all residues in a `System`.
-/// To do this we use as custom `Iterator` which yields every residue's
-/// `Coord` and `ResidueBase`.
-struct CoordsAndResiduesIterator<'a> {
-    components: &'a [ConstructedComponent],
-    current_component: usize,
-    current_coord: usize,
-}
-
-/// Construct it from a list of components.
-impl<'a> CoordsAndResiduesIterator<'a> {
-    fn new(components: &[ConstructedComponent]) -> Box<CoordsAndResiduesIterator> {
-        Box::new(CoordsAndResiduesIterator {
-            components: &components,
-            current_component: 0,
-            current_coord: 0,
-        })
-    }
-}
-
-// Newtypes for the iterator.
-type CoordAndResidue<'a> = (Coord, &'a ResidueBase);
-// TODO: This should use `impl Trait` once that is in Rust stable.
-type ResidueIter<'a> = Box<Iterator<Item = CoordAndResidue<'a>> + 'a>;
-
-impl<'a> Iterator for CoordsAndResiduesIterator<'a> {
-    type Item = CoordAndResidue<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(cons_component) = self.components.get(self.current_component) {
-                let component = &cons_component.component;
-
-                if let Some(&coord) = component.residue_coords.get(self.current_coord) {
-                    self.current_coord += 1;
-                    return Some((component.origin + coord, &component.residue_base));
-                } else {
-                    self.current_component += 1;
-                    self.current_coord = 0;
-                }
-            } else {
-                return None;
-            }
-        }
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 /// User commands for defining the system.
 enum MainMenu {
-    DefineComponents,
-    ConstructComponents,
-    SetBoxSize,
-    EditDatabase,
+    AddComponent,
+    RemoveComponent,
+    ReorderList,
     SaveSystem,
-    Exit,
+    EditDatabase,
+    Quit,
 }
 use self::MainMenu::*;
 
@@ -187,53 +32,53 @@ use self::MainMenu::*;
 ///
 /// The idea of this interface is relatively simple:
 ///
-/// 1. The user reads or constructs a `DataBase` of residues (`ResidueBase`).
-/// 2. Then constructs definitions of substrates or objects to be created (can also be
-///    saved to and read from the `DataBase`).
-/// 3. Processes these definitions to create the actual components which make up the system.
-/// 4. Modifies or transforms these components by copying, translating, rotating etc.
-/// 5. Finally saves the full system to disk.
-///
-/// Modifying the `DataBase`, setting the definitions `SheetConf` and editing the
-/// `Component`s each require a separate menu, accessed from this super menu.
-/// This menu should also allow the user to save the system to disk, set its name
-/// and file path and any other possible options.
-pub fn user_menu(mut config: &mut Config) -> Result<()> {
-    let mut system = System { box_size: None, constructed: vec![], definitions: vec![] };
+/// 1. The user reads or constructs a `DataBase` of residue (`Residue`)
+///    and component (`ComponentEntry`) definitions.
+/// 2. Using these construct the actual components which make up the system.
+/// 3. Modifies or transforms these components by copying, translating, rotating etc.
+/// 4. Finally saves the full system to disk.
+pub fn user_menu(config: Config) -> Result<()> {
+    let mut system = System {
+        title: config.title,
+        output_path: config.output_path,
+        database: config.database,
+        components: vec![],
+    };
 
     let (commands, item_texts) = create_menu_items![
-        (DefineComponents, "Define the list of components to construct"),
-        (ConstructComponents, "Construct components from all definitions"),
-        (SetBoxSize, "Set system box size"),
-        (EditDatabase, "Edit the database of residue and object definitions"),
+        (AddComponent, "Construct a component"),
+        (RemoveComponent, "Remove a component from the list"),
+        (ReorderList, "Reorder list of components"),
         (SaveSystem, "Save the constructed components to disk as a system"),
-        (Exit, "Exit the program")
+        (EditDatabase, "Edit the database of residue and object definitions"),
+        (Quit, "Quit the program")
     ];
 
     loop {
-        system.describe();
-        let command = utils::select_command(item_texts, commands)?;
+        print_description(&system);
+
+        let command = select_command(item_texts, commands)?;
 
         let result = match command {
-            DefineComponents => {
-                define_components::user_menu(&config.database, &mut system.definitions)
-                    .map(|_| "Finished editing list of definitions".to_string())
+            AddComponent => {
+                create_component(&mut system)
             },
-            ConstructComponents => {
-                construct_components(&mut system)
-                    .map(|_| "Successfully constructed all components".to_string())
+            RemoveComponent => {
+                remove_items(&mut system.components)
+                    .map(|_| "Successfully removed component.".to_string())
             },
-            SetBoxSize => {
-                set_box_size(&mut system.box_size)
-            }
+            ReorderList => {
+                reorder_list(&mut system.components)
+                    .map(|_| "Successfully reordered list.".to_string())
+            },
             EditDatabase => {
-                edit_database::user_menu(&mut config.database)
+                edit_database::user_menu(&mut system.database)
             },
             SaveSystem => {
-                output::write_gromos(&system, &config)
+                output::write_gromos(&system)
                     .map(|_| "Saved system to disk".to_string())
             },
-            Exit => {
+            Quit => {
                 return Ok(());
             },
         };
@@ -247,208 +92,65 @@ pub fn user_menu(mut config: &mut Config) -> Result<()> {
     }
 }
 
-fn construct_components(system: &mut System) -> Result<()> {
-    for def in system.definitions.drain(..) {
-        let description = def.describe();
-        let component = def.into_component()?;
+/// Prompt the user to select a defined component from the `DataBase`, then create it.
+fn create_component(system: &mut System) -> Result<String> {
+    let component = select_item(&system.database.component_defs, Some("Available components"))?
+        .clone();
 
-        system.constructed.push(ConstructedComponent{ description, component });
-    }
-
-    Ok(())
-}
-
-fn format_box_size(box_size: Coord) -> String {
-    format!("{:.2} x {:.2} x {:.2} nm^3", box_size.x, box_size.y, box_size.z)
-}
-
-fn set_box_size(current: &mut Option<Coord>) -> Result<String> {
-    #[derive(Clone, Copy, Debug)]
-    enum Method { Auto, Manual, Abort }
-
-    let (commands, item_texts) = create_menu_items![
-        (Method::Auto, "Calculate system size automatically from components"),
-        (Method::Manual, "Set system size manually"),
-        (Method::Abort, "(Return)")
-    ];
-
-    match select_command(item_texts, commands)? {
-        Method::Auto => {
-            *current = None;
-
-            Ok("System size set automatically".to_string())
+    match fill_component(component) {
+        Ok(filled) => {
+            system.components.push(filled);
+            Ok("Added component to system".to_string())
         },
-        Method::Manual => {
-            let new_box_size = get_coord_from_user("New size", None)?;
-            *current = Some(new_box_size);
-
-            Ok("Updated box size".to_string())
-        },
-        Method::Abort => Ok("Box size unchanged".to_string())
+        Err(err) => Err(err),
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use grafen::system::{Atom, ResidueBase};
+/// Ask the user for information about the selected component, then return the constructed object.
+fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
+    match component {
+        ComponentEntry::VolumeCuboid(_) => {
+            /*
+            let position = get_position_from_user(Some("0 0 0"))?;
+            let length = get_value_from_user::<f64>("Length ΔX (nm)")?;
+            let width = get_value_from_user::<f64>("Width ΔY (nm)")?;
+            let height = get_value_from_user::<f64>("Height ΔZ (nm)")?;
+            let num_residues = get_value_from_user::<f64>("Number of residues")?;
 
-    /// Setup the base residues.
-    /// base_one: two atoms
-    /// base_two: one atom
-    fn setup_base_residues() -> (ResidueBase, ResidueBase) {
-        let base_one = ResidueBase {
-            code: "R1".to_string(),
-            atoms: vec![
-                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-                Atom { code: "A2".to_string(), position: Coord::new(0.0, 2.0, 1.0) }
-                ],
-            };
-        let base_two = ResidueBase {
-            code: "R2".to_string(),
-            atoms: vec![
-                Atom { code: "B".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-                ],
-            };
+            conf.origin = position;
+            conf.size = Coord::new(length, width, height);
+            */
 
-        (base_one, base_two)
-    }
+            Err(GrafenCliError::ConstructError("Cuboid volumes are not yet implemented".to_string()))
+        },
 
-    /// Setup a system of three components and in total four residues / seven atoms:
-    ///     0. base_one, 2 atoms
-    ///     1. base_two, 1 atom
-    ///     2. base_one, 2 atoms
-    ///     3. base_one, 2 atoms
-    fn setup_system() -> System {
-        let (base_one, base_two) = setup_base_residues();
+        ComponentEntry::VolumeCylinder(mut conf) => {
+            conf.origin = get_position_from_user(Some("0 0 0"))?;
+            conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
+            conf.height = get_value_from_user::<f64>("Height (nm)")?;
+            let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
-        System {
-            box_size: None,
-            definitions: vec![],
-            constructed: vec![
-                ConstructedComponent {
-                    description: "None".to_string(),
-                    component: Component {
-                        // Largest along x
-                        box_size: Coord::new(10.0, 1.0, 0.0),
-                        origin: Coord::new(0.0, 0.0, 0.0),
-                        residue_base: base_one.clone(),
-                        // 1 residue * 2 atoms per residue
-                        residue_coords: vec![Coord::new(0.0, 0.0, 0.0)],
-                    },
-                },
-                ConstructedComponent {
-                    description: "None".to_string(),
-                    component: Component {
-                        // Largest along z
-                        box_size: Coord::new(1.0, 1.0, 7.0),
-                        origin: Coord::new(0.0, 0.0, 0.0),
-                        residue_base: base_two.clone(),
-                        // 1 * 1 atoms
-                        residue_coords: vec![Coord::new(0.0, 0.0, 0.0)],
-                    },
-                },
-                ConstructedComponent {
-                    description: "None".to_string(),
-                    component: Component {
-                        // Largest along y
-                        box_size: Coord::new(1.0, 5.0, 0.0),
-                        origin: Coord::new(0.0, 0.0, 0.0),
-                        residue_base: base_one.clone(),
-                        // 2 * 2 atoms
-                        residue_coords: vec![Coord::new(0.0, 0.0, 0.0), Coord::new(1.0, 0.0, 0.0)],
-                    },
-                },
-            ]
-        }
-    }
+            Ok(ComponentEntry::VolumeCylinder(conf.fill(num_residues)))
+        },
 
-    #[test]
-    fn all_atoms_are_counted_in_system() {
-        let system = setup_system();
+        ComponentEntry::SurfaceSheet(mut conf) => {
+            conf.origin = get_position_from_user(Some("0 0 0"))?;
+            conf.length = get_value_from_user::<f64>("Length ΔX (nm)")?;
+            conf.width = get_value_from_user::<f64>("Width ΔY (nm)")?;
 
-        assert_eq!(7, system.num_atoms());
-    }
+            Ok(ComponentEntry::SurfaceSheet(conf.construct().map_err(|_|
+                UIErrorKind::from("Could not construct sheet")
+            )?))
+        },
 
-    #[test]
-    fn box_size_is_largest_in_each_direction() {
-        let system = setup_system();
-        assert_eq!(Some(Coord::new(10.0, 5.0, 7.0)), system.calc_box_size());
-    }
+        ComponentEntry::SurfaceCylinder(mut conf) => {
+            conf.origin = get_position_from_user(Some("0 0 0"))?;
+            conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
+            conf.height = get_value_from_user::<f64>("Height (nm)")?;
 
-    #[test]
-    fn box_size_accounts_for_component_origin() {
-        let (base_one, _) = setup_base_residues();
-
-        let system = System {
-            box_size: None,
-            definitions: vec![],
-            constructed: vec![
-                ConstructedComponent {
-                    description: "None".to_string(),
-                    component: Component {
-                        box_size: Coord::new(1.0, 1.0, 1.0),
-                        origin: Coord::new(1.0, 2.0, 3.0),
-                        residue_base: base_one,
-                        residue_coords: vec![],
-                    },
-                },
-            ]
-        };
-
-        assert_eq!(Some(Coord::new(2.0, 3.0, 4.0)), system.calc_box_size());
-    }
-
-    #[test]
-    fn box_size_is_none_if_no_components() {
-        let system = System {
-            box_size: None,
-            definitions: vec![],
-            constructed: vec![],
-        };
-
-        assert!(system.calc_box_size().is_none());
-    }
-
-    #[test]
-    fn iterate_over_system_residues() {
-        let (base_one, base_two) = setup_base_residues();
-        let system = setup_system();
-
-        let mut iter = system.iter_residues();
-        assert_eq!(Some((Coord::new(0.0, 0.0, 0.0), &base_one)), iter.next());
-        assert_eq!(Some((Coord::new(0.0, 0.0, 0.0), &base_two)), iter.next());
-        assert_eq!(Some((Coord::new(0.0, 0.0, 0.0), &base_one)), iter.next());
-        assert_eq!(Some((Coord::new(1.0, 0.0, 0.0), &base_one)), iter.next());
-        assert_eq!(None, iter.next());
-    }
-
-    #[test]
-    fn iter_residues_adds_component_origin() {
-        let origin = Coord::new(-5.0, 10.0, 5.0);
-        let coord1 = Coord::new(0.0, 0.0, 0.0);
-        let coord2 = Coord::new(1.0, 1.0, 1.0);
-
-        let (base_one, _) = setup_base_residues();
-        let system = System {
-            box_size: None,
-            definitions: vec![],
-            constructed: vec![
-                ConstructedComponent {
-                    description: "None".to_string(),
-                    component: Component {
-                        box_size: Coord::ORIGO,
-                        origin: origin,
-                        residue_base: base_one.clone(),
-                        residue_coords: vec![coord1, coord2],
-                    },
-                },
-            ]
-        };
-
-        let mut iter = system.iter_residues();
-        assert_eq!(Some((origin + coord1, &base_one)), iter.next());
-        assert_eq!(Some((origin + coord2, &base_one)), iter.next());
-        assert_eq!(None, iter.next());
+            Ok(ComponentEntry::SurfaceCylinder(conf.construct().map_err(|_|
+                UIErrorKind::from("Could not construct cylinder")
+            )?))
+        },
     }
 }
