@@ -6,7 +6,9 @@ use ansi_term::Colour::{Yellow, Red};
 use clap;
 use std::error::Error;
 use std::fmt;
+use std::fmt::Display;
 use std::io;
+use std::num::{ParseFloatError, ParseIntError};
 use std::result;
 
 /// Shorthand for our `Result` class.
@@ -20,7 +22,34 @@ pub enum UIErrorKind {
     NoSelection,
     /// An input value which was requested could not be parsed.
     BadValue(String),
+    /// User aborted a process.
     Abort,
+}
+
+pub type UIResult<T> = result::Result<T, UIErrorKind>;
+
+impl From<io::Error> for UIErrorKind {
+    fn from(_: io::Error) -> UIErrorKind {
+        UIErrorKind::BadValue("could not parse a value".to_string())
+    }
+}
+
+impl From<ParseFloatError> for UIErrorKind {
+    fn from(_: ParseFloatError) -> UIErrorKind {
+        UIErrorKind::BadValue("could not parse a value".to_string())
+    }
+}
+
+impl From<ParseIntError> for UIErrorKind {
+    fn from(_: ParseIntError) -> UIErrorKind {
+        UIErrorKind::BadValue("could not parse a value".to_string())
+    }
+}
+
+impl<'a, T: Display + ?Sized> From<&'a T> for UIErrorKind {
+    fn from(err: &'a T) -> UIErrorKind {
+        UIErrorKind::BadValue(err.to_string())
+    }
 }
 
 #[derive(Debug)]
@@ -54,7 +83,7 @@ impl Error for GrafenCliError {
     }
 }
 
-impl fmt::Display for GrafenCliError {
+impl Display for GrafenCliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let red_error = Red.paint("error:");
 

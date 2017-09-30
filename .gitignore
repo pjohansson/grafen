@@ -18,6 +18,9 @@
 [._]s[a-v][a-z]
 [._]sw[a-p]
 
+# VS Code
+.vscode
+
 # Session
 Session.vim
 

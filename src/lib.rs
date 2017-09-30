@@ -1,10 +1,15 @@
 //! Define and construct systems used for molecular simulations.
 
 extern crate rand;
-#[macro_use]
-extern crate serde_derive;
+extern crate serde_json;
+#[macro_use] extern crate serde_derive;
 
-pub mod cylinder;
+#[macro_use] pub mod coord;
+#[macro_use] pub mod system;
+
+pub mod describe;
+pub mod database;
 pub mod error;
-pub mod substrate;
-pub mod system;
+pub mod iterator;
+pub mod surface;
+pub mod volume;

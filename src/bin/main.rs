@@ -1,21 +1,19 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
 
 extern crate ansi_term;
-#[macro_use]
-extern crate clap;
+#[macro_use] extern crate clap;
+extern crate dialoguer;
 extern crate grafen;
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
 
 mod error;
-mod database;
 mod output;
 mod ui;
 
-use database::{read_database, DataBase};
 use error::Result;
+
+use grafen::database::{read_database, DataBase};
 
 use std::process;
 use std::path::PathBuf;
@@ -54,7 +52,7 @@ impl Config {
 }
 
 fn main() {
-    let matches = clap_app!(grafen_cli =>
+    let matches = clap_app!(grafen =>
         (version: crate_version!())
         (author: crate_authors!())
         (about: crate_description!())
@@ -63,7 +61,9 @@ fn main() {
         (@arg database: -d --database [PATH] +takes_value "Path to database")
     ).get_matches();
 
-    if let Err(err) = Config::from_matches(matches).and_then(|mut conf| ui::user_menu(&mut conf)) {
+    eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+
+    if let Err(err) = Config::from_matches(matches).and_then(|conf| ui::user_menu(conf)) {
         eprintln!("{}", err);
         process::exit(1);
     }

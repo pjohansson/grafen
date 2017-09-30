@@ -1,9 +1,26 @@
+0.9
+===
+* Rewrite of the object construction framework. Instead of a messy matching to different object types using `IntoComponent`, the simple trait `Component` has been redone to yield all necessary information from objects.
+* In particular `Component` prescribed the method `iter_atoms` which yields all atoms in a component with their indices as required for output to disk.
+* Objects are added to the `DataBase` using a static dispatcher enum as a wrapper. This wrapper lets all objects exist in one `Vec`. It is created using the new macro `create_entry_wrapper` which passes through all the required implementations.
+* Object definitions now contain all the information required to process and use them. Instead of containing as little information as possible and then have a separate object wrap them with more methods for `DataBase` use, etc. This second layer is unnecessarily confusing (although we still need one separate layer for the static dispatch, but as per above this is fully transparent).
+* The `ResidueBase` object has been renamed to `Residue`.
+* `System` has been moved to `system` and improved to user proper methods for yielding information for output. This includes implementing `iter_atoms` through the `Component` trait which links to all components` methods of that name and merges them to a single whole.
+
+0.8
+===
+* The user interface has been reworked, using `dialoguer` instead of plain text selection.
+
 0.7
 ===
 * The command line interface has been reworked to allow for new types of objects.
 * This includes the database being able to store these on disk.
 * In particular, a `Cylinder` object has been added. It is a sheet of molecules, folded into a cylinder. Practically it represents (eg.) a nanotube.
 * `Component`s now own their `ResidueBase`. As such the `Residue` object has been removed.
+
+0.7.1
+-----
+* `Cylinder`s can now be created as filled volumes, not only sheets.
 
 0.6
 ===

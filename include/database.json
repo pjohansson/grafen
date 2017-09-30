@@ -45,13 +45,8 @@
   ],
   "component_definitions": [
     {
-      "Sheet": {
-        "name": "Grafen",
-        "lattice": {
-          "Hexagonal": {
-            "a": 0.142
-          }
-        },
+      "SurfaceSheet": {
+        "name": "Graphene",
         "residue": {
           "code": "GRA",
           "atoms": [
@@ -65,19 +60,17 @@
             }
           ]
         },
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
+          }
+        },
         "std_z": null
       }
     },
     {
-      "Sheet": {
+      "SurfaceSheet": {
         "name": "Silica",
-        "lattice": {
-          "Triclinic": {
-            "a": 0.45,
-            "b": 0.45,
-            "gamma": 60.0
-          }
-        },
         "residue": {
           "code": "SIO",
           "atoms": [
@@ -107,19 +100,21 @@
             }
           ]
         },
+        "lattice": {
+          "Triclinic": {
+            "a": 0.45,
+            "b": 0.45,
+            "gamma": 60.0
+          }
+        },
         "std_z": null
       }
     },
     {
-      "Cylinder": {
-        "name": "CarbonTip",
-        "lattice": {
-          "Hexagonal": {
-            "a": 0.142
-          }
-        },
+      "SurfaceCylinder": {
+        "name": "Graphene Nanotube",
         "residue": {
-          "code": "CYL",
+          "code": "GRA",
           "atoms": [
             {
               "code": "C",
@@ -130,6 +125,11 @@
               }
             }
           ]
+        },
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
+          }
         },
         "alignment": "Z",
         "cap": "Bottom"

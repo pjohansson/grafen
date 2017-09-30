@@ -4,8 +4,8 @@ use rand;
 use rand::distributions::IndependentSample;
 use std::cmp;
 
-use substrate::points::Points;
-use system::Coord;
+use coord::Coord;
+use surface::points::Points;
 
 pub struct PoissonDistribution;
 

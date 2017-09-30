@@ -2,8 +2,8 @@
 //! information about and grid coordinates of lattices. It comes
 //! with easy-to-use constructors for different lattice types.
 
-use substrate::points::Points;
-use system::Coord;
+use coord::Coord;
+use surface::points::Points;
 
 pub struct Lattice;
 
