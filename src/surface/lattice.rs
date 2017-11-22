@@ -3,7 +3,7 @@
 //! with easy-to-use constructors for different lattice types.
 
 use coord::Coord;
-use substrate::points::Points;
+use surface::points::Points;
 
 pub struct Lattice;
 

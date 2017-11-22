@@ -1,4 +1,4 @@
-//! The base collection of `Points` onto which ResidueBase's
+//! The base collection of `Points` onto which Residue's
 //! can be broadcast. Beyond the creation of points (ie.
 //! using a Lattice or Poisson Disc generator) all transformations
 //! of the points belong in this module.

@@ -3,9 +3,10 @@
 extern crate ansi_term;
 #[macro_use] extern crate clap;
 extern crate dialoguer;
-extern crate grafen;
 extern crate serde;
 extern crate serde_json;
+
+extern crate grafen;
 
 mod error;
 mod output;
@@ -63,7 +64,7 @@ fn main() {
 
     eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
-    if let Err(err) = Config::from_matches(matches).and_then(|mut conf| ui::user_menu(&mut conf)) {
+    if let Err(err) = Config::from_matches(matches).and_then(|conf| ui::user_menu(conf)) {
         eprintln!("{}", err);
         process::exit(1);
     }

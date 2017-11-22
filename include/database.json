@@ -45,13 +45,8 @@
   ],
   "component_definitions": [
     {
-      "Sheet": {
-        "name": "Grafen",
-        "lattice": {
-          "Hexagonal": {
-            "a": 0.142
-          }
-        },
+      "SurfaceSheet": {
+        "name": "Graphene",
         "residue": {
           "code": "GRA",
           "atoms": [
@@ -65,19 +60,17 @@
             }
           ]
         },
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
+          }
+        },
         "std_z": null
       }
     },
     {
-      "Sheet": {
+      "SurfaceSheet": {
         "name": "Silica",
-        "lattice": {
-          "Triclinic": {
-            "a": 0.45,
-            "b": 0.45,
-            "gamma": 60.0
-          }
-        },
         "residue": {
           "code": "SIO",
           "atoms": [
@@ -107,12 +100,19 @@
             }
           ]
         },
+        "lattice": {
+          "Triclinic": {
+            "a": 0.45,
+            "b": 0.45,
+            "gamma": 60.0
+          }
+        },
         "std_z": null
       }
     },
     {
-      "Cylinder": {
-        "name": "CylinderTip",
+      "SurfaceCylinder": {
+        "name": "Graphene Nanotube",
         "residue": {
           "code": "GRA",
           "atoms": [
@@ -126,38 +126,13 @@
             }
           ]
         },
-        "alignment": "Z",
-        "cap": null,
-        "class": {
-          "Sheet": {
-            "Hexagonal": {
-              "a": 0.142
-            }
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
           }
-        }
-      }
-    },
-    {
-      "Cylinder": {
-        "name": "FilledCylinder",
-        "residue": {
-          "code": "GRA",
-          "atoms": [
-            {
-              "code": "C",
-              "position": {
-                "x": 0.071,
-                "y": 0.071,
-                "z": 0.0
-              }
-            }
-          ]
         },
         "alignment": "Z",
-        "cap": null,
-        "class": {
-          "Volume": null
-        }
+        "cap": "Bottom"
       }
     }
   ]
