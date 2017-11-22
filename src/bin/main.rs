@@ -3,9 +3,10 @@
 extern crate ansi_term;
 #[macro_use] extern crate clap;
 extern crate dialoguer;
-extern crate grafen;
 extern crate serde;
 extern crate serde_json;
+
+extern crate grafen;
 
 mod error;
 mod output;
