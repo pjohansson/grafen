@@ -386,7 +386,7 @@ mod tests {
             ],
         };
 
-        let mut iter = system.iter_atoms();
+        let iter = system.iter_atoms();
 
         // Inspect the seventh atom: the first in the second component
         let atom = iter.skip(6).next().unwrap();

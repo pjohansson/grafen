@@ -198,7 +198,7 @@ impl Rotate for Coord {
             Direction::X => Coord::new(self.x, -self.z, self.y),
             Direction::Y => Coord::new(self.z, self.y, -self.x),
             Direction::Z => Coord::new(-self.y, self.x, self.z),
-        } 
+        }
     }
 }
 
@@ -305,7 +305,7 @@ macro_rules! impl_rotate {
 
 /// Rotate a set of coordinates around an axis.
 pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
-    coords.iter() 
+    coords.iter()
         .map(|&coord| coord.rotate(axis))
         .collect()
 }
@@ -434,8 +434,8 @@ mod tests {
 
     #[test]
     fn coord_distance_along_plane() {
-        let mut coord1 = Coord::new(0.0, 0.0, 0.0);
-        let mut coord2 = Coord::new(1.0, 1.0, 5.0);
+        let coord1 = Coord::new(0.0, 0.0, 0.0);
+        let coord2 = Coord::new(1.0, 1.0, 5.0);
 
         assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::X));
         assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::Y));

@@ -545,7 +545,6 @@ mod tests {
     fn add_caps_to_cylinder() {
         let radius = 2.0;
         let height = 5.0;
-        let density = 10.0;
         let lattice = Hexagonal { a: 0.1 };
 
         let mut conf = setup_cylinder(radius, height, &lattice);
