@@ -12,6 +12,12 @@ use std::f64::consts::PI;
 impl_component![Cuboid, Cylinder];
 impl_translate![Cuboid, Cylinder, Sphere];
 
+/// Volumes can contain coordinates.
+trait Contains {
+    /// Whether a coordinate is contained within the volume's space.
+    fn contains(&self, coord: Coord) -> bool;
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.
 pub struct Cuboid {
@@ -24,7 +30,6 @@ pub struct Cuboid {
     #[serde(skip)]
     pub coords: Vec<Coord>,
 }
-
 
 #[allow(dead_code)]
 impl Cuboid {
@@ -121,6 +126,16 @@ impl Cuboid {
             radius,
             coords,
         }
+    }
+}
+
+impl Contains for Cuboid {
+    fn contains(&self, coord: Coord) -> bool {
+        let (x, y, z) = coord.to_tuple();
+        let (x0, y0, z0) = self.origin.to_tuple();
+        let (x1, y1, z1) = (self.origin + self.size).to_tuple();
+
+        x >= x0 && x <= x1 && y >= y0 && y <= y1 && z >= z0 && z <= z1
     }
 }
 
@@ -224,6 +239,14 @@ impl Cylinder {
             .. self.clone()
         }
 
+    }
+}
+
+impl Contains for Cylinder {
+    fn contains(&self, coord: Coord) -> bool {
+        let (dr, dh) = self.origin.distance_cylindrical(coord, self.alignment);
+
+        dr <= self.radius && dh >= 0.0 && dh <= self.height
     }
 }
 
@@ -527,5 +550,85 @@ mod tests {
 
         cylinder.alignment = Direction::Z;
         assert_eq!(Coord::new(diameter, diameter, height), cylinder.calc_box_size());
+    }
+
+    #[test]
+    fn cuboid_contains_coordinates_in_absolute_space() {
+        let cuboid = Cuboid {
+            origin: Coord::new(1.0, 1.0, 1.0),
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let err = 1e-9;
+
+        // Inside
+        assert!(cuboid.contains(Coord::new(1.0 + err, 1.0 + err, 1.0 + err)));
+        assert!(cuboid.contains(Coord::new(2.0 - err, 2.0 - err, 2.0 - err)));
+
+        // Outside
+        assert!(!cuboid.contains(Coord::new(1.0 - err, 1.0 + err, 1.0 + err)));
+        assert!(!cuboid.contains(Coord::new(1.0 + err, 1.0 - err, 1.0 + err)));
+        assert!(!cuboid.contains(Coord::new(1.0 + err, 1.0 + err, 1.0 - err)));
+
+        // Outside
+        assert!(!cuboid.contains(Coord::new(2.0 + err, 2.0 - err, 2.0 - err)));
+        assert!(!cuboid.contains(Coord::new(2.0 - err, 2.0 + err, 2.0 - err)));
+        assert!(!cuboid.contains(Coord::new(2.0 - err, 2.0 - err, 2.0 + err)));
+    }
+
+    #[test]
+    fn cylinder_contains_coordinates_in_absolute_space_depending_on_direction() {
+        let mut cylinder = Cylinder {
+            name: None,
+            residue: None,
+            origin: Coord::new(1.0, 1.0, 1.0),
+            radius: 1.0,
+            height: 2.0,
+            alignment: Direction::X,
+            coords: vec![],
+        };
+
+        let err = 1e-9;
+
+        // Inside
+        assert!(cylinder.contains(Coord::new(1.0 + err, 1.0, 1.0)));
+        assert!(cylinder.contains(Coord::new(3.0 - err, 1.0, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0 + err, 2.0 - err, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0 + err, 1.0, 2.0 - err)));
+
+        // Outside
+        assert!(!cylinder.contains(Coord::new(1.0 - err, 1.0, 1.0)));
+        assert!(!cylinder.contains(Coord::new(3.0 + err, 1.0, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0 + err, 2.0 + err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0 + err, 2.0, 2.0 + err)));
+
+        cylinder.alignment = Direction::Y;
+
+        // Inside
+        assert!(cylinder.contains(Coord::new(1.0, 1.0 + err, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0, 3.0 - err, 1.0)));
+        assert!(cylinder.contains(Coord::new(2.0 - err, 1.0 + err, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0, 1.0 + err, 2.0 - err)));
+
+        // Outside
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0 - err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0, 3.0 + err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(2.0 + err, 1.0 + err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0 + err, 2.0 + err)));
+
+        cylinder.alignment = Direction::Z;
+
+        // Inside
+        assert!(cylinder.contains(Coord::new(1.0, 1.0, 1.0 + err)));
+        assert!(cylinder.contains(Coord::new(1.0, 1.0, 3.0 - err)));
+        assert!(cylinder.contains(Coord::new(2.0 - err, 1.0, 1.0 + err)));
+        assert!(cylinder.contains(Coord::new(1.0, 2.0 - err, 3.0 - err)));
+
+        // Outside
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0, 1.0 - err)));
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0, 3.0 + err)));
+        assert!(!cylinder.contains(Coord::new(2.0 + err, 1.0, 1.0 + err)));
+        assert!(!cylinder.contains(Coord::new(1.0, 2.0 + err, 3.0 - err)));
     }
 }
