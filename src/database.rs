@@ -59,17 +59,17 @@ pub enum DataBaseError {
 ///     residue: Option<Residue>,
 ///     coords: Vec<Coord>
 /// }
-/// 
+///
 /// // Not shown: implement required traits
 /// # impl StructOne { fn calc_box_size(&self) -> Coord { Coord::default() } }
 /// # impl StructTwo { fn calc_box_size(&self) -> Coord { Coord::default() } }
-/// # impl Describe for StructOne { 
-/// #     fn describe(&self) -> String { "StructOne".to_string() } 
-/// #     fn describe_short(&self) -> String { self.describe() } 
+/// # impl Describe for StructOne {
+/// #     fn describe(&self) -> String { "StructOne".to_string() }
+/// #     fn describe_short(&self) -> String { self.describe() }
 /// # }
-/// # impl Describe for StructTwo { 
-/// #     fn describe(&self) -> String { "StructTwo".to_string() } 
-/// #     fn describe_short(&self) -> String { self.describe() } 
+/// # impl Describe for StructTwo {
+/// #     fn describe(&self) -> String { "StructTwo".to_string() }
+/// #     fn describe_short(&self) -> String { self.describe() }
 /// # }
 /// # impl_component![StructOne, StructTwo];
 /// # impl_translate![StructOne, StructTwo];
@@ -165,6 +165,15 @@ macro_rules! create_entry_wrapper {
                 match self {
                     $(
                         $name::$entry(object) => $name::$entry(object.translate(coord)),
+                    )*
+                }
+            }
+
+            fn translate_in_place(&mut self, coord: Coord) {
+                match *self {
+                    $(
+                        $name::$entry(ref mut object)
+                            => { object.translate_in_place(coord); }
                     )*
                 }
             }

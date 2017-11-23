@@ -208,7 +208,8 @@ impl Cylinder {
         }
     }
 
-    /// Fill the cylinder with (roughly) uniformly distributed coordinates and return the object.
+    /// Fill the cylinder with (roughly) uniformly distributed coordinates
+    /// and return the object.
     pub fn fill(self, num_coords: u64) -> Cylinder {
         let mut rng = rand::thread_rng();
 
@@ -693,9 +694,12 @@ mod tests {
         };
 
         let coords_within = vec![
-            Coord::new(-0.9, 0.1, 0.1),
+            Coord::new(-0.9, 0.1, 0.1), // Atom B within
             Coord::new(-0.5, 0.5, 0.5),
-            Coord::new(-0.1, 0.9, 0.9)
+            Coord::new(-0.1, 0.9, 0.9),
+            Coord::new(0.1, 0.9, 0.9), // Atom A within
+            Coord::new(0.5, 0.9, 0.9),
+            Coord::new(0.9, 0.9, 0.9)
         ];
 
         let coords_without = vec![

@@ -313,6 +313,7 @@ pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
 /// Translate an object by a `Coord`.
 pub trait Translate {
     fn translate(self, coord: Coord) -> Self;
+    fn translate_in_place(&mut self, coord: Coord);
 }
 
 #[macro_export]
@@ -325,6 +326,11 @@ macro_rules! impl_translate {
                 fn translate(mut self, coord: Coord) -> Self {
                     self.origin += coord;
                     self
+                }
+
+                /// Translate the object by an input `Coord` in-place.
+                fn translate_in_place(&mut self, coord: Coord) {
+                    self.origin += coord;
                 }
             }
         )*
@@ -472,5 +478,33 @@ mod tests {
         }.rotate(Direction::Z);
 
         assert_eq!(Coord::new(-2.0, 1.0, 3.0), rotated.coords[0]);
+    }
+
+    #[test]
+    fn impl_translate_object() {
+        struct TranslateTest { origin: Coord }
+        impl_translate![TranslateTest];
+
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        let translated = TranslateTest {
+            origin: Coord::ORIGO,
+        }.translate(coord);
+
+        assert_eq!(translated.origin, coord);
+    }
+
+    #[test]
+    fn impl_translate_object_in_place() {
+        struct TranslateTest { origin: Coord }
+        impl_translate![TranslateTest];
+
+        let mut object = TranslateTest {
+            origin: Coord::ORIGO,
+        };
+
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        object.translate_in_place(coord);
+
+        assert_eq!(object.origin, coord);
     }
 }
