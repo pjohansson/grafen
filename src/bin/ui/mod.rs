@@ -39,6 +39,9 @@ pub fn user_menu(config: Config) -> Result<()> {
         AddComponent, "Construct a component" => {
             create_component(&mut system)
         },
+        EditComponent, "Edit a component" => {
+            edit_component(&mut system.components)
+        },
         RemoveItems, "Remove a component from the list" => {
             remove_items(&mut system.components).map(|_| None)
         },
@@ -69,6 +72,95 @@ fn create_component(system: &mut System) -> MenuResult {
         },
         Err(err) => Err(err),
     }
+}
+
+use ui::utils::select_item_index;
+use grafen::coord::Translate;
+
+/// Prompt the user to select a defined component and then edit it.
+fn edit_component(components: &mut [ComponentEntry]) -> MenuResult {
+    // The component should be a mutable reference to the object in the list,
+    // since we want to edit it in-place.
+    eprintln!("Select component to edit:");
+    let index = select_item_index(components, 0)?;
+    let mut component = components[index].clone();
+
+    create_menu![
+        @pre: {
+            eprint!("State: ");
+            print_description(&component);
+            eprint!("\n");
+        };
+
+        Translate, "Translate the component" => {
+            let coord = get_position_from_user(None)?;
+            component.translate_in_place(coord);
+            Ok(None)
+        },
+        PruneByVolume, "Remove residues which overlap another component" => {
+            let volume: Result<Cuboid> = get_volume_from_user(components);
+            Ok(None)
+        },
+        QuitAndSave, "Finish editing component" => {
+            components[index] = component;
+            return Ok(Some("Finished editing component".to_string()));
+        },
+        QuitWithoutSaving, "Abort editing and discard changes" => {
+            return Ok(Some("Discarding changes to component".to_string()));
+        }
+    ];
+}
+
+use grafen::describe::Describe;
+use grafen::volume::{Contains, Cuboid, Cylinder};
+
+fn get_volume_from_user<T: Contains>(components: &[ComponentEntry]) -> Result<T> {
+    // let volume_components = get_volume_objects(components);
+    // let component = select_item(&volume_components, Some("Select component to cut with"))?;
+
+    unimplemented!();
+}
+
+/// Prune the list of components to only return those that are volumes, without their
+/// coordinates since we don't want to copy those.
+fn get_volume_objects<T>(components: &[ComponentEntry])
+        -> Vec<Box<T>> where T: Contains + Describe {
+    components.iter()
+              // Explicitly write the closure return type as pointers to `Contains`,
+              // otherwise the compiler believes that the closure returns a pointer
+              // to a not-generic object type that implements the trait.
+              .filter_map(|comp| -> Option<Box<Contains + Describe>> {
+                  match comp {
+                      &ComponentEntry::VolumeCuboid(ref obj) => {
+                          let volume = Cuboid {
+                              name: obj.name.clone(),
+                              residue: obj.residue.clone(),
+                              origin: obj.origin,
+                              size: obj.size,
+                              coords: vec![],
+                          };
+
+                          Some(Box::new(volume))
+                      },
+
+                      &ComponentEntry::VolumeCylinder(ref obj) => {
+                          let volume = Cylinder {
+                              name: obj.name.clone(),
+                              residue: obj.residue.clone(),
+                              origin: obj.origin,
+                              radius: obj.radius,
+                              height: obj.height,
+                              alignment: obj.alignment,
+                              coords: vec![],
+                          };
+
+                          Some(Box::new(volume))
+                      },
+
+                      _ => None,
+                  }
+              })
+              .collect::<Vec<Box<T>>>()
 }
 
 /// Ask the user for information about the selected component, then return the constructed object.

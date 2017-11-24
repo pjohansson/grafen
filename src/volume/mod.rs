@@ -13,7 +13,7 @@ impl_component![Cuboid, Cylinder];
 impl_translate![Cuboid, Cylinder, Sphere];
 
 /// Volumes can contain coordinates.
-pub trait Contains {
+pub trait Contains: Describe {
     /// Whether a coordinate is contained within the volume's space.
     fn contains(&self, coord: Coord) -> bool;
 }
