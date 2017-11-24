@@ -130,18 +130,6 @@ pub fn select_item<'a, T: Describe>(items: &'a [T], header: Option<&str>) -> UIR
     select_item_index(items, 0).map(|index| &items[index])
 }
 
-/// Promp the user to select an item from an input list. Return as a mutable
-/// reference to the object.
-///
-/// Optionally print a header description of the choices to standard error.
-pub fn select_item_mut<'a, T: Describe>(items: &'a mut [T], header: Option<&str>) -> UIResult<&'a mut T> {
-    if let Some(h) = header {
-        eprintln!("{}:", h);
-    }
-
-    select_item_index(items, 0).map(move |index| &mut items[index])
-}
-
 /// Promp the user to select an item from an input list. The item index is returned.
 ///
 /// Helper function for quick item selection in other functions.
