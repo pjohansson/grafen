@@ -28,7 +28,8 @@ pub enum DataBaseError {
 /// The enum is used to hold created objects of different types in one container,
 /// sharing one interface.
 ///
-/// Implements `Describe`, `Component` and `Translate` for the enum.
+/// Implements `Describe`, `Component` and `Translate` for the enum. Also sets up
+/// some getter functions directly to the object data.
 ///
 /// # Requires
 /// Wrapped objects have to implement the above traits and `Clone`, `Debug`,
@@ -114,6 +115,35 @@ macro_rules! create_entry_wrapper {
             $(
                 $entry($class),
             )*
+        }
+
+        /// Getter function of linked data.
+        impl<'a> $name {
+            /// Get a reference to the coordinates of the component.
+            pub fn get_coords(&'a self) -> &[Coord] {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => &object.coords,
+                    )*
+                }
+            }
+
+            pub fn get_coords_mut(&'a mut self) -> &mut Vec<Coord> {
+                match *self {
+                    $(
+                        $name::$entry(ref mut object) => &mut object.coords,
+                    )*
+                }
+            }
+
+            /// Get a reference to the component's optional `Residue`.
+            pub fn get_residue(&'a self) -> &'a Option<Residue> {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => &object.residue,
+                    )*
+                }
+            }
         }
 
         impl Describe for $name {
