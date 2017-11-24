@@ -329,7 +329,7 @@ pub fn pbc_multiply_volume(coords: &[Coord], size: Coord, nx: usize, ny: usize, 
 ///
 /// Checks all atoms within the input residue to see if any are contained by the volume.
 /// If any are, the residue coordinate is kept in the returned list.
-pub fn prune_residues_from_volume<T>(coords: &[Coord], residue: &Residue, volume: &T)
+pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord], residue: &Residue, volume: &T)
         -> Vec<Coord> where T: Contains {
     coords.iter()
           .filter(|&c0| {
