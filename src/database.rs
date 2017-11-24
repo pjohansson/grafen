@@ -128,6 +128,7 @@ macro_rules! create_entry_wrapper {
                 }
             }
 
+            /// Get a mutable reference to the coordinates of the component.
             pub fn get_coords_mut(&'a mut self) -> &mut Vec<Coord> {
                 match *self {
                     $(
