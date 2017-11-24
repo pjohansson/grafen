@@ -28,6 +28,7 @@ pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
         Translate, "Translate the component" => {
             let coord = get_position_from_user(None)?;
             component.translate_in_place(coord);
+            
             Ok(None)
         },
         PruneByVolume, "Remove residues which overlap another component" => {
@@ -38,10 +39,7 @@ pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
                 component.get_residue().as_ref().unwrap(),
                 volume.as_ref());
 
-
-
             component.get_coords_mut().clone_from(&pruned_coords);
-
             let num_after = component.num_atoms();
 
             Ok(Some(format!("Removed {} atoms from the component", num_before - num_after)))
@@ -88,9 +86,6 @@ fn get_volume_from_user(components: &[ComponentEntry]) -> Result<Box<Contains>> 
             "Tried to get a volume type that has not been implemented: this should be impossible")
         )),
     }
-
-
-
 }
 
 /// Prune the list of components to only return those that are volumes, without their
