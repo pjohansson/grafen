@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Sub, SubAssign, Neg};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Neg, Mul, MulAssign};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -248,6 +248,24 @@ impl Neg for Coord {
     }
 }
 
+impl Mul<f64> for Coord {
+    type Output = Coord;
+
+    fn mul(self, value: f64) -> Coord {
+        Coord::new(self.x * value, self.y * value, self.z * value)
+    }
+}
+
+impl MulAssign<f64> for Coord {
+    fn mul_assign(&mut self, value: f64) {
+        *self = Coord {
+            x: self.x * value,
+            y: self.y * value,
+            z: self.z * value,
+        }
+    }
+}
+
 impl PartialEq for Coord {
     fn eq(&self, other: &Coord) -> bool {
         let atol = 1e-9;
@@ -424,6 +442,7 @@ mod tests {
         assert_eq!(Coord::new(3.0, 5.0, 7.0), coord1 + coord2);
         assert_eq!(Coord::new(3.0, 3.0, 3.0), coord2 - coord1);
         assert_eq!(Coord::new(0.0, -1.0, -2.0), -coord1);
+        assert_eq!(Coord::new(2.0, 4.0, 6.0), Coord::new(1.0, 2.0, 3.0) * 2.0);
     }
 
     #[test]
@@ -436,6 +455,10 @@ mod tests {
 
         coord1 -= coord2;
         assert_eq!(Coord::ORIGO, coord1);
+
+        coord1 += coord2;
+        coord1 *= 2.0;
+        assert_eq!(coord2 + coord2, coord1);
     }
 
     #[test]
