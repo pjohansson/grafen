@@ -9,11 +9,12 @@ use system::{Component, Residue};
 use volume;
 
 use serde_json;
+use std::ffi::OsStr;
 use std::fmt::Write;
+use std::convert::From;
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::ffi::OsStr;
-use std::fs::File;
 use std::result;
 
 #[derive(Copy, Clone, Debug)]
@@ -209,6 +210,14 @@ macro_rules! create_entry_wrapper {
                 }
             }
         }
+
+        $(
+            impl From<$class> for $name {
+                fn from(object: $class) -> $name {
+                    $name::$entry(object)
+                }
+            }
+        )*
     }
 }
 
@@ -336,6 +345,7 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 mod tests {
     use super::*;
     use system::*;
+    use volume::Cuboid;
 
     #[test]
     fn serialize_and_deserialize_residue_entry() {
@@ -407,5 +417,22 @@ mod tests {
 
         database.set_path("/a/file.json").unwrap();
         assert_eq!("'/a/file.json'", &database.get_path_pretty());
+    }
+
+    #[test]
+    fn create_entry_macro_adds_from_method() {
+        let cuboid = Cuboid::default();
+        let component = ComponentEntry::from(cuboid.clone());
+
+        match component {
+            ComponentEntry::VolumeCuboid(object) => {
+                assert_eq!(object.name, cuboid.name);
+                assert_eq!(object.residue, cuboid.residue);
+                assert_eq!(object.size, cuboid.size);
+                assert_eq!(object.origin, cuboid.origin);
+                assert_eq!(object.coords, cuboid.coords);
+            },
+            _ => panic!["Incorrect object was created"],
+        }
     }
 }
