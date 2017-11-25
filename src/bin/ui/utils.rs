@@ -8,6 +8,8 @@ use grafen::describe::{describe_list_short, describe_list, Describe};
 use dialoguer::{Input, Select};
 use std::str::FromStr;
 
+pub type MenuResult = Result<Option<String>>;
+
 /// Parse a value from the user.
 pub fn get_value_from_user<T: FromStr>(description: &str) -> UIResult<T> {
     Input::new(description)
@@ -28,6 +30,66 @@ pub fn get_position_from_user(default: Option<&str>) -> UIResult<Coord> {
     Coord::from_str(&input.interact()?).map_err(|err| UIErrorKind::from(&err))
 }
 
+/// Macro to create a consistent user menu.
+///
+/// The menu will loop until it is broken, either by returning from the function
+/// or breaking it.
+///
+/// It takes a closure of commands to perform before every menu loop, then for each menu command:
+///
+/// 1. A unique identifier (enum type) for the command.
+/// 2. A text description for the command which will be shown to the user.
+/// 3. A closure that performs the desired actions and returns a `MenuResult`.
+///
+/// Note that the macro defines an enum for the menu selection, which the input command
+/// identifiers are added to. This enum has the identifier `_ScopedMenu`.
+///
+/// # Examples
+/// ```
+/// # use ui::utils::MenuResult;
+/// let mut string = String::new();
+///
+/// create_menu![
+///     @pre: { println!("Current: {:?}", string); };
+///     Set, "Set the string" => {
+///         string = String::from("set");
+///         Ok(Some("String set".to_string()))
+///     },
+///     Clear, "Clear the string" => {
+///         string.clear();
+///         Ok(Some("String cleared".to_string()))
+///     },
+///     Nothing, "Do nothing" => { Ok(None) }
+/// ];
+/// ```
+macro_rules! create_menu {
+    (
+        @pre: $topmatter:tt;
+        $( $command:ident, $text:expr  => $closure:block ),+
+    ) => {
+        #[derive(Clone, Copy, Debug)]
+        enum _ScopedMenu { $( $command ),* }
+
+        let (commands, item_texts) = create_menu_items![
+            $( (_ScopedMenu::$command, $text) ),*
+        ];
+
+        loop {
+            $topmatter
+            let command = select_command(item_texts, commands)?;
+            let result: MenuResult = match command { $( _ScopedMenu::$command => $closure ),* };
+
+            match result {
+                Ok(Some(msg)) => eprintln!("{}", msg),
+                Ok(None) => (),
+                Err(msg) => eprintln!("{}", msg),
+            }
+
+            eprintln!("");
+        }
+    }
+}
+
 /// Macro for constructing and returning a tuple of matching menu commands and descriptions.
 ///
 /// They are yielded as a (&[Commands], &[Descriptions]) tuple.
@@ -46,7 +108,7 @@ macro_rules! create_menu_items {
     }
 }
 
-/// Use a dialogue prompt to select an from a list of corresponding objects..
+/// Use a dialogue prompt to select a command from a list.
 pub fn select_command<T: Copy>(item_texts: &[&str], commands: &[T]) -> UIResult<T> {
     let index = Select::new()
         .default(0)
@@ -56,7 +118,8 @@ pub fn select_command<T: Copy>(item_texts: &[&str], commands: &[T]) -> UIResult<
     Ok(commands[index])
 }
 
-/// Promp the user to select an item from an input list. Return as a reference to the object.
+/// Promp the user to select an item from an input list. Return as a reference
+/// to the object.
 ///
 /// Optionally print a header description of the choices to standard error.
 pub fn select_item<'a, T: Describe>(items: &'a [T], header: Option<&str>) -> UIResult<&'a T> {
@@ -70,7 +133,7 @@ pub fn select_item<'a, T: Describe>(items: &'a [T], header: Option<&str>) -> UIR
 /// Promp the user to select an item from an input list. The item index is returned.
 ///
 /// Helper function for quick item selection in other functions.
-fn select_item_index<T: Describe>(items: &[T], default: usize) -> UIResult<usize> {
+pub fn select_item_index<T: Describe>(items: &[T], default: usize) -> UIResult<usize> {
     let item_texts: Vec<_> = items.iter().map(|item| item.describe_short()).collect();
 
     select_string(&item_texts, default)

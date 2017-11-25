@@ -3,30 +3,17 @@
 //! systems.
 
 #[macro_use] mod utils;
+mod edit_component;
 mod edit_database;
 
 use super::Config;
 use error::{GrafenCliError, Result, UIErrorKind};
 use output;
-use ui::utils::{get_value_from_user, get_position_from_user, print_description,
+use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_description,
                 remove_items, reorder_list, select_command, select_item};
 
 use grafen::database::*;
 use grafen::system::*;
-
-use std::error::Error;
-
-#[derive(Clone, Copy, Debug)]
-/// User commands for defining the system.
-enum MainMenu {
-    AddComponent,
-    RemoveComponent,
-    ReorderList,
-    SaveSystem,
-    EditDatabase,
-    Quit,
-}
-use self::MainMenu::*;
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -45,62 +32,42 @@ pub fn user_menu(config: Config) -> Result<()> {
         components: vec![],
     };
 
-    let (commands, item_texts) = create_menu_items![
-        (AddComponent, "Construct a component"),
-        (RemoveComponent, "Remove a component from the list"),
-        (ReorderList, "Reorder list of components"),
-        (SaveSystem, "Save the constructed components to disk as a system"),
-        (EditDatabase, "Edit the database of residue and object definitions"),
-        (Quit, "Quit the program")
-    ];
+    create_menu![
+        @pre: { print_description(&system); };
 
-    loop {
-        print_description(&system);
-
-        let command = select_command(item_texts, commands)?;
-
-        let result = match command {
-            AddComponent => {
-                create_component(&mut system)
-            },
-            RemoveComponent => {
-                remove_items(&mut system.components)
-                    .map(|_| "Successfully removed component.".to_string())
-            },
-            ReorderList => {
-                reorder_list(&mut system.components)
-                    .map(|_| "Successfully reordered list.".to_string())
-            },
-            EditDatabase => {
-                edit_database::user_menu(&mut system.database)
-            },
-            SaveSystem => {
-                output::write_gromos(&system)
-                    .map(|_| "Saved system to disk".to_string())
-            },
-            Quit => {
-                return Ok(());
-            },
-        };
-
-        match result {
-            Ok(msg) => { eprintln!("{}", msg); },
-            Err(err) => { eprintln!("error: {}", err.description()); },
+        AddComponent, "Construct a component" => {
+            create_component(&mut system)
+        },
+        EditComponent, "Edit a component" => {
+            edit_component::user_menu(&mut system.components)
+        },
+        RemoveItems, "Remove a component from the list" => {
+            remove_items(&mut system.components).map(|_| None)
+        },
+        ReorderList, "Reorder list of components" => {
+            reorder_list(&mut system.components).map(|_| None)
+        },
+        EditDatabase, "Edit the database of residue and object definitions" => {
+            edit_database::user_menu(&mut system.database)
+        },
+        SaveSystem, "Save the constructed components to disk as a system" => {
+            output::write_gromos(&system).map(|_| "Saved system to disk".to_string().into())
+        },
+        Quit, "Quit the program" => {
+            return Ok(());
         }
-
-        eprintln!("");
-    }
+    ];
 }
 
 /// Prompt the user to select a defined component from the `DataBase`, then create it.
-fn create_component(system: &mut System) -> Result<String> {
+fn create_component(system: &mut System) -> MenuResult {
     let component = select_item(&system.database.component_defs, Some("Available components"))?
         .clone();
 
     match fill_component(component) {
         Ok(filled) => {
             system.components.push(filled);
-            Ok("Added component to system".to_string())
+            Ok(Some("Added component to system".to_string()))
         },
         Err(err) => Err(err),
     }
@@ -130,7 +97,7 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
             let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
-            Ok(ComponentEntry::VolumeCylinder(conf.fill(num_residues)))
+            Ok(ComponentEntry::from(conf.fill(num_residues)))
         },
 
         ComponentEntry::SurfaceSheet(mut conf) => {
@@ -138,9 +105,13 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.length = get_value_from_user::<f64>("Length ΔX (nm)")?;
             conf.width = get_value_from_user::<f64>("Width ΔY (nm)")?;
 
-            Ok(ComponentEntry::SurfaceSheet(conf.construct().map_err(|_|
-                UIErrorKind::from("Could not construct sheet")
-            )?))
+            Ok(
+                ComponentEntry::from(
+                    conf.construct().map_err(|_| {
+                        UIErrorKind::from("Could not construct sheet")
+                    })?
+                ).with_pbc()
+            )
         },
 
         ComponentEntry::SurfaceCylinder(mut conf) => {
@@ -148,7 +119,7 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
 
-            Ok(ComponentEntry::SurfaceCylinder(conf.construct().map_err(|_|
+            Ok(ComponentEntry::from(conf.construct().map_err(|_|
                 UIErrorKind::from("Could not construct cylinder")
             )?))
         },

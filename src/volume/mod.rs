@@ -12,6 +12,12 @@ use std::f64::consts::PI;
 impl_component![Cuboid, Cylinder];
 impl_translate![Cuboid, Cylinder, Sphere];
 
+/// Volumes can contain coordinates.
+pub trait Contains: Describe {
+    /// Whether a coordinate is contained within the volume's space.
+    fn contains(&self, coord: Coord) -> bool;
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.
 pub struct Cuboid {
@@ -24,7 +30,6 @@ pub struct Cuboid {
     #[serde(skip)]
     pub coords: Vec<Coord>,
 }
-
 
 #[allow(dead_code)]
 impl Cuboid {
@@ -124,6 +129,16 @@ impl Cuboid {
     }
 }
 
+impl Contains for Cuboid {
+    fn contains(&self, coord: Coord) -> bool {
+        let (x, y, z) = coord.to_tuple();
+        let (x0, y0, z0) = self.origin.to_tuple();
+        let (x1, y1, z1) = (self.origin + self.size).to_tuple();
+
+        x >= x0 && x <= x1 && y >= y0 && y <= y1 && z >= z0 && z <= z1
+    }
+}
+
 impl Default for Cuboid {
     fn default() -> Cuboid {
         Cuboid {
@@ -193,7 +208,8 @@ impl Cylinder {
         }
     }
 
-    /// Fill the cylinder with (roughly) uniformly distributed coordinates and return the object.
+    /// Fill the cylinder with (roughly) uniformly distributed coordinates
+    /// and return the object.
     pub fn fill(self, num_coords: u64) -> Cylinder {
         let mut rng = rand::thread_rng();
 
@@ -224,6 +240,14 @@ impl Cylinder {
             .. self.clone()
         }
 
+    }
+}
+
+impl Contains for Cylinder {
+    fn contains(&self, coord: Coord) -> bool {
+        let (dr, dh) = self.origin.distance_cylindrical(coord, self.alignment);
+
+        dr <= self.radius && dh >= 0.0 && dh <= self.height
     }
 }
 
@@ -301,9 +325,27 @@ pub fn pbc_multiply_volume(coords: &[Coord], size: Coord, nx: usize, ny: usize, 
     }
 }
 
+/// Return residue coordinates which are not contained by a volume.
+///
+/// Checks all atoms within the input residue to see if any are contained by the volume.
+/// If any are, the residue coordinate is kept in the returned list.
+pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord], residue: &Residue, volume: &T)
+        -> Vec<Coord> where T: Contains {
+    coords.iter()
+          .filter(|&c0| {
+              residue.atoms
+                .iter()
+                .map(|ref atom| atom.position + *c0)
+                .all(|c1| !volume.contains(c1))
+          })
+          .cloned()
+          .collect::<Vec<_>>()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use system::Atom;
 
     fn setup_cuboid(dx: f64, dy: f64, dz: f64, spacing: f64) -> Cuboid {
         let mut coords = Vec::new();
@@ -527,5 +569,152 @@ mod tests {
 
         cylinder.alignment = Direction::Z;
         assert_eq!(Coord::new(diameter, diameter, height), cylinder.calc_box_size());
+    }
+
+    #[test]
+    fn cuboid_contains_coordinates_in_absolute_space() {
+        let cuboid = Cuboid {
+            origin: Coord::new(1.0, 1.0, 1.0),
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let err = 1e-9;
+
+        // Inside
+        assert!(cuboid.contains(Coord::new(1.0 + err, 1.0 + err, 1.0 + err)));
+        assert!(cuboid.contains(Coord::new(2.0 - err, 2.0 - err, 2.0 - err)));
+
+        // Outside
+        assert!(!cuboid.contains(Coord::new(1.0 - err, 1.0 + err, 1.0 + err)));
+        assert!(!cuboid.contains(Coord::new(1.0 + err, 1.0 - err, 1.0 + err)));
+        assert!(!cuboid.contains(Coord::new(1.0 + err, 1.0 + err, 1.0 - err)));
+
+        // Outside
+        assert!(!cuboid.contains(Coord::new(2.0 + err, 2.0 - err, 2.0 - err)));
+        assert!(!cuboid.contains(Coord::new(2.0 - err, 2.0 + err, 2.0 - err)));
+        assert!(!cuboid.contains(Coord::new(2.0 - err, 2.0 - err, 2.0 + err)));
+    }
+
+    #[test]
+    fn cylinder_contains_coordinates_in_absolute_space_depending_on_direction() {
+        let mut cylinder = Cylinder {
+            name: None,
+            residue: None,
+            origin: Coord::new(1.0, 1.0, 1.0),
+            radius: 1.0,
+            height: 2.0,
+            alignment: Direction::X,
+            coords: vec![],
+        };
+
+        let err = 1e-9;
+
+        // Inside
+        assert!(cylinder.contains(Coord::new(1.0 + err, 1.0, 1.0)));
+        assert!(cylinder.contains(Coord::new(3.0 - err, 1.0, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0 + err, 2.0 - err, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0 + err, 1.0, 2.0 - err)));
+
+        // Outside
+        assert!(!cylinder.contains(Coord::new(1.0 - err, 1.0, 1.0)));
+        assert!(!cylinder.contains(Coord::new(3.0 + err, 1.0, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0 + err, 2.0 + err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0 + err, 2.0, 2.0 + err)));
+
+        cylinder.alignment = Direction::Y;
+
+        // Inside
+        assert!(cylinder.contains(Coord::new(1.0, 1.0 + err, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0, 3.0 - err, 1.0)));
+        assert!(cylinder.contains(Coord::new(2.0 - err, 1.0 + err, 1.0)));
+        assert!(cylinder.contains(Coord::new(1.0, 1.0 + err, 2.0 - err)));
+
+        // Outside
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0 - err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0, 3.0 + err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(2.0 + err, 1.0 + err, 1.0)));
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0 + err, 2.0 + err)));
+
+        cylinder.alignment = Direction::Z;
+
+        // Inside
+        assert!(cylinder.contains(Coord::new(1.0, 1.0, 1.0 + err)));
+        assert!(cylinder.contains(Coord::new(1.0, 1.0, 3.0 - err)));
+        assert!(cylinder.contains(Coord::new(2.0 - err, 1.0, 1.0 + err)));
+        assert!(cylinder.contains(Coord::new(1.0, 2.0 - err, 3.0 - err)));
+
+        // Outside
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0, 1.0 - err)));
+        assert!(!cylinder.contains(Coord::new(1.0, 1.0, 3.0 + err)));
+        assert!(!cylinder.contains(Coord::new(2.0 + err, 1.0, 1.0 + err)));
+        assert!(!cylinder.contains(Coord::new(1.0, 2.0 + err, 3.0 - err)));
+    }
+
+    #[test]
+    fn coordinates_within_cuboid_are_pruned() {
+        let residue = resbase!["RES", ("A", 0.0, 0.0, 0.0)];
+        let cuboid = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let coords_within = vec![
+            Coord::new(0.1, 0.1, 0.1),
+            Coord::new(0.5, 0.5, 0.5),
+            Coord::new(0.9, 0.9, 0.9)
+        ];
+
+        let coords_without = vec![
+            Coord::new(-0.1, 0.1, 0.1),
+            Coord::new(1.1, 0.9, 0.9)
+        ];
+
+        let coords = coords_within
+            .iter()
+            .chain(coords_without.iter())
+            .cloned()
+            .collect::<Vec<Coord>>();
+
+        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
+
+        assert_eq!(coords_without, pruned);
+    }
+
+    #[test]
+    fn coordinates_within_cuboid_prune_with_respect_to_residue_atoms() {
+        let residue = resbase![
+            "RES",
+            ("A", 0.0, 0.0, 0.0),
+            ("B", 1.0, 0.0, 0.0) // Shifted by 1
+        ];
+        let cuboid = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let coords_within = vec![
+            Coord::new(-0.9, 0.1, 0.1), // Atom B within
+            Coord::new(-0.5, 0.5, 0.5),
+            Coord::new(-0.1, 0.9, 0.9),
+            Coord::new(0.1, 0.9, 0.9), // Atom A within
+            Coord::new(0.5, 0.9, 0.9),
+            Coord::new(0.9, 0.9, 0.9)
+        ];
+
+        let coords_without = vec![
+            Coord::new(-1.1, 0.1, 0.1),
+            Coord::new(1.1, 0.9, 0.9)
+        ];
+
+        let coords = coords_within
+            .iter()
+            .chain(coords_without.iter())
+            .cloned()
+            .collect::<Vec<Coord>>();
+
+        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
+
+        assert_eq!(coords_without, pruned);
     }
 }

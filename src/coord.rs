@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Sub, SubAssign, Neg};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Neg, Mul, MulAssign};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -198,7 +198,7 @@ impl Rotate for Coord {
             Direction::X => Coord::new(self.x, -self.z, self.y),
             Direction::Y => Coord::new(self.z, self.y, -self.x),
             Direction::Z => Coord::new(-self.y, self.x, self.z),
-        } 
+        }
     }
 }
 
@@ -245,6 +245,24 @@ impl Neg for Coord {
 
     fn neg(self) -> Self::Output {
         Coord { x: -self.x, y: -self.y, z: -self.z }
+    }
+}
+
+impl Mul<f64> for Coord {
+    type Output = Coord;
+
+    fn mul(self, value: f64) -> Coord {
+        Coord::new(self.x * value, self.y * value, self.z * value)
+    }
+}
+
+impl MulAssign<f64> for Coord {
+    fn mul_assign(&mut self, value: f64) {
+        *self = Coord {
+            x: self.x * value,
+            y: self.y * value,
+            z: self.z * value,
+        }
     }
 }
 
@@ -305,7 +323,7 @@ macro_rules! impl_rotate {
 
 /// Rotate a set of coordinates around an axis.
 pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
-    coords.iter() 
+    coords.iter()
         .map(|&coord| coord.rotate(axis))
         .collect()
 }
@@ -313,6 +331,7 @@ pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
 /// Translate an object by a `Coord`.
 pub trait Translate {
     fn translate(self, coord: Coord) -> Self;
+    fn translate_in_place(&mut self, coord: Coord);
 }
 
 #[macro_export]
@@ -325,6 +344,11 @@ macro_rules! impl_translate {
                 fn translate(mut self, coord: Coord) -> Self {
                     self.origin += coord;
                     self
+                }
+
+                /// Translate the object by an input `Coord` in-place.
+                fn translate_in_place(&mut self, coord: Coord) {
+                    self.origin += coord;
                 }
             }
         )*
@@ -418,6 +442,7 @@ mod tests {
         assert_eq!(Coord::new(3.0, 5.0, 7.0), coord1 + coord2);
         assert_eq!(Coord::new(3.0, 3.0, 3.0), coord2 - coord1);
         assert_eq!(Coord::new(0.0, -1.0, -2.0), -coord1);
+        assert_eq!(Coord::new(2.0, 4.0, 6.0), Coord::new(1.0, 2.0, 3.0) * 2.0);
     }
 
     #[test]
@@ -430,12 +455,16 @@ mod tests {
 
         coord1 -= coord2;
         assert_eq!(Coord::ORIGO, coord1);
+
+        coord1 += coord2;
+        coord1 *= 2.0;
+        assert_eq!(coord2 + coord2, coord1);
     }
 
     #[test]
     fn coord_distance_along_plane() {
-        let mut coord1 = Coord::new(0.0, 0.0, 0.0);
-        let mut coord2 = Coord::new(1.0, 1.0, 5.0);
+        let coord1 = Coord::new(0.0, 0.0, 0.0);
+        let coord2 = Coord::new(1.0, 1.0, 5.0);
 
         assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::X));
         assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::Y));
@@ -472,5 +501,33 @@ mod tests {
         }.rotate(Direction::Z);
 
         assert_eq!(Coord::new(-2.0, 1.0, 3.0), rotated.coords[0]);
+    }
+
+    #[test]
+    fn impl_translate_object() {
+        struct TranslateTest { origin: Coord }
+        impl_translate![TranslateTest];
+
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        let translated = TranslateTest {
+            origin: Coord::ORIGO,
+        }.translate(coord);
+
+        assert_eq!(translated.origin, coord);
+    }
+
+    #[test]
+    fn impl_translate_object_in_place() {
+        struct TranslateTest { origin: Coord }
+        impl_translate![TranslateTest];
+
+        let mut object = TranslateTest {
+            origin: Coord::ORIGO,
+        };
+
+        let coord = Coord::new(1.0, 2.0, 3.0);
+        object.translate_in_place(coord);
+
+        assert_eq!(object.origin, coord);
     }
 }

@@ -1,7 +1,7 @@
 //! Modify the list of `ComponentEntry` objects in a `DataBase`.
 
-use error::{Result, UIResult, UIErrorKind};
-use ui::utils::{get_value_from_user, print_description, print_list_description_short, 
+use error::{GrafenCliError, UIResult, UIErrorKind};
+use ui::utils::{MenuResult, get_value_from_user, print_description, print_list_description_short,
                 remove_items, reorder_list, select_command, select_item};
 
 use grafen::coord::{Coord, Direction};
@@ -14,63 +14,49 @@ use grafen::system::Residue;
 use grafen::volume;
 
 use dialoguer::Checkboxes;
+use std::error::Error;
 use std::fmt::Write;
 use std::result;
 
-#[derive(Clone, Copy, Debug)]
-enum ComponentMenu {
-    AddComponent,
-    RemoveComponent,
-    ReorderList,
-    QuitAndSave,
-    QuitWithoutSaving,
-}
-use self::ComponentMenu::*;
-
 pub fn user_menu(mut component_list: &mut Vec<ComponentEntry>, residue_list: &[Residue])
-        -> Result<String> {
-    let (commands, item_texts) = create_menu_items![
-        (AddComponent, "Create a component definition"),
-        (RemoveComponent, "Remove component definitions"),
-        (ReorderList, "Reorder component definition list"),
-        (QuitAndSave, "Finish editing component definition list"),
-        (QuitWithoutSaving, "Abort and discard changes")
-    ];
-
+        -> MenuResult {
     let components_backup = component_list.clone();
 
-    loop {
-        print_list_description_short("Component definitions", &component_list);
+    create_menu![
+        @pre: { print_list_description_short("Component definitions", &component_list); };
 
-        let command = select_command(item_texts, commands)?;
-
-        match command {
-            AddComponent => {
-                match new_component(&residue_list) {
-                    Ok(component) => {
-                        component_list.push(component);
-                        eprintln!("Successfully created component definition");
-                    },
-                    Err(_) => eprintln!("Could not create component definition"),
-                }
-            },
-            RemoveComponent => {
-                remove_items(&mut component_list)?;
-            },
-            ReorderList => {
-                reorder_list(&mut component_list)?;
-            },
-            QuitAndSave => {
-                return Ok("Finished editing component definition list".to_string());
-            },
-            QuitWithoutSaving => {
-                *component_list = components_backup;
-                return Ok("Discarding changes to component definition list".to_string());
-            },
+        AddComponent, "Create a component definition" => {
+            new_component(&residue_list)
+                .map(|component| {
+                    component_list.push(component);
+                    Some("Successfully created component definition".to_string())
+                })
+                .map_err(|_| GrafenCliError::RunError(
+                    "Could not create component definition".to_string()
+                ))
+        },
+        RemoveComponent, "Remove a component definition" => {
+            remove_items(&mut component_list)
+                .map(|_| None)
+                .map_err(|err| GrafenCliError::RunError(
+                    format!("Could not remove a component: {}", err.description())
+                ))
+        },
+        ReorderList, "Reorder component definition list" => {
+            reorder_list(&mut component_list)
+                .map(|_| None)
+                .map_err(|err| GrafenCliError::RunError(
+                    format!("Could not reorder the list: {}", err.description())
+                ))
+        },
+        QuitAndSave, "Finish editing component definition list" => {
+            return Ok(Some("Finished editing component definition list".to_string()));
+        },
+        QuitWithoutSaving, "Abort and discard changes" => {
+            *component_list = components_backup;
+            return Ok(Some("Discarding changes to component definition list".to_string()));
         }
-
-        eprintln!("");
-    }
+    ];
 }
 
 #[derive(Clone, Copy, Debug)]
