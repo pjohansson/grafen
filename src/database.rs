@@ -29,8 +29,10 @@ pub enum DataBaseError {
 /// The enum is used to hold created objects of different types in one container,
 /// sharing one interface.
 ///
-/// Implements `Describe`, `Component` and `Translate` for the enum. Also sets up
-/// some getter functions directly to the object data.
+/// Implements `Describe`, `Component` and `Translate` for the enum.
+///
+/// Also sets up some getter functions directly to the object data and
+/// the `with_pbc` method to move residue coordinates within the box.
 ///
 /// # Requires
 /// Wrapped objects have to implement the above traits and `Clone`, `Debug`,
@@ -118,10 +120,9 @@ macro_rules! create_entry_wrapper {
             )*
         }
 
-        /// Getter function of linked data.
         impl<'a> $name {
             /// Get a reference to the coordinates of the component.
-            pub fn get_coords(&'a self) -> &[Coord] {
+            pub fn get_coords(&'a self) -> &Vec<Coord> {
                 match *self {
                     $(
                         $name::$entry(ref object) => &object.coords,
@@ -145,6 +146,18 @@ macro_rules! create_entry_wrapper {
                         $name::$entry(ref object) => &object.residue,
                     )*
                 }
+            }
+
+            /// Apply periodic boundary conditions to each residue coordinate
+            /// to move them inside the component box.
+            pub fn with_pbc(mut self) -> Self {
+                let box_size = self.box_size();
+
+                self.get_coords_mut()
+                    .iter_mut()
+                    .for_each(|c| *c = c.with_pbc(box_size));
+
+                self
             }
         }
 
@@ -345,6 +358,7 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 mod tests {
     use super::*;
     use system::*;
+    use surface::{LatticeType, Sheet};
     use volume::Cuboid;
 
     #[test]
@@ -434,5 +448,36 @@ mod tests {
             },
             _ => panic!["Incorrect object was created"],
         }
+    }
+
+    #[test]
+    fn component_entry_adds_with_pbc_method() {
+        let sheet = Sheet {
+            name: None,
+            residue: None,
+            lattice: LatticeType::Hexagonal { a: 0.1 },
+            std_z: None,
+            origin: Coord::ORIGO,
+            length: 2.0,
+            width: 1.0,
+            coords: vec![
+                Coord::new(0.5, 0.0, 0.0), // inside box
+                Coord::new(1.5, 0.0, 0.0), // inside box
+                Coord::new(2.5, 0.0, 0.0), // outside box by 0.5 along x
+                Coord::new(0.0, 1.5, 0.0) // outside box by 0.5 along y
+            ],
+        };
+
+        let component = ComponentEntry::from(sheet);
+
+        let pbc_coords = vec![
+            Coord::new(0.5, 0.0, 0.0), // unchanged
+            Coord::new(1.5, 0.0, 0.0), // unchanged
+            Coord::new(0.5, 0.0, 0.0), // moved to within box
+            Coord::new(0.0, 0.5, 0.0) // moved to within box
+        ];
+        let pbc_component = component.with_pbc();
+
+        assert_eq!(pbc_component.get_coords(), &pbc_coords);
     }
 }
