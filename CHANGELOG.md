@@ -7,6 +7,11 @@
 * The `ResidueBase` object has been renamed to `Residue`.
 * `System` has been moved to `system` and improved to user proper methods for yielding information for output. This includes implementing `iter_atoms` through the `Component` trait which links to all components` methods of that name and merges them to a single whole.
 
+0.9.1
+-----
+* Add the ability to edit constructed components by translating them or cutting coordinates from them using another constructed component.
+* Sheets are now constructed with periodic boundary conditions being applied. Residue coordinates will not extend beyond the component box size (although atoms belonging to the residue might).
+
 0.8
 ===
 * The user interface has been reworked, using `dialoguer` instead of plain text selection.
