@@ -6,16 +6,27 @@ use io::GrafenIoError::*;
 use system::{Atom, Residue};
 use volume::Cuboid;
 
-use std::io::Read;
+use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::Path;
 use std::result;
 use std::str::FromStr;
 
-fn read_file(input: &Path) -> result::Result<Cuboid, GrafenIoError> {
-    unimplemented!();
+/// Read a Gromos87 formatted file and return its content as a `volume::Cuboid` object.
+///
+/// # Constraints
+/// The file must only contain a single residue type (which is automatically determined).
+/// Design is needed to add support for more general files (which should be done!).
+pub fn read_file(path: &Path) -> Result<Cuboid, GrafenIoError> {
+    let file = File::open(path)?;
+    let mut buf_reader = BufReader::new(file);
+
+    read_input(&mut buf_reader)
 }
 
-fn read_input<R: Read>(input: &mut R) -> result::Result<Cuboid, GrafenIoError> {
+/// Read a Gromos87 formatted input and return its content as a `volume::Cuboid` object.
+/// Called by `read_file`.
+fn read_input<R: Read>(input: &mut R) -> Result<Cuboid, GrafenIoError> {
     let mut buf = String::new();
     input.read_to_string(&mut buf)?;
 
@@ -135,7 +146,6 @@ impl FromStr for AtomLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::BufReader;
 
     #[test]
     fn read_one_atom_file() {
