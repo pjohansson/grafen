@@ -1,46 +1,17 @@
 //! Read Gromos87 (.gro) formatted files.
 
 use coord::Coord;
-use database::ComponentEntry;
-use error::{GrafenError, Result};
+use io::GrafenIoError;
+use io::GrafenIoError::*;
 use system::{Atom, Residue};
 use volume::Cuboid;
 
-use std::error::Error;
-use std::io;
 use std::io::Read;
-use std::num::{ParseFloatError, ParseIntError};
 use std::path::Path;
 use std::result;
 use std::str::FromStr;
 
-#[derive(Debug)]
-enum GrafenIoError {
-    ParseError(String),
-    EOF(String),
-}
-use self::GrafenIoError::*;
-
-impl From<io::Error> for GrafenIoError {
-    fn from(_: io::Error) -> Self {
-        // TODO: Better diagnostics here
-        EOF("Could not read file".into())
-    }
-}
-
-impl From<ParseFloatError> for GrafenIoError {
-    fn from(err: ParseFloatError) -> Self {
-        EOF(err.description().into())
-    }
-}
-
-impl From<ParseIntError> for GrafenIoError {
-    fn from(err: ParseIntError) -> Self {
-        EOF(err.description().into())
-    }
-}
-
-fn read_file(input: &Path) -> Cuboid {
+fn read_file(input: &Path) -> result::Result<Cuboid, GrafenIoError> {
     unimplemented!();
 }
 
@@ -87,7 +58,7 @@ fn read_input<R: Read>(input: &mut R) -> result::Result<Cuboid, GrafenIoError> {
                 if head_atom_position == None {
                     return Err(ParseError("Atom numbering is incorrect".into()));
                 }
-                
+
                 let relative_position = atom_line.position - head_atom_position.unwrap();
                 Atom { code: atom_line.atom_name, position: relative_position }
             };
