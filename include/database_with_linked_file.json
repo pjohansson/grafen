@@ -1,0 +1,146 @@
+{
+  "residue_definitions": [
+    {
+      "code": "GRA",
+      "atoms": [
+        {
+          "code": "C",
+          "position": {
+            "x": 0.071,
+            "y": 0.071,
+            "z": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "code": "SIO",
+      "atoms": [
+        {
+          "code": "O1",
+          "position": {
+            "x": 0.1125,
+            "y": 0.075,
+            "z": 0.151
+          }
+        },
+        {
+          "code": "SI",
+          "position": {
+            "x": 0.1125,
+            "y": 0.075,
+            "z": 0.0
+          }
+        },
+        {
+          "code": "O2",
+          "position": {
+            "x": 0.1125,
+            "y": 0.075,
+            "z": -0.151
+          }
+        }
+      ]
+    }
+  ],
+  "component_definitions": [
+    {
+      "SurfaceSheet": {
+        "name": "Graphene",
+        "residue": {
+          "code": "GRA",
+          "atoms": [
+            {
+              "code": "C",
+              "position": {
+                "x": 0.071,
+                "y": 0.071,
+                "z": 0.0
+              }
+            }
+          ]
+        },
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
+          }
+        },
+        "std_z": null
+      }
+    },
+    {
+      "SurfaceSheet": {
+        "name": "Silica",
+        "residue": {
+          "code": "SIO",
+          "atoms": [
+            {
+              "code": "O1",
+              "position": {
+                "x": 0.1125,
+                "y": 0.075,
+                "z": 0.151
+              }
+            },
+            {
+              "code": "SI",
+              "position": {
+                "x": 0.1125,
+                "y": 0.075,
+                "z": 0.0
+              }
+            },
+            {
+              "code": "O2",
+              "position": {
+                "x": 0.1125,
+                "y": 0.075,
+                "z": -0.151
+              }
+            }
+          ]
+        },
+        "lattice": {
+          "Triclinic": {
+            "a": 0.45,
+            "b": 0.45,
+            "gamma": 60.0
+          }
+        },
+        "std_z": null
+      }
+    },
+    {
+      "SurfaceCylinder": {
+        "name": "Graphene Nanotube",
+        "residue": {
+          "code": "GRA",
+          "atoms": [
+            {
+              "code": "C",
+              "position": {
+                "x": 0.071,
+                "y": 0.071,
+                "z": 0.0
+              }
+            }
+          ]
+        },
+        "lattice": {
+          "Hexagonal": {
+            "a": 0.142
+          }
+        },
+        "alignment": "Z",
+        "cap": "Bottom"
+      }
+    }
+  ],
+  "configuration_files": [
+    {
+      "path": "/path/to/a/conf.gro",
+      "title": "A title",
+      "description": "A description"
+    }
+  ]
+}
