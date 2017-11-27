@@ -13,7 +13,10 @@ use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_d
                 remove_items, reorder_list, select_command, select_item};
 
 use grafen::database::*;
+use grafen::io::gromos;
 use grafen::system::*;
+
+use std::path::Path;
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -37,6 +40,9 @@ pub fn user_menu(config: Config) -> Result<()> {
 
         AddComponent, "Construct a component" => {
             create_component(&mut system)
+        },
+        ReadComponent, "Read component from disk" => {
+            read_component(&mut system)
         },
         EditComponent, "Edit a component" => {
             edit_component::user_menu(&mut system.components)
@@ -71,6 +77,17 @@ fn create_component(system: &mut System) -> MenuResult {
         },
         Err(err) => Err(err),
     }
+}
+
+/// Make the user pick a component that is to be read from disk.
+fn read_component(system: &mut System) -> MenuResult {
+    let conf_file = select_item(&system.database.conf_files, Some("Available components on disk"))?
+        .clone();
+
+    let cuboid = gromos::read_file(&Path::new(&conf_file.path))?;
+    system.components.push(ComponentEntry::from(cuboid));
+
+    Ok(Some("Read component from disk and added it to the system".to_string()))
 }
 
 /// Ask the user for information about the selected component, then return the constructed object.

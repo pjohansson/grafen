@@ -247,8 +247,11 @@ create_entry_wrapper![
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A configuration file located on and read from disk.
 pub struct ConfFileEntry {
-    path: String,
+    /// Path to the configuration file on disk.
+    pub path: String,
+    /// Title of the component.
     title: String,
+    /// Description of the component.
     description: String,
 }
 
