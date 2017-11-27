@@ -2,8 +2,6 @@
 //! They can also access and modify the `DataBase` of components to use in their
 //! systems.
 
-// trace_macros!(true);
-
 #[macro_use] mod utils;
 mod edit_component;
 mod edit_database;
@@ -99,7 +97,7 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
             let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
-            Ok(ComponentEntry::VolumeCylinder(conf.fill(num_residues)))
+            Ok(ComponentEntry::from(conf.fill(num_residues)))
         },
 
         ComponentEntry::SurfaceSheet(mut conf) => {
@@ -107,9 +105,13 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.length = get_value_from_user::<f64>("Length ΔX (nm)")?;
             conf.width = get_value_from_user::<f64>("Width ΔY (nm)")?;
 
-            Ok(ComponentEntry::SurfaceSheet(conf.construct().map_err(|_|
-                UIErrorKind::from("Could not construct sheet")
-            )?))
+            Ok(
+                ComponentEntry::from(
+                    conf.construct().map_err(|_| {
+                        UIErrorKind::from("Could not construct sheet")
+                    })?
+                ).with_pbc()
+            )
         },
 
         ComponentEntry::SurfaceCylinder(mut conf) => {
@@ -117,7 +119,7 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
 
-            Ok(ComponentEntry::SurfaceCylinder(conf.construct().map_err(|_|
+            Ok(ComponentEntry::from(conf.construct().map_err(|_|
                 UIErrorKind::from("Could not construct cylinder")
             )?))
         },

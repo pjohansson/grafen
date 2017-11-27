@@ -28,7 +28,7 @@ pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
         Translate, "Translate the component" => {
             let coord = get_position_from_user(None)?;
             component.translate_in_place(coord);
-            
+
             Ok(None)
         },
         PruneByVolume, "Remove residues which overlap another component" => {
@@ -104,7 +104,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               coords: vec![],
                           };
 
-                          Some(ComponentEntry::VolumeCuboid(volume))
+                          Some(ComponentEntry::from(volume))
                       },
 
                       &ComponentEntry::VolumeCylinder(ref obj) => {
@@ -118,7 +118,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               coords: vec![],
                           };
 
-                          Some(ComponentEntry::VolumeCylinder(volume))
+                          Some(ComponentEntry::from(volume))
                       },
 
                       &ComponentEntry::SurfaceCylinder(ref obj) => {
@@ -132,7 +132,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               coords: vec![],
                           };
 
-                          Some(ComponentEntry::VolumeCylinder(volume))
+                          Some(ComponentEntry::from(volume))
                       },
 
                       _ => None,

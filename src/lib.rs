@@ -10,6 +10,7 @@ extern crate serde_json;
 pub mod describe;
 pub mod database;
 pub mod error;
+pub mod io;
 pub mod iterator;
 pub mod surface;
 pub mod volume;

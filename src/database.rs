@@ -1,5 +1,4 @@
-//! Collect definitions for `Residue` and `SheetConf` objects
-//! into a `DataBase` which can be read from or saved to disk.
+//! Collect definitions for components into a `DataBase` which can be read from or saved to disk.
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
@@ -9,15 +8,18 @@ use system::{Component, Residue};
 use volume;
 
 use serde_json;
+use std::ffi::OsStr;
 use std::fmt::Write;
+use std::convert::From;
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::ffi::OsStr;
-use std::fs::File;
 use std::result;
 
 #[derive(Copy, Clone, Debug)]
+/// Error class for manipulating a `DataBase`.
 pub enum DataBaseError {
+    /// The path was bad (duh).
     BadPath,
 }
 
@@ -28,8 +30,10 @@ pub enum DataBaseError {
 /// The enum is used to hold created objects of different types in one container,
 /// sharing one interface.
 ///
-/// Implements `Describe`, `Component` and `Translate` for the enum. Also sets up
-/// some getter functions directly to the object data.
+/// Implements `Describe`, `Component` and `Translate` for the enum.
+///
+/// Also sets up some getter functions directly to the object data and
+/// the `with_pbc` method to move residue coordinates within the box.
 ///
 /// # Requires
 /// Wrapped objects have to implement the above traits and `Clone`, `Debug`,
@@ -117,10 +121,9 @@ macro_rules! create_entry_wrapper {
             )*
         }
 
-        /// Getter function of linked data.
         impl<'a> $name {
             /// Get a reference to the coordinates of the component.
-            pub fn get_coords(&'a self) -> &[Coord] {
+            pub fn get_coords(&'a self) -> &Vec<Coord> {
                 match *self {
                     $(
                         $name::$entry(ref object) => &object.coords,
@@ -144,6 +147,18 @@ macro_rules! create_entry_wrapper {
                         $name::$entry(ref object) => &object.residue,
                     )*
                 }
+            }
+
+            /// Apply periodic boundary conditions to each residue coordinate
+            /// to move them inside the component box.
+            pub fn with_pbc(mut self) -> Self {
+                let box_size = self.box_size();
+
+                self.get_coords_mut()
+                    .iter_mut()
+                    .for_each(|c| *c = c.with_pbc(box_size));
+
+                self
             }
         }
 
@@ -209,6 +224,14 @@ macro_rules! create_entry_wrapper {
                 }
             }
         }
+
+        $(
+            impl From<$class> for $name {
+                fn from(object: $class) -> $name {
+                    $name::$entry(object)
+                }
+            }
+        )*
     }
 }
 
@@ -220,6 +243,48 @@ create_entry_wrapper![
     (surface::Sheet => SurfaceSheet),
     (surface::Cylinder => SurfaceCylinder)
 ];
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+/// A configuration file located on and read from disk.
+pub struct ConfFileEntry {
+    path: String,
+    title: String,
+    description: String,
+}
+
+impl Describe for ConfFileEntry {
+    fn describe(&self) -> String {
+        let path = Path::new(&self.path);
+
+        if let Some(filename) = path.file_name().and_then(|p| p.to_str()) {
+            let exists = if !path.exists() {
+                " (warning: file does not exist)"
+            } else {
+                ""
+            };
+
+            format!("'{}': {} ({}){}", filename, self.title, self.description, exists)
+        } else {
+            "error: not a file".into()
+        }
+    }
+
+    fn describe_short(&self) -> String {
+        let path = Path::new(&self.path);
+
+        if let Some(filename) = path.file_name().and_then(|p| p.to_str()) {
+            let exists = if !path.exists() {
+                " (warning: file does not exist)"
+            } else {
+                ""
+            };
+
+            format!("'{}': {}{}", filename, self.title, exists)
+        } else {
+            "error: bad file name".into()
+        }
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A collection of residues and substrate configurations
@@ -236,6 +301,10 @@ pub struct DataBase {
     #[serde(rename = "component_definitions", default = "Vec::new")]
     /// New component constructors.
     pub component_defs: Vec<ComponentEntry>,
+
+    #[serde(rename = "configuration_files", default = "Vec::new")]
+    /// Configuration files on disk.
+    pub conf_files: Vec<ConfFileEntry>,
 }
 
 impl DataBase {
@@ -245,6 +314,7 @@ impl DataBase {
             path: None,
             residue_defs: vec![],
             component_defs: vec![],
+            conf_files: vec![],
         }
     }
 
@@ -295,6 +365,7 @@ impl Describe for DataBase {
         writeln!(description, "Database path: {}\n", self.get_path_pretty()).expect(ERR);
         writeln!(description, "{}", describe_list_short("Component definitions", &self.component_defs)).expect(ERR);
         writeln!(description, "{}", describe_list("Residue definitions", &self.residue_defs)).expect(ERR);
+        writeln!(description, "{}", describe_list("Configuration files", &self.conf_files)).expect(ERR);
 
         description
     }
@@ -336,6 +407,8 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 mod tests {
     use super::*;
     use system::*;
+    use surface::{LatticeType, Sheet};
+    use volume::Cuboid;
 
     #[test]
     fn serialize_and_deserialize_residue_entry() {
@@ -374,6 +447,30 @@ mod tests {
             path: Some(PathBuf::from("This/will/be/removed")),
             residue_defs: vec![base.clone()],
             component_defs: vec![],
+            conf_files: vec![],
+        };
+
+        let mut serialized: Vec<u8> = Vec::new();
+        database.to_writer(&mut serialized).unwrap();
+        let deserialized = DataBase::from_reader(serialized.as_slice()).unwrap();
+
+        assert_eq!(None, deserialized.path);
+        assert_eq!(database.residue_defs, deserialized.residue_defs);
+    }
+
+    #[test]
+    fn serialize_and_deserialize_conf_files() {
+        let conf = ConfFileEntry {
+            path: "/a/path".into(),
+            title: "A title".into(),
+            description: "A description".into(),
+        };
+
+        let database = DataBase {
+            path: Some(PathBuf::from("This/will/be/removed")),
+            residue_defs: vec![],
+            component_defs: vec![],
+            conf_files: vec![conf],
         };
 
         let mut serialized: Vec<u8> = Vec::new();
@@ -407,5 +504,53 @@ mod tests {
 
         database.set_path("/a/file.json").unwrap();
         assert_eq!("'/a/file.json'", &database.get_path_pretty());
+    }
+
+    #[test]
+    fn create_entry_macro_adds_from_method() {
+        let cuboid = Cuboid::default();
+        let component = ComponentEntry::from(cuboid.clone());
+
+        match component {
+            ComponentEntry::VolumeCuboid(object) => {
+                assert_eq!(object.name, cuboid.name);
+                assert_eq!(object.residue, cuboid.residue);
+                assert_eq!(object.size, cuboid.size);
+                assert_eq!(object.origin, cuboid.origin);
+                assert_eq!(object.coords, cuboid.coords);
+            },
+            _ => panic!["Incorrect object was created"],
+        }
+    }
+
+    #[test]
+    fn component_entry_adds_with_pbc_method() {
+        let sheet = Sheet {
+            name: None,
+            residue: None,
+            lattice: LatticeType::Hexagonal { a: 0.1 },
+            std_z: None,
+            origin: Coord::ORIGO,
+            length: 2.0,
+            width: 1.0,
+            coords: vec![
+                Coord::new(0.5, 0.0, 0.0), // inside box
+                Coord::new(1.5, 0.0, 0.0), // inside box
+                Coord::new(2.5, 0.0, 0.0), // outside box by 0.5 along x
+                Coord::new(0.0, 1.5, 0.0) // outside box by 0.5 along y
+            ],
+        };
+
+        let component = ComponentEntry::from(sheet);
+
+        let pbc_coords = vec![
+            Coord::new(0.5, 0.0, 0.0), // unchanged
+            Coord::new(1.5, 0.0, 0.0), // unchanged
+            Coord::new(0.5, 0.0, 0.0), // moved to within box
+            Coord::new(0.0, 0.5, 0.0) // moved to within box
+        ];
+        let pbc_component = component.with_pbc();
+
+        assert_eq!(pbc_component.get_coords(), &pbc_coords);
     }
 }
