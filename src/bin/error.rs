@@ -1,6 +1,7 @@
 //! Errors when executing the binary.
 
 use grafen::error::GrafenError;
+use grafen::io::GrafenIoError;
 
 use ansi_term::Colour::{Yellow, Red};
 use clap;
@@ -132,6 +133,15 @@ impl From<clap::Error> for GrafenCliError {
 impl From<GrafenError> for GrafenCliError {
     fn from(err: GrafenError) -> GrafenCliError {
         GrafenCliError::RunError(err.description().to_string())
+    }
+}
+
+impl From<GrafenIoError> for GrafenCliError {
+    fn from(err: GrafenIoError) -> GrafenCliError {
+        match err {
+            GrafenIoError::ParseError(msg) => GrafenCliError::RunError(msg),
+            GrafenIoError::EOF(msg) => GrafenCliError::RunError(msg),
+        }
     }
 }
 
