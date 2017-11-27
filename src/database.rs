@@ -1,5 +1,4 @@
-//! Collect definitions for `Residue` and `SheetConf` objects
-//! into a `DataBase` which can be read from or saved to disk.
+//! Collect definitions for components into a `DataBase` which can be read from or saved to disk.
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
@@ -18,7 +17,9 @@ use std::path::{Path, PathBuf};
 use std::result;
 
 #[derive(Copy, Clone, Debug)]
+/// Error class for manipulating a `DataBase`.
 pub enum DataBaseError {
+    /// The path was bad (duh).
     BadPath,
 }
 
@@ -244,6 +245,48 @@ create_entry_wrapper![
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+/// A configuration file located on and read from disk.
+pub struct ConfFileEntry {
+    path: String,
+    title: String,
+    description: String,
+}
+
+impl Describe for ConfFileEntry {
+    fn describe(&self) -> String {
+        let path = Path::new(&self.path);
+
+        if let Some(filename) = path.file_name().and_then(|p| p.to_str()) {
+            let exists = if !path.exists() {
+                " (warning: file does not exist)"
+            } else {
+                ""
+            };
+
+            format!("'{}': {} ({}){}", filename, self.title, self.description, exists)
+        } else {
+            "error: not a file".into()
+        }
+    }
+
+    fn describe_short(&self) -> String {
+        let path = Path::new(&self.path);
+
+        if let Some(filename) = path.file_name().and_then(|p| p.to_str()) {
+            let exists = if !path.exists() {
+                " (warning: file does not exist)"
+            } else {
+                ""
+            };
+
+            format!("'{}': {}{}", filename, self.title, exists)
+        } else {
+            "error: bad file name".into()
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 /// A collection of residues and substrate configurations
 /// which can be saved to and read from disk.
 pub struct DataBase {
@@ -258,6 +301,10 @@ pub struct DataBase {
     #[serde(rename = "component_definitions", default = "Vec::new")]
     /// New component constructors.
     pub component_defs: Vec<ComponentEntry>,
+
+    #[serde(rename = "configuration_files", default = "Vec::new")]
+    /// Configuration files on disk.
+    pub conf_files: Vec<ConfFileEntry>,
 }
 
 impl DataBase {
@@ -267,6 +314,7 @@ impl DataBase {
             path: None,
             residue_defs: vec![],
             component_defs: vec![],
+            conf_files: vec![],
         }
     }
 
@@ -317,6 +365,7 @@ impl Describe for DataBase {
         writeln!(description, "Database path: {}\n", self.get_path_pretty()).expect(ERR);
         writeln!(description, "{}", describe_list_short("Component definitions", &self.component_defs)).expect(ERR);
         writeln!(description, "{}", describe_list("Residue definitions", &self.residue_defs)).expect(ERR);
+        writeln!(description, "{}", describe_list("Configuration files", &self.conf_files)).expect(ERR);
 
         description
     }
@@ -398,6 +447,30 @@ mod tests {
             path: Some(PathBuf::from("This/will/be/removed")),
             residue_defs: vec![base.clone()],
             component_defs: vec![],
+            conf_files: vec![],
+        };
+
+        let mut serialized: Vec<u8> = Vec::new();
+        database.to_writer(&mut serialized).unwrap();
+        let deserialized = DataBase::from_reader(serialized.as_slice()).unwrap();
+
+        assert_eq!(None, deserialized.path);
+        assert_eq!(database.residue_defs, deserialized.residue_defs);
+    }
+
+    #[test]
+    fn serialize_and_deserialize_conf_files() {
+        let conf = ConfFileEntry {
+            path: "/a/path".into(),
+            title: "A title".into(),
+            description: "A description".into(),
+        };
+
+        let database = DataBase {
+            path: Some(PathBuf::from("This/will/be/removed")),
+            residue_defs: vec![],
+            component_defs: vec![],
+            conf_files: vec![conf],
         };
 
         let mut serialized: Vec<u8> = Vec::new();

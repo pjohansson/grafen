@@ -7,8 +7,11 @@ use std::num::{ParseFloatError, ParseIntError};
 pub mod gromos;
 
 #[derive(Debug)]
+/// Errors when reading files.
 pub enum GrafenIoError {
+    /// Something went wrong when parsing the file.
     ParseError(String),
+    /// Not all required data was found in the file.
     EOF(String),
 }
 use self::GrafenIoError::*;
