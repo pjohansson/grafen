@@ -32,11 +32,12 @@ fn read_input<R: Read>(input: &mut R) -> Result<Cuboid, GrafenIoError> {
 
     let mut iter_lines = buf.lines();
 
-    let title = iter_lines.next().ok_or(EOF("No title in file".into()))?;
+    let title = iter_lines.next().ok_or(EOF("No title in file".into()))?.trim().clone();
 
     let num_atoms = iter_lines
         .next()
         .ok_or(EOF("No number of atoms in file".into()))?
+        .trim()
         .parse::<usize>()
         .map_err(|_| {
             ParseError("Number of atoms could not be parsed as a number".into())
@@ -266,5 +267,21 @@ Title
 
         let mut reader = BufReader::new(bad_residue_numbering.as_slice());
         assert!(read_input(&mut reader).is_err());
+    }
+
+    #[test]
+    fn read_conf_trims_number_of_atoms_line_before_parsing() {
+        let string: Vec<u8> = "\
+Title
+ 1
+    1RES      A    1   1.000   2.000   3.000
+    1.50000   2.50000   3.50000\n\
+            ".into();
+
+        let mut reader = BufReader::new(string.as_slice());
+        let result = read_input(&mut reader).unwrap();
+
+        assert_eq!(result.size, Coord::new(1.5, 2.5, 3.5));
+        assert_eq!(result.coords, vec![Coord::new(1.0, 2.0, 3.0)]);
     }
 }
