@@ -333,6 +333,7 @@ mod tests {
             residue: None,
             size,
             origin,
+            density: None,
             coords: vec![],
         };
 
@@ -360,6 +361,7 @@ mod tests {
             residue: Some(residue1.clone()),
             origin: Coord::default(),
             size: Coord::default(),
+            density: None,
             coords: vec![Coord::default(), Coord::default(), Coord::default()],
         };
 
@@ -373,6 +375,7 @@ mod tests {
             residue: Some(residue2.clone()),
             origin: origin,
             size: Coord::default(),
+            density: None,
             coords: vec![position, Coord::default()],
         };
 
@@ -407,6 +410,7 @@ mod tests {
             residue: Some(residue.clone()),
             origin: Coord::default(),
             size: Coord::default(),
+            density: None,
             coords: vec![Coord::default(), Coord::default(), Coord::default()],
         });
 
@@ -428,6 +432,7 @@ mod tests {
             residue: None,
             origin: Coord::new(0.0, 0.0, 0.0),
             size: Coord::new(5.0, 5.0, 5.0),
+            density: None,
             coords: vec![],
         });
 
@@ -436,6 +441,7 @@ mod tests {
             residue: None,
             origin: Coord::new(3.0, 3.0, 3.0),
             size: Coord::new(3.0, 2.0, 1.0),
+            density: None,
             coords: vec![],
         });
 
