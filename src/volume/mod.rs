@@ -51,12 +51,12 @@ impl Cuboid {
     }
 
     /// Fill the cuboid with (roughly) uniformly distributed coordinates and return the object.
-    fn fill(self, num_atoms: u64) -> Cuboid {
+    fn fill(self, num_coords: u64) -> Cuboid {
         // To fill the cuboid in a uniform manner, construct a lattice grid which can contain
         // the desired number of atoms. Then, select the desired number of cells from this
         // list  and add their corresponding coordinate.
         let volume = self.size.x * self.size.y * self.size.z;
-        let cell_volume = volume / (num_atoms as f64);
+        let cell_volume = volume / (num_coords as f64);
         let target_cell_length = cell_volume.powf(1.0 / 3.0);
 
         // Use `ceil` since we want the upper limit of available cells
@@ -66,7 +66,7 @@ impl Cuboid {
         let num_cells = nx * ny * nz;
 
         let mut rng = rand::thread_rng();
-        let selected_indices = rand::sample(&mut rng, 0..num_cells, num_atoms as usize);
+        let selected_indices = rand::sample(&mut rng, 0..num_cells, num_coords as usize);
 
         let dx = self.size.x / (nx as f64);
         let dy = self.size.y / (ny as f64);
@@ -87,7 +87,7 @@ impl Cuboid {
             })
             .collect::<Vec<_>>();
 
-        let density = Some((num_atoms as f64) / volume);
+        let density = Some((num_coords as f64) / volume);
 
         Cuboid {
             density,
