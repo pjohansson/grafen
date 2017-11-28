@@ -31,11 +31,10 @@ pub struct Cuboid {
 impl_component![Cuboid];
 impl_translate![Cuboid];
 
-#[allow(dead_code)]
 impl Cuboid {
     /// Calculate the center position of the cuboid, relative to the origin.
     fn center(&self) -> Coord {
-        Coord { x: self.size.x / 2.0, y: self.size.y / 2.0, z: self.size.y / 2.0 }
+        Coord { x: self.size.x / 2.0, y: self.size.y / 2.0, z: self.size.z / 2.0 }
     }
 
     /// Calculate the box size.
@@ -442,5 +441,17 @@ mod tests {
         };
 
         assert_eq!(cuboid.volume(), 1.0 * 3.0 * 7.0);
+    }
+
+    #[test]
+    fn cuboid_center_calculation_is_correct() {
+        let size = Coord::new(1.0, 7.0, 13.0);
+
+        let cuboid = Cuboid {
+            size,
+            .. Cuboid::default()
+        };
+
+        assert_eq!(cuboid.center(), Coord::new(size.x / 2.0, size.y / 2.0, size.z / 2.0));
     }
 }
