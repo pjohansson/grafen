@@ -36,6 +36,7 @@ pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
             let num_before = component.num_atoms();
 
             let pruned_coords = prune_residues_from_volume(component.get_coords(),
+                component.get_origin(),
                 component.get_residue().as_ref().unwrap(),
                 volume.as_ref());
 

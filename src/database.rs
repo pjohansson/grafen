@@ -139,6 +139,14 @@ macro_rules! create_entry_wrapper {
                 }
             }
 
+            pub fn get_origin(&self) -> Coord {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.origin,
+                    )*
+                }
+            }
+
             /// Get a reference to the component's optional `Residue`.
             pub fn get_residue(&'a self) -> &'a Option<Residue> {
                 match *self {
