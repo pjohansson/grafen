@@ -7,13 +7,15 @@ mod edit_component;
 mod edit_database;
 
 use super::Config;
-use error::{GrafenCliError, Result, UIErrorKind};
+use error::{Result, UIErrorKind};
 use output;
 use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_description,
                 remove_items, reorder_list, select_command, select_item};
 
+use grafen::coord::Coord;
 use grafen::database::*;
 use grafen::system::*;
+use grafen::volume::{FillType, Volume};
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -76,19 +78,17 @@ fn create_component(system: &mut System) -> MenuResult {
 /// Ask the user for information about the selected component, then return the constructed object.
 fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
     match component {
-        ComponentEntry::VolumeCuboid(_) => {
-            /*
+        ComponentEntry::VolumeCuboid(mut conf) => {
             let position = get_position_from_user(Some("0 0 0"))?;
             let length = get_value_from_user::<f64>("Length ΔX (nm)")?;
             let width = get_value_from_user::<f64>("Width ΔY (nm)")?;
             let height = get_value_from_user::<f64>("Height ΔZ (nm)")?;
-            let num_residues = get_value_from_user::<f64>("Number of residues")?;
+            let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
             conf.origin = position;
             conf.size = Coord::new(length, width, height);
-            */
 
-            Err(GrafenCliError::ConstructError("Cuboid volumes are not yet implemented".to_string()))
+            Ok(ComponentEntry::from(conf.fill(FillType::NumCoords(num_residues))))
         },
 
         ComponentEntry::VolumeCylinder(mut conf) => {
@@ -97,7 +97,7 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
             let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
-            Ok(ComponentEntry::from(conf.fill(num_residues)))
+            Ok(ComponentEntry::from(conf.fill(FillType::NumCoords(num_residues))))
         },
 
         ComponentEntry::SurfaceSheet(mut conf) => {
