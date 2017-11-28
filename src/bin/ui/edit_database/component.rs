@@ -351,7 +351,13 @@ impl Describe for CylinderBuilder {
         match self.cylinder_type {
             Surface => {
                 writeln!(description, "Type: Cylinder Surface").expect(ERR);
-                writeln!(description, "Lattice: {:?}", self.lattice.unwrap()).expect(ERR);
+
+                let lattice_string = match self.lattice {
+                    Some(lattice) => format!("{:?}", lattice),
+                    None => "".into(),
+                };
+
+                writeln!(description, "Lattice: {}", lattice_string).expect(ERR);
                 writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
 
                 let cap_string = self.cap
@@ -433,7 +439,14 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     ChangeComponent => return Err(ChangeOrError::ChangeComponent),
                     ChangeCylinderType => match select_cylinder_type() {
                         Ok(new_type) => {
+                            let lattice = if new_type == Surface {
+                                Some(select_lattice()?)
+                            } else {
+                                None
+                            };
+
                             builder.cylinder_type = new_type;
+                            builder.lattice = lattice;
                         },
                         Err(_) => eprintln!("error: Could not select new cylinder type"),
                     },
@@ -493,7 +506,14 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     ChangeComponent => return Err(ChangeOrError::ChangeComponent),
                     ChangeCylinderType => match select_cylinder_type() {
                         Ok(new_type) => {
+                            let lattice = if new_type == Surface {
+                                Some(select_lattice()?)
+                            } else {
+                                None
+                            };
+
                             builder.cylinder_type = new_type;
+                            builder.lattice = lattice;
                         },
                         Err(_) => eprintln!("error: Could not select new cylinder type"),
                     },
