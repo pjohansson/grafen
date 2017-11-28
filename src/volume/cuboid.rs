@@ -44,7 +44,7 @@ impl Cuboid {
 
     /// Construct a `Cylinder` from the cuboid by cutting its coordinates.
     /// It will be directed along the default cylinder alignment.
-    fn to_cylinder(&self, radius: f64, height: f64, alignment: Direction) -> Cylinder {
+    pub fn to_cylinder(&self, radius: f64, height: f64, alignment: Direction) -> Cylinder {
         // Check if we need to extend the cube to create the complete cylinder.
         let diameter = 2.0 * radius;
         let pbc_multiples = match alignment {
@@ -82,13 +82,13 @@ impl Cuboid {
             },
             (nx, ny, nz) => {
                 let extended = self.pbc_multiply(nx, ny, nz);
-                let bottom_center = get_bottom_center(&self);
+                let bottom_center = get_bottom_center(&extended);
                 cut_to_cylinder(&extended.coords, bottom_center, alignment, radius, height)
             },
         };
 
         Cylinder {
-            name: None,
+            name: self.name.clone(),
             residue: self.residue.clone(),
             origin: self.origin,
             radius,
@@ -100,6 +100,7 @@ impl Cuboid {
     }
 
     /// Construct a `Sphere` from the cuboid by cutting its coordinates.
+    #[allow(dead_code)]
     fn to_sphere(&self, radius: f64) -> Sphere {
         // Check whether we need to extend the cuboid to create the full sphere
         let diameter = 2.0 * radius;
@@ -306,6 +307,27 @@ mod tests {
             assert!(dr <= radius);
             assert!(dh >= 0.0 && dh <= height);
         }
+    }
+
+    #[test]
+    fn cuboid_to_cylinder_keeps_an_expected_number_of_coordinates() {
+        let density = 100.0;
+
+        let radius = 2.5;
+        let diameter = radius * 2.0;
+
+        let cuboid = Cuboid {
+            // size: Coord::new(1.0 * diameter, diameter, diameter),
+            size: Coord::new(radius, radius, radius),
+            .. Cuboid::default()
+        }.fill(FillType::Density(density));
+
+        let cylinder = cuboid.to_cylinder(radius, diameter, Direction::X);
+        let expected_coords = (cylinder.volume() * density).round() as usize;
+
+        let ratio = cylinder.coords.len() as f64 / expected_coords as f64;
+
+        assert!(ratio >= 0.95 && ratio <= 1.05);
     }
 
     #[test]
