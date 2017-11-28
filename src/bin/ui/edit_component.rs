@@ -101,6 +101,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               residue: obj.residue.clone(),
                               origin: obj.origin,
                               size: obj.size,
+                              density: obj.density,
                               coords: vec![],
                           };
 

@@ -21,13 +21,20 @@ pub trait Contains: Describe {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.
 pub struct Cuboid {
+    /// Component name.
     pub name: Option<String>,
+    /// Component residue.
     pub residue: Option<Residue>,
     #[serde(skip)]
+    /// Origin position of component.
     pub origin: Coord,
     #[serde(skip)]
+    /// Size of component (nm).
     pub size: Coord,
+    /// A density may be set for the component.
+    pub density: Option<f64>,
     #[serde(skip)]
+    /// Residue coordinates of component, relative to its `origin`.
     pub coords: Vec<Coord>,
 }
 
@@ -41,6 +48,11 @@ impl Cuboid {
     /// Calculate the box size.
     fn calc_box_size(&self) -> Coord {
         self.size
+    }
+
+    /// Fill the cuboid uniformally with coordinates.
+    fn fill(self, num_atoms: u64) -> Cuboid {
+        unimplemented!();
     }
 
     /// Construct a `Cylinder` from the cuboid by cutting its coordinates.
@@ -146,6 +158,7 @@ impl Default for Cuboid {
             residue: None,
             origin: Coord::ORIGO,
             size: Coord::ORIGO,
+            density: None,
             coords: vec![],
         }
     }
@@ -716,5 +729,24 @@ mod tests {
         let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
 
         assert_eq!(coords_without, pruned);
+    }
+
+    #[test]
+    fn density_is_set_after_fill() {
+        let num_atoms = 1000;
+        let size = Coord::new(1.0, 2.0, 3.0);
+        let cuboid = Cuboid {
+            size,
+            .. Cuboid::default()
+        }.fill(num_atoms);
+
+        assert_eq!(cuboid.coords.len(), num_atoms as usize);
+
+        let volume = size.x * size.y * size.z;
+        let expected_density = num_atoms as f64 / volume;
+        let density = cuboid.density.unwrap();
+        let ratio = density / expected_density;
+
+        assert!(ratio >= 0.9 && ratio <= 1.1);
     }
 }
