@@ -94,6 +94,7 @@ impl Cuboid {
             origin: self.origin,
             radius,
             height,
+            density: self.density,
             alignment,
             coords,
         }

@@ -22,6 +22,8 @@ pub struct Cylinder {
     pub radius: f64,
     #[serde(skip)]
     pub height: f64,
+    /// A density may be set for the component.
+    pub density: Option<f64>,
     #[serde(skip)]
     pub coords: Vec<Coord>,
 }
