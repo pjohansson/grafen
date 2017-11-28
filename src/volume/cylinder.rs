@@ -66,12 +66,12 @@ impl Describe for Cylinder {
 }
 
 impl Volume for Cylinder {
-    fn fill(self, num_coords: u64) -> Cylinder {
-        let mut rng = rand::thread_rng();
-
+    fn fill(self, fill_type: FillType) -> Cylinder {
         let range_radius = rand::distributions::Range::new(0.0, self.radius);
         let range_height = rand::distributions::Range::new(0.0, self.height);
         let range_angle = rand::distributions::Range::new(0.0, 2.0 * PI);
+
+        let mut rng = rand::thread_rng();
 
         let mut gen_coord = | | {
             let radius = range_radius.ind_sample(&mut rng);
@@ -89,6 +89,7 @@ impl Volume for Cylinder {
             }
         };
 
+        let num_coords = fill_type.to_num_coords(&self);
         let coords: Vec<_> = (0..num_coords).map(|_| gen_coord()).collect();
 
         Cylinder {
@@ -123,7 +124,7 @@ mod tests {
         };
 
         // Default alignment: Z
-        let cylinder = conf.clone().fill(num_coords);
+        let cylinder = conf.clone().fill(FillType::NumCoords(num_coords));
         assert_eq!(num_coords as usize, cylinder.coords.len());
 
         for coord in cylinder.coords {
@@ -134,7 +135,7 @@ mod tests {
 
         // Along the other axes
         conf.alignment = Direction::X;
-        for coord in conf.clone().fill(num_coords).coords {
+        for coord in conf.clone().fill(FillType::NumCoords(num_coords)).coords {
             let (r, h) = Coord::ORIGO.distance_cylindrical(coord, Direction::X);
             assert!(r <= cylinder.radius);
             assert!(h >= 0.0 && h <= cylinder.height);
@@ -142,7 +143,7 @@ mod tests {
 
         // Along the other axes
         conf.alignment = Direction::Y;
-        for coord in conf.clone().fill(num_coords).coords {
+        for coord in conf.clone().fill(FillType::NumCoords(num_coords)).coords {
             let (r, h) = Coord::ORIGO.distance_cylindrical(coord, Direction::Y);
             assert!(r <= cylinder.radius);
             assert!(h >= 0.0 && h <= cylinder.height);

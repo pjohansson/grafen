@@ -14,6 +14,7 @@ use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_d
 
 use grafen::database::*;
 use grafen::system::*;
+use grafen::volume::{FillType, Volume};
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -97,7 +98,7 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
             let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
-            Ok(ComponentEntry::from(conf.fill(num_residues)))
+            Ok(ComponentEntry::from(conf.fill(FillType::NumCoords(num_residues))))
         },
 
         ComponentEntry::SurfaceSheet(mut conf) => {

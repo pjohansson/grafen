@@ -176,7 +176,9 @@ impl Periodic for Cuboid {
 }
 
 impl Volume for Cuboid {
-    fn fill(self, num_coords: u64) -> Cuboid {
+    fn fill(self, fill_type: FillType) -> Cuboid {
+        let num_coords = fill_type.to_num_coords(&self);
+        
         // To fill the cuboid in a uniform manner, construct a lattice grid which can contain
         // the desired number of atoms. Then, select the desired number of cells from this
         // list and add their corresponding coordinate.
@@ -487,7 +489,7 @@ mod tests {
         let cuboid = Cuboid {
             size,
             .. Cuboid::default()
-        }.fill(num_atoms);
+        }.fill(FillType::NumCoords(num_atoms));
 
         assert_eq!(cuboid.coords.len(), num_atoms as usize);
 

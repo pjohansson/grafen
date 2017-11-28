@@ -21,10 +21,30 @@ pub trait Contains: Describe {
 /// Traits for volume objects.
 pub trait Volume: Contains {
     /// Fill the object with (roughly) uniformly distributed coordinates and return it.
-    fn fill(self, num_coords: u64) -> Self;
+    fn fill(self, fill_type: FillType) -> Self;
 
     /// Return the object volume in units cubed.
     fn volume(&self) -> f64;
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Variants for how a volume can be filled.
+pub enum FillType {
+    /// An input density from which a number of coordinates to fill with is calculated.
+    Density(f64),
+    /// An absolute number of coordinates.
+    NumCoords(u64),
+}
+
+impl FillType {
+    /// Unwrap the number of coordinates by either calculating it using the density and volume
+    /// of the input object, or return it.
+    fn to_num_coords<T: Volume>(&self, volume: &T) -> u64 {
+        match *self {
+            FillType::Density(density) => (volume.volume() * density).round() as u64,
+            FillType::NumCoords(num) => num,
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -97,4 +117,26 @@ pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord], residue: &Residue
           })
           .cloned()
           .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fill_type_returns_correct_numbers() {
+        let size = Coord::new(1.0, 2.0, 3.0);
+        let cuboid = Cuboid {
+            size,
+            .. Cuboid::default()
+        };
+
+        let density = 15.6;
+        let expected_num_coords = (cuboid.volume() * density).round() as u64;
+
+        assert_eq!(FillType::Density(density).to_num_coords(&cuboid), expected_num_coords);
+
+        let num = 11;
+        assert_eq!(FillType::NumCoords(num).to_num_coords(&cuboid), num);
+    }
 }
