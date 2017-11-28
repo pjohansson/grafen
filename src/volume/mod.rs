@@ -18,6 +18,15 @@ pub trait Contains: Describe {
     fn contains(&self, coord: Coord) -> bool;
 }
 
+/// Traits for volume objects.
+pub trait Volume: Contains {
+    /// Fill the object with (roughly) uniformly distributed coordinates and return it.
+    fn fill(self, num_coords: u64) -> Self;
+
+    /// Return the object volume in units cubed.
+    fn volume(&self) -> f64;
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.
 pub struct Cuboid {
@@ -38,7 +47,6 @@ pub struct Cuboid {
     pub coords: Vec<Coord>,
 }
 
-#[allow(dead_code)]
 impl Cuboid {
     /// Calculate the center position of the cuboid, relative to the origin.
     fn center(&self) -> Coord {
@@ -48,52 +56,6 @@ impl Cuboid {
     /// Calculate the box size.
     fn calc_box_size(&self) -> Coord {
         self.size
-    }
-
-    /// Fill the cuboid with (roughly) uniformly distributed coordinates and return the object.
-    fn fill(self, num_coords: u64) -> Cuboid {
-        // To fill the cuboid in a uniform manner, construct a lattice grid which can contain
-        // the desired number of atoms. Then, select the desired number of cells from this
-        // list  and add their corresponding coordinate.
-        let volume = self.size.x * self.size.y * self.size.z;
-        let cell_volume = volume / (num_coords as f64);
-        let target_cell_length = cell_volume.powf(1.0 / 3.0);
-
-        // Use `ceil` since we want the upper limit of available cells
-        let nx = (self.size.x / target_cell_length).ceil() as u64;
-        let ny = (self.size.y / target_cell_length).ceil() as u64;
-        let nz = (self.size.z / target_cell_length).ceil() as u64;
-        let num_cells = nx * ny * nz;
-
-        let mut rng = rand::thread_rng();
-        let selected_indices = rand::sample(&mut rng, 0..num_cells, num_coords as usize);
-
-        let dx = self.size.x / (nx as f64);
-        let dy = self.size.y / (ny as f64);
-        let dz = self.size.z / (nz as f64);
-
-        let coords = selected_indices
-            .into_iter()
-            .map(|i| {
-                let ix = i % nx;
-                let iy = (i / nx) % ny;
-                let iz = i / (nx * ny);
-
-                Coord::new(
-                    dx * ((ix as f64) + 0.5),
-                    dy * ((iy as f64) + 0.5),
-                    dz * ((iz as f64) + 0.5)
-                )
-            })
-            .collect::<Vec<_>>();
-
-        let density = Some((num_coords as f64) / volume);
-
-        Cuboid {
-            density,
-            coords,
-            .. self
-        }
     }
 
     /// Construct a `Cylinder` from the cuboid by cutting its coordinates.
@@ -230,6 +192,56 @@ impl Periodic for Cuboid {
     }
 }
 
+impl Volume for Cuboid {
+    fn fill(self, num_coords: u64) -> Cuboid {
+        // To fill the cuboid in a uniform manner, construct a lattice grid which can contain
+        // the desired number of atoms. Then, select the desired number of cells from this
+        // list  and add their corresponding coordinate.
+        let cell_volume = self.volume() / (num_coords as f64);
+        let target_cell_length = cell_volume.powf(1.0 / 3.0);
+
+        // Use `ceil` since we want the upper limit of available cells
+        let nx = (self.size.x / target_cell_length).ceil() as u64;
+        let ny = (self.size.y / target_cell_length).ceil() as u64;
+        let nz = (self.size.z / target_cell_length).ceil() as u64;
+        let num_cells = nx * ny * nz;
+
+        let mut rng = rand::thread_rng();
+        let selected_indices = rand::sample(&mut rng, 0..num_cells, num_coords as usize);
+
+        let dx = self.size.x / (nx as f64);
+        let dy = self.size.y / (ny as f64);
+        let dz = self.size.z / (nz as f64);
+
+        let coords = selected_indices
+            .into_iter()
+            .map(|i| {
+                let ix = i % nx;
+                let iy = (i / nx) % ny;
+                let iz = i / (nx * ny);
+
+                Coord::new(
+                    dx * ((ix as f64) + 0.5),
+                    dy * ((iy as f64) + 0.5),
+                    dz * ((iz as f64) + 0.5)
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let density = Some((num_coords as f64) / self.volume());
+
+        Cuboid {
+            density,
+            coords,
+            .. self
+        }
+    }
+
+    fn volume(&self) -> f64 {
+        self.size.x * self.size.y * self.size.z
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cylindrical volume.
 pub struct Cylinder {
@@ -261,9 +273,29 @@ impl Cylinder {
             Direction::Z => Coord::new(diameter, diameter, self.height),
         }
     }
+}
 
-    /// Fill the cylinder with (roughly) uniformly distributed coordinates and return the object.
-    pub fn fill(self, num_coords: u64) -> Cylinder {
+impl Contains for Cylinder {
+    fn contains(&self, coord: Coord) -> bool {
+        let (dr, dh) = self.origin.distance_cylindrical(coord, self.alignment);
+
+        dr <= self.radius && dh >= 0.0 && dh <= self.height
+    }
+}
+
+impl Describe for Cylinder {
+    fn describe(&self) -> String {
+        format!("{} (Cylinder volume of radius {:.2} and height {:.2} at {})",
+            unwrap_name(&self.name), self.radius, self.height, self.origin)
+    }
+
+    fn describe_short(&self) -> String {
+        format!("{} (Cylinder volume)", unwrap_name(&self.name))
+    }
+}
+
+impl Volume for Cylinder {
+    fn fill(self, num_coords: u64) -> Cylinder {
         let mut rng = rand::thread_rng();
 
         let range_radius = rand::distributions::Range::new(0.0, self.radius);
@@ -292,26 +324,10 @@ impl Cylinder {
             coords,
             .. self.clone()
         }
-
-    }
-}
-
-impl Contains for Cylinder {
-    fn contains(&self, coord: Coord) -> bool {
-        let (dr, dh) = self.origin.distance_cylindrical(coord, self.alignment);
-
-        dr <= self.radius && dh >= 0.0 && dh <= self.height
-    }
-}
-
-impl Describe for Cylinder {
-    fn describe(&self) -> String {
-        format!("{} (Cylinder volume of radius {:.2} and height {:.2} at {})",
-            unwrap_name(&self.name), self.radius, self.height, self.origin)
     }
 
-    fn describe_short(&self) -> String {
-        format!("{} (Cylinder volume)", unwrap_name(&self.name))
+    fn volume(&self) -> f64 {
+        PI * self.radius.powi(2) * self.height
     }
 }
 
@@ -788,5 +804,34 @@ mod tests {
         let ratio = density / expected_density;
 
         assert!(ratio >= 0.9 && ratio <= 1.1);
+    }
+
+    #[test]
+    fn cuboid_volume_is_correct() {
+        let cuboid = Cuboid {
+            size: Coord::new(1.0, 3.0, 7.0),
+            .. Cuboid::default()
+        };
+
+        assert_eq!(cuboid.volume(), 1.0 * 3.0 * 7.0);
+    }
+
+    #[test]
+    fn cylinder_volume_is_correct() {
+        let radius = 2.0;
+        let height = 5.0;
+
+        let cylinder = Cylinder {
+            name: None,
+            residue: None,
+            origin: Coord::ORIGO,
+            radius,
+            height,
+            alignment: Direction::X,
+            coords: vec![],
+        };
+
+        let base = PI * radius * radius;
+        assert_eq!(cylinder.volume(), base * height);
     }
 }
