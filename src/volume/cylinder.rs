@@ -1,6 +1,6 @@
 //! Cylinder objects.
 
-use coord::{Coord, Direction, Periodic, Translate};
+use coord::{Coord, Direction, Translate};
 use describe::{unwrap_name, Describe};
 use iterator::{AtomIterator, AtomIterItem};
 use system::{Component, Residue};
@@ -105,7 +105,7 @@ impl Volume for Cylinder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn fill_cylinder_with_coords() {
         let radius = 2.0;

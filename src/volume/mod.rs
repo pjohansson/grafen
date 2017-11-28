@@ -4,14 +4,9 @@ mod cuboid;
 mod cylinder;
 mod sphere;
 
-use coord::{Coord, Direction, Periodic, Translate};
-use describe::{unwrap_name, Describe};
-use iterator::{AtomIterator, AtomIterItem};
-use system::{Component, Residue};
-
-use rand;
-use rand::distributions::IndependentSample;
-use std::f64::consts::PI;
+use coord::{Coord, Direction, Periodic};
+use describe::Describe;
+use system::Residue;
 
 pub use self::cuboid::Cuboid;
 pub use self::cylinder::Cylinder;

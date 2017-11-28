@@ -7,8 +7,6 @@ use system::{Component, Residue};
 use volume::*;
 
 use rand;
-use rand::distributions::IndependentSample;
-use std::f64::consts::PI;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.
@@ -33,6 +31,7 @@ pub struct Cuboid {
 impl_component![Cuboid];
 impl_translate![Cuboid];
 
+#[allow(dead_code)]
 impl Cuboid {
     /// Calculate the center position of the cuboid, relative to the origin.
     fn center(&self) -> Coord {
