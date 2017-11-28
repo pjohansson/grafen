@@ -178,7 +178,7 @@ impl Periodic for Cuboid {
 impl Volume for Cuboid {
     fn fill(self, fill_type: FillType) -> Cuboid {
         let num_coords = fill_type.to_num_coords(&self);
-        
+
         // To fill the cuboid in a uniform manner, construct a lattice grid which can contain
         // the desired number of atoms. Then, select the desired number of cells from this
         // list and add their corresponding coordinate.
@@ -230,7 +230,6 @@ impl Volume for Cuboid {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system::Atom;
 
     fn setup_cuboid(dx: f64, dy: f64, dz: f64, spacing: f64) -> Cuboid {
         let mut coords = Vec::new();
@@ -413,73 +412,6 @@ mod tests {
         assert!(!cuboid.contains(Coord::new(2.0 + err, 2.0 - err, 2.0 - err)));
         assert!(!cuboid.contains(Coord::new(2.0 - err, 2.0 + err, 2.0 - err)));
         assert!(!cuboid.contains(Coord::new(2.0 - err, 2.0 - err, 2.0 + err)));
-    }
-
-    #[test]
-    fn coordinates_within_cuboid_are_pruned() {
-        let residue = resbase!["RES", ("A", 0.0, 0.0, 0.0)];
-        let cuboid = Cuboid {
-            size: Coord::new(1.0, 1.0, 1.0),
-            .. Cuboid::default()
-        };
-
-        let coords_within = vec![
-            Coord::new(0.1, 0.1, 0.1),
-            Coord::new(0.5, 0.5, 0.5),
-            Coord::new(0.9, 0.9, 0.9)
-        ];
-
-        let coords_without = vec![
-            Coord::new(-0.1, 0.1, 0.1),
-            Coord::new(1.1, 0.9, 0.9)
-        ];
-
-        let coords = coords_within
-            .iter()
-            .chain(coords_without.iter())
-            .cloned()
-            .collect::<Vec<Coord>>();
-
-        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
-
-        assert_eq!(coords_without, pruned);
-    }
-
-    #[test]
-    fn coordinates_within_cuboid_prune_with_respect_to_residue_atoms() {
-        let residue = resbase![
-            "RES",
-            ("A", 0.0, 0.0, 0.0),
-            ("B", 1.0, 0.0, 0.0) // Shifted by 1
-        ];
-        let cuboid = Cuboid {
-            size: Coord::new(1.0, 1.0, 1.0),
-            .. Cuboid::default()
-        };
-
-        let coords_within = vec![
-            Coord::new(-0.9, 0.1, 0.1), // Atom B within
-            Coord::new(-0.5, 0.5, 0.5),
-            Coord::new(-0.1, 0.9, 0.9),
-            Coord::new(0.1, 0.9, 0.9), // Atom A within
-            Coord::new(0.5, 0.9, 0.9),
-            Coord::new(0.9, 0.9, 0.9)
-        ];
-
-        let coords_without = vec![
-            Coord::new(-1.1, 0.1, 0.1),
-            Coord::new(1.1, 0.9, 0.9)
-        ];
-
-        let coords = coords_within
-            .iter()
-            .chain(coords_without.iter())
-            .cloned()
-            .collect::<Vec<Coord>>();
-
-        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
-
-        assert_eq!(coords_without, pruned);
     }
 
     #[test]

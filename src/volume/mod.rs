@@ -122,6 +122,7 @@ pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord], residue: &Residue
 #[cfg(test)]
 mod tests {
     use super::*;
+    use system::Atom;
 
     #[test]
     fn fill_type_returns_correct_numbers() {
@@ -138,5 +139,72 @@ mod tests {
 
         let num = 11;
         assert_eq!(FillType::NumCoords(num).to_num_coords(&cuboid), num);
+    }
+
+    #[test]
+    fn coordinates_within_cuboid_are_pruned() {
+        let residue = resbase!["RES", ("A", 0.0, 0.0, 0.0)];
+        let cuboid = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let coords_within = vec![
+            Coord::new(0.1, 0.1, 0.1),
+            Coord::new(0.5, 0.5, 0.5),
+            Coord::new(0.9, 0.9, 0.9)
+        ];
+
+        let coords_without = vec![
+            Coord::new(-0.1, 0.1, 0.1),
+            Coord::new(1.1, 0.9, 0.9)
+        ];
+
+        let coords = coords_within
+            .iter()
+            .chain(coords_without.iter())
+            .cloned()
+            .collect::<Vec<Coord>>();
+
+        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
+
+        assert_eq!(coords_without, pruned);
+    }
+
+    #[test]
+    fn coordinates_within_cuboid_prune_with_respect_to_residue_atoms() {
+        let residue = resbase![
+            "RES",
+            ("A", 0.0, 0.0, 0.0),
+            ("B", 1.0, 0.0, 0.0) // Shifted by 1
+        ];
+        let cuboid = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let coords_within = vec![
+            Coord::new(-0.9, 0.1, 0.1), // Atom B within
+            Coord::new(-0.5, 0.5, 0.5),
+            Coord::new(-0.1, 0.9, 0.9),
+            Coord::new(0.1, 0.9, 0.9), // Atom A within
+            Coord::new(0.5, 0.9, 0.9),
+            Coord::new(0.9, 0.9, 0.9)
+        ];
+
+        let coords_without = vec![
+            Coord::new(-1.1, 0.1, 0.1),
+            Coord::new(1.1, 0.9, 0.9)
+        ];
+
+        let coords = coords_within
+            .iter()
+            .chain(coords_without.iter())
+            .cloned()
+            .collect::<Vec<Coord>>();
+
+        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
+
+        assert_eq!(coords_without, pruned);
     }
 }
