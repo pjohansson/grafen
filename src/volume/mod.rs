@@ -106,13 +106,16 @@ pub fn pbc_multiply_volume(coords: &[Coord], size: Coord, nx: usize, ny: usize, 
 ///
 /// Checks all atoms within the input residue to see if any are contained by the volume.
 /// If any are, the residue coordinate is kept in the returned list.
-pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord], residue: &Residue, volume: &T)
+pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord],
+                                             origin: Coord,
+                                             residue: &Residue,
+                                             volume: &T)
         -> Vec<Coord> where T: Contains {
     coords.iter()
           .filter(|&c0| {
               residue.atoms
                 .iter()
-                .map(|ref atom| atom.position + *c0)
+                .map(|ref atom| atom.position + *c0 + origin)
                 .all(|c1| !volume.contains(c1))
           })
           .cloned()
@@ -166,7 +169,7 @@ mod tests {
             .cloned()
             .collect::<Vec<Coord>>();
 
-        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
+        let pruned = prune_residues_from_volume(&coords, Coord::ORIGO, &residue, &cuboid);
 
         assert_eq!(coords_without, pruned);
     }
@@ -203,8 +206,30 @@ mod tests {
             .cloned()
             .collect::<Vec<Coord>>();
 
-        let pruned = prune_residues_from_volume(&coords, &residue, &cuboid);
+        let pruned = prune_residues_from_volume(&coords, Coord::ORIGO, &residue, &cuboid);
 
         assert_eq!(coords_without, pruned);
+    }
+
+    #[test]
+    fn pruning_accounts_for_the_relative_translation_of_objects() {
+        // cuboid from (1.0, 0.0, 0.0) to (3.0, 1.0, 1.0)
+        let cuboid = Cuboid {
+            origin: Coord::new(1.0, 0.0, 0.0),
+            size: Coord::new(2.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let residue = resbase!["RES", ("A", 0.0, 0.0, 0.0)];
+        let origin = Coord::new(1.0, 0.0, 0.0);
+        let coords = vec![
+            Coord::new(0.5, 0.5, 0.5), // at (1.5, 0.5, 0.5): within the other cuboid
+            Coord::new(1.5, 0.5, 0.5), // at (2.5, 0.5, 0.5): within the other cuboid
+            Coord::new(2.5, 0.5, 0.5)  // at (3.5, 0.5, 0.5): outside the other cuboid
+        ];
+
+        let pruned = prune_residues_from_volume(&coords, origin, &residue, &cuboid);
+
+        assert_eq!(pruned, vec![Coord::new(2.5, 0.5, 0.5)]);
     }
 }
