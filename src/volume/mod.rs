@@ -50,9 +50,50 @@ impl Cuboid {
         self.size
     }
 
-    /// Fill the cuboid uniformally with coordinates.
+    /// Fill the cuboid with (roughly) uniformly distributed coordinates and return the object.
     fn fill(self, num_atoms: u64) -> Cuboid {
-        unimplemented!();
+        // To fill the cuboid in a uniform manner, construct a lattice grid which can contain
+        // the desired number of atoms. Then, select the desired number of cells from this
+        // list  and add their corresponding coordinate.
+        let volume = self.size.x * self.size.y * self.size.z;
+        let cell_volume = volume / (num_atoms as f64);
+        let target_cell_length = cell_volume.powf(1.0 / 3.0);
+
+        // Use `ceil` since we want the upper limit of available cells
+        let nx = (self.size.x / target_cell_length).ceil() as u64;
+        let ny = (self.size.y / target_cell_length).ceil() as u64;
+        let nz = (self.size.z / target_cell_length).ceil() as u64;
+        let num_cells = nx * ny * nz;
+
+        let mut rng = rand::thread_rng();
+        let selected_indices = rand::sample(&mut rng, 0..num_cells, num_atoms as usize);
+
+        let dx = self.size.x / (nx as f64);
+        let dy = self.size.y / (ny as f64);
+        let dz = self.size.z / (nz as f64);
+
+        let coords = selected_indices
+            .into_iter()
+            .map(|i| {
+                let ix = i % nx;
+                let iy = (i / nx) % ny;
+                let iz = i / (nx * ny);
+
+                Coord::new(
+                    dx * ((ix as f64) + 0.5),
+                    dy * ((iy as f64) + 0.5),
+                    dz * ((iz as f64) + 0.5)
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let density = Some((num_atoms as f64) / volume);
+
+        Cuboid {
+            density,
+            coords,
+            .. self
+        }
     }
 
     /// Construct a `Cylinder` from the cuboid by cutting its coordinates.
@@ -221,8 +262,7 @@ impl Cylinder {
         }
     }
 
-    /// Fill the cylinder with (roughly) uniformly distributed coordinates
-    /// and return the object.
+    /// Fill the cylinder with (roughly) uniformly distributed coordinates and return the object.
     pub fn fill(self, num_coords: u64) -> Cylinder {
         let mut rng = rand::thread_rng();
 
