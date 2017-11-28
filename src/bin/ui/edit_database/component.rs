@@ -689,16 +689,6 @@ fn create_cuboid(residue_list: &[Residue]) -> result::Result<ComponentEntry, Cha
     }
 }
 
-fn get_density() -> UIResult<Option<f64>> {
-    let density = get_value_from_user::<f64>("Density (1/nm^3, negative: unset)")?;
-
-    if density > 0.0 {
-        Ok(Some(density))
-    } else {
-        Ok(None)
-    }
-}
-
 /************************************
  * Selection of lattice and residue *
  ************************************/
@@ -711,6 +701,16 @@ enum LatticeSelection {
     Triclinic,
     Hexagonal,
     PoissonDisc,
+}
+
+fn get_density() -> UIResult<Option<f64>> {
+    let density = get_value_from_user::<f64>("Density (1/nm^3, negative: unset)")?;
+
+    if density > 0.0 {
+        Ok(Some(density))
+    } else {
+        Ok(None)
+    }
 }
 
 fn select_residue(residue_list: &[Residue]) -> UIResult<Residue> {

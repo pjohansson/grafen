@@ -115,6 +115,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               origin: obj.origin,
                               radius: obj.radius,
                               height: obj.height,
+                              density: obj.density,
                               alignment: obj.alignment,
                               coords: vec![],
                           };
@@ -129,6 +130,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               origin: obj.origin,
                               radius: obj.radius,
                               height: obj.height,
+                              density: None,
                               alignment: obj.alignment,
                               coords: vec![],
                           };
