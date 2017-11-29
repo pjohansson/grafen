@@ -31,10 +31,10 @@ pub struct System {
     pub components: Vec<ComponentEntry>,
 }
 
-impl<'a> Component<'a> for System {
+impl<'a> System {
     /// Calculate the total box size of the system as the maximum size along each axis
     /// from all components.
-    fn box_size(&self) -> Coord {
+    pub fn box_size(&self) -> Coord {
         self.components
             .iter()
             .map(|object| object.box_size())
@@ -51,7 +51,7 @@ impl<'a> Component<'a> for System {
     ///
     /// Corrects residue and atom index numbers to be system-absolute instead
     /// of for each component.
-    fn iter_atoms(&'a self) -> AtomIterItem {
+    pub fn iter_atoms(&'a self) -> AtomIterItem {
         // We want to return system-wide atom and residue indices. The atom index
         // is easy to increase by one for each iterated atom, but to update the residue
         // index we have to see if it has changed from the previous iteration.
@@ -79,12 +79,8 @@ impl<'a> Component<'a> for System {
     }
 
     /// Calculate the total number of atoms in the system.
-    fn num_atoms(&self) -> u64 {
+    pub fn num_atoms(&self) -> u64 {
         self.components.iter().map(|object| object.num_atoms()).sum()
-    }
-
-    fn with_pbc(self) -> Self {
-        unreachable!();
     }
 }
 
