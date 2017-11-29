@@ -88,10 +88,17 @@ impl Describe for System {
     fn describe(&self) -> String {
         let mut description = String::new();
 
-        writeln!(description, "Title: '{}'", self.title).unwrap();
-        writeln!(description, "Output path: {}", self.output_path.to_str().unwrap_or("(Not set)")).unwrap();
+        writeln!(description, "[ System ]").unwrap();
+        writeln!(description, "  Title: '{}'", self.title).unwrap();
+        writeln!(description, "  Output path: {}", self.output_path.to_str().unwrap_or("(Not set)")).unwrap();
+        writeln!(description, "  Box size: {}", self.box_size()).unwrap();
         writeln!(description, "").unwrap();
-        writeln!(description, "{}", describe_list("Components", &self.components)).unwrap();
+
+        if self.components.len() > 0 {
+            writeln!(description, "{}", describe_list("Components", &self.components)).unwrap();
+        } else {
+            writeln!(description, "(no constructed components)").unwrap();
+        }
 
         description
     }
