@@ -155,18 +155,6 @@ macro_rules! create_entry_wrapper {
                     )*
                 }
             }
-
-            /// Apply periodic boundary conditions to each residue coordinate
-            /// to move them inside the component box.
-            pub fn with_pbc(mut self) -> Self {
-                let box_size = self.box_size();
-
-                self.get_coords_mut()
-                    .iter_mut()
-                    .for_each(|c| *c = c.with_pbc(box_size));
-
-                self
-            }
         }
 
         impl Describe for $name {
@@ -208,6 +196,14 @@ macro_rules! create_entry_wrapper {
                 match *self {
                     $(
                         $name::$entry(ref object) => object.num_atoms(),
+                    )*
+                }
+            }
+
+            fn with_pbc(self) -> Self {
+                match self {
+                    $(
+                        $name::$entry(object) => $name::$entry(object.with_pbc()),
                     )*
                 }
             }

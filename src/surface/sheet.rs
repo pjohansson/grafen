@@ -13,7 +13,6 @@ use iterator::{AtomIterator, AtomIterItem};
 use system::*;
 use volume::pbc_multiply_volume;
 
-
 impl_component![Sheet];
 impl_translate![Circle, Sheet];
 

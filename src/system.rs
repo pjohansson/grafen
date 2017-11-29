@@ -82,6 +82,10 @@ impl<'a> Component<'a> for System {
     fn num_atoms(&self) -> u64 {
         self.components.iter().map(|object| object.num_atoms()).sum()
     }
+
+    fn with_pbc(self) -> Self {
+        unreachable!();
+    }
 }
 
 impl Describe for System {
@@ -114,6 +118,9 @@ pub trait Component<'a> {
 
     /// Return the number of atoms in the object.
     fn num_atoms(&self) -> u64;
+
+    /// Return the component with its coordinates adjusted to lie within its box.
+    fn with_pbc(self) -> Self;
 }
 
 #[macro_export]
@@ -149,6 +156,16 @@ macro_rules! impl_component {
                         .unwrap_or(0);
 
                     (residue_len * self.coords.len()) as u64
+                }
+
+                fn with_pbc(mut self) -> Self {
+                    let box_size = self.calc_box_size();
+
+                    self.coords
+                        .iter_mut()
+                        .for_each(|c| *c = c.with_pbc(box_size));
+
+                    self
                 }
             }
         )*
@@ -338,6 +355,31 @@ mod tests {
         };
 
         assert_eq!(origin + size, cuboid.box_size());
+    }
+
+    #[test]
+    fn with_pbc_in_macro_generated_impls_works_locally() {
+        let origin = Coord::new(10.0, 20.0, 30.0);
+        let size = Coord::new(1.0, 2.0, 3.0);
+
+        let cuboid = Cuboid {
+            origin,
+            size,
+            coords: vec![
+                Coord::new(-0.9, 0.1, 0.1), // outside locally
+                Coord::new(0.1, 0.1, 0.1),  // inside locally
+                Coord::new(1.1, 0.1, 0.1),  // outside locally
+            ],
+            .. Cuboid::default()
+        }.with_pbc();
+
+        let expected = vec![
+            Coord::new(0.1, 0.1, 0.1), // moved inside
+            Coord::new(0.1, 0.1, 0.1), // unmoved
+            Coord::new(0.1, 0.1, 0.1), // moved inside
+        ];
+
+        assert_eq!(cuboid.coords, expected);
     }
 
     #[test]
