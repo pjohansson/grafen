@@ -41,7 +41,7 @@ pub fn user_menu(config: Config) -> Result<()> {
         AddComponent, "Construct a component" => {
             create_component(&mut system)
         },
-        EditComponent, "Edit a component" => {
+        EditComponent, "Edit or clone a component" => {
             edit_component::user_menu(&mut system.components)
         },
         RemoveItems, "Remove a component from the list" => {

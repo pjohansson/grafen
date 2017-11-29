@@ -11,11 +11,11 @@ use grafen::coord::{Coord, Translate};
 use grafen::volume::{Contains, Cuboid, Cylinder, prune_residues_from_volume};
 
 /// Prompt the user to select a defined component and then edit it.
-pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
+pub fn user_menu(components: &mut Vec<ComponentEntry>) -> MenuResult {
     // The component should be a mutable reference to the object in the list,
     // since we want to edit it in-place.
     eprintln!("Select component to edit:");
-    let index = select_item_index(components, 0)?;
+    let mut index = select_item_index(components, 0)?;
     let mut component = components[index].clone();
 
     create_menu![
@@ -25,6 +25,13 @@ pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
             eprint!("\n");
         };
 
+        Clone, "Clone the component and edit it" => {
+            components.push(component);
+            index = components.len() - 1;
+            component = components[index].clone();
+
+            Ok(None)
+        },
         Translate, "Translate the component" => {
             let coord = get_position_from_user(None)?;
             component.translate_in_place(coord);
