@@ -94,6 +94,26 @@ impl Coord {
         (dr, dh)
     }
 
+    /// Rotate the coordinate around an axis and return.
+    ///
+    /// The rotation is relative to (0, 0, 0).
+    ///
+    /// # Examples
+    /// ```
+    /// # use grafen::coord::{Coord, Direction};
+    /// let coord = Coord::new(1.0, 0.0, 0.0);
+    /// assert_eq!(coord.rotate(Direction::X), Coord::new(1.0, 0.0, 0.0));
+    /// assert_eq!(coord.rotate(Direction::Y), Coord::new(0.0, 0.0, -1.0));
+    /// assert_eq!(coord.rotate(Direction::Z), Coord::new(0.0, 1.0, 0.0));
+    /// ```
+    pub fn rotate(self, axis: Direction) -> Coord {
+        match axis {
+            Direction::X => Coord { x: self.x, y: -self.z, z: self.y },
+            Direction::Y => Coord { x: self.z, y: self.y, z: -self.x },
+            Direction::Z => Coord { x: -self.y, y: self.x, z: self.z },
+        }
+    }
+
     /// Return the coordinate with its position adjusted to lie within the input box.
     ///
     /// If an input box size side is 0.0 (or smaller) the coordinate is not changed
@@ -192,16 +212,6 @@ impl FromStr for Coord {
     }
 }
 
-impl Rotate for Coord {
-    fn rotate(self, axis: Direction) -> Coord {
-        match axis {
-            Direction::X => Coord::new(self.x, -self.z, self.y),
-            Direction::Y => Coord::new(self.z, self.y, -self.x),
-            Direction::Z => Coord::new(-self.y, self.x, self.z),
-        }
-    }
-}
-
 impl Add for Coord {
     type Output = Coord;
 
@@ -279,13 +289,6 @@ impl PartialEq for Coord {
 /// For a `Sheet` the normal.
 pub enum Direction { X, Y, Z }
 
-impl Direction {
-    /// Default alignment of a cylinder.
-    pub fn default_cylinder() -> Direction {
-        Direction::Z
-    }
-}
-
 impl Display for Direction {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
@@ -296,36 +299,46 @@ impl Display for Direction {
     }
 }
 
-/// Rotate an object around an input axis.
-pub trait Rotate {
-    fn rotate(self, axis: Direction) -> Self;
-}
-
-#[macro_export]
-/// Macro to implement `Rotate` for an object with a `coords` variable.
-macro_rules! impl_rotate {
-    ( $($class:path),+ ) => {
-        $(
-            impl Rotate for $class {
-                /// Rotate the object around an input axis.
-                fn rotate(self, axis: Direction) -> Self {
-                    let coords = rotate_coords(&self.coords, axis);
-
-                    Self {
-                        coords,
-                        .. self
-                    }
-                }
-            }
-        )*
-    }
-}
-
 /// Rotate a set of coordinates around an axis.
 pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
     coords.iter()
         .map(|&coord| coord.rotate(axis))
         .collect()
+}
+
+/// Rotate a set of coordinates from one alignment to another.
+///
+/// Note that this is meant mostly for planar objects, ie. sheets! The rotation along `Y`
+/// is actually negative, to make a plane aligned along `Z` with its origin at origo
+/// spread out in the positive z plane after rotation (ie. with its normal poining in
+/// the direction of negative y). This is obviously pretty stupid design. I need to revisit
+/// it sometime to make that a special case.
+///
+/// This code highlights how stupid the current rotation implementation is.
+pub fn rotate_planar_coords_to_alignment(coords: &[Coord], from: Direction, to: Direction) -> Vec<Coord> {
+    use self::Direction::*;
+
+    match (from, to) {
+        (X, Y) => {
+            rotate_coords(&rotate_coords(&rotate_coords(coords, Z), Z), Z)
+        },
+        (X, Z) => {
+            rotate_coords(coords, Y)
+        },
+        (Y, X) => {
+            rotate_coords(coords, Z)
+        },
+        (Y, Z) => {
+            rotate_coords(&rotate_coords(&rotate_coords(coords, X), X), X)
+        },
+        (Z, X) => {
+            rotate_coords(&rotate_coords(&rotate_coords(coords, Y), Y), Y)
+        },
+        (Z, Y) => {
+            rotate_coords(coords, X)
+        },
+        _ => coords.into(),
+    }
 }
 
 /// Translate an object by a `Coord`.
@@ -492,18 +505,6 @@ mod tests {
     }
 
     #[test]
-    fn impl_rotate_macro() {
-        struct RotateTest { coords: Vec<Coord> }
-        impl_rotate![RotateTest];
-
-        let rotated = RotateTest {
-            coords: vec![Coord::new(1.0, 2.0, 3.0)],
-        }.rotate(Direction::Z);
-
-        assert_eq!(Coord::new(-2.0, 1.0, 3.0), rotated.coords[0]);
-    }
-
-    #[test]
     fn impl_translate_object() {
         struct TranslateTest { origin: Coord }
         impl_translate![TranslateTest];
@@ -529,5 +530,66 @@ mod tests {
         object.translate_in_place(coord);
 
         assert_eq!(object.origin, coord);
+    }
+
+    #[test]
+    fn rotating_a_sheet_to_alignment_works() {
+        use super::Direction::*;
+
+        let sheet_z = vec![
+            Coord::new(0.0, 0.0, 0.0),
+            Coord::new(1.0, 0.0, 0.0),
+            Coord::new(0.0, 1.0, 0.0),
+            Coord::new(1.0, 1.0, 0.0),
+        ];
+
+        // Z to Y and back
+        let sheet_y = rotate_planar_coords_to_alignment(&sheet_z, Z, Y);
+        let expected = vec![
+            Coord::new(0.0, 0.0, 0.0),
+            Coord::new(1.0, 0.0, 0.0),
+            Coord::new(0.0, 0.0, 1.0),
+            Coord::new(1.0, 0.0, 1.0)
+        ];
+
+        assert_eq!(sheet_y, expected);
+        assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_y, Y, Z));
+
+        // Z to X and back
+        let sheet_x = rotate_planar_coords_to_alignment(&sheet_z, Z, X);
+        let expected = vec![
+            Coord::new(0.0, 0.0, 0.0),
+            Coord::new(0.0, 0.0, 1.0),
+            Coord::new(0.0, 1.0, 0.0),
+            Coord::new(0.0, 1.0, 1.0)
+        ];
+
+        assert_eq!(sheet_x, expected);
+        assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_x, X, Z));
+
+        // X to Y and back (create from scratch since rotations around
+        // different axes do not commute)
+        let sheet_x = vec![
+            Coord::new(0.0, 0.0, 0.0),
+            Coord::new(0.0, 1.0, 0.0),
+            Coord::new(0.0, 0.0, 1.0),
+            Coord::new(0.0, 1.0, 1.0)
+        ];
+
+        let sheet_y = rotate_planar_coords_to_alignment(&sheet_x, X, Y);
+        let expected = vec![
+            Coord::new(0.0, 0.0, 0.0),
+            Coord::new(1.0, 0.0, 0.0),
+            Coord::new(0.0, 0.0, 1.0),
+            Coord::new(1.0, 0.0, 1.0)
+        ];
+
+        assert_eq!(sheet_y, expected);
+        assert_eq!(sheet_x, rotate_planar_coords_to_alignment(&sheet_y, Y, X));
+
+        // No rotation changes expected
+        assert_eq!(sheet_x, rotate_planar_coords_to_alignment(&sheet_x, X, X));
+        assert_eq!(sheet_y, rotate_planar_coords_to_alignment(&sheet_y, Y, Y));
+        assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_z, Z, Z));
     }
 }

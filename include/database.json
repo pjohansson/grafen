@@ -41,6 +41,35 @@
           }
         }
       ]
+    },
+    {
+      "code": "SOL",
+      "atoms": [
+        {
+          "code": "OW",
+          "position": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "code": "HW2",
+          "position": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.1
+          }
+        },
+        {
+          "code": "HW1",
+          "position": {
+            "x": 0.0943,
+            "y": 0.0,
+            "z": -0.0333
+          }
+        }
+      ]
     }
   ],
   "component_definitions": [
@@ -65,7 +94,8 @@
             "a": 0.142
           }
         },
-        "std_z": null
+        "std_z": null,
+        "normal": "Z"
       }
     },
     {
@@ -107,7 +137,8 @@
             "gamma": 60.0
           }
         },
-        "std_z": null
+        "std_z": null,
+        "normal": "Z"
       }
     },
     {

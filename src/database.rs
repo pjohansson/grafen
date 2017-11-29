@@ -139,6 +139,14 @@ macro_rules! create_entry_wrapper {
                 }
             }
 
+            pub fn get_origin(&self) -> Coord {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.origin,
+                    )*
+                }
+            }
+
             /// Get a reference to the component's optional `Residue`.
             pub fn get_residue(&'a self) -> &'a Option<Residue> {
                 match *self {
@@ -146,18 +154,6 @@ macro_rules! create_entry_wrapper {
                         $name::$entry(ref object) => &object.residue,
                     )*
                 }
-            }
-
-            /// Apply periodic boundary conditions to each residue coordinate
-            /// to move them inside the component box.
-            pub fn with_pbc(mut self) -> Self {
-                let box_size = self.box_size();
-
-                self.get_coords_mut()
-                    .iter_mut()
-                    .for_each(|c| *c = c.with_pbc(box_size));
-
-                self
             }
         }
 
@@ -200,6 +196,14 @@ macro_rules! create_entry_wrapper {
                 match *self {
                     $(
                         $name::$entry(ref object) => object.num_atoms(),
+                    )*
+                }
+            }
+
+            fn with_pbc(self) -> Self {
+                match self {
+                    $(
+                        $name::$entry(object) => $name::$entry(object.with_pbc()),
                     )*
                 }
             }
@@ -357,8 +361,9 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system::*;
+    use coord::Direction;
     use surface::{LatticeType, Sheet};
+    use system::*;
     use volume::Cuboid;
 
     #[test]
@@ -458,6 +463,7 @@ mod tests {
             lattice: LatticeType::Hexagonal { a: 0.1 },
             std_z: None,
             origin: Coord::ORIGO,
+            normal: Direction::Z,
             length: 2.0,
             width: 1.0,
             coords: vec![

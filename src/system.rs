@@ -16,7 +16,7 @@ use describe::{describe_list, Describe};
 use database::{ComponentEntry, DataBase};
 use iterator::AtomIterItem;
 
-use std::fmt::Write;
+use colored::*;
 use std::path::PathBuf;
 
 /// Main structure of a constructed system with several components.
@@ -31,10 +31,10 @@ pub struct System {
     pub components: Vec<ComponentEntry>,
 }
 
-impl<'a> Component<'a> for System {
+impl<'a> System {
     /// Calculate the total box size of the system as the maximum size along each axis
     /// from all components.
-    fn box_size(&self) -> Coord {
+    pub fn box_size(&self) -> Coord {
         self.components
             .iter()
             .map(|object| object.box_size())
@@ -47,11 +47,26 @@ impl<'a> Component<'a> for System {
             })
     }
 
+    /// Print the system state to standard error.
+    pub fn print_state(&self) {
+        eprintln!("{}", "System".underline().color("yellow"));
+        eprintln!("Title       '{}'", self.title);
+        eprintln!("Output path  {}", self.output_path.to_str().unwrap_or("(Not set)"));
+        eprintln!("Box size     {}", self.box_size());
+        eprintln!("");
+
+        if self.components.len() > 0 {
+            eprintln!("{}", describe_list("Components", &self.components));
+        } else {
+            eprintln!("(no constructed components)\n");
+        }
+    }
+
     /// Return an `Iterator` over all atoms in the whole system as `CurrentAtom` objects.
     ///
     /// Corrects residue and atom index numbers to be system-absolute instead
     /// of for each component.
-    fn iter_atoms(&'a self) -> AtomIterItem {
+    pub fn iter_atoms(&'a self) -> AtomIterItem {
         // We want to return system-wide atom and residue indices. The atom index
         // is easy to increase by one for each iterated atom, but to update the residue
         // index we have to see if it has changed from the previous iteration.
@@ -79,25 +94,8 @@ impl<'a> Component<'a> for System {
     }
 
     /// Calculate the total number of atoms in the system.
-    fn num_atoms(&self) -> u64 {
+    pub fn num_atoms(&self) -> u64 {
         self.components.iter().map(|object| object.num_atoms()).sum()
-    }
-}
-
-impl Describe for System {
-    fn describe(&self) -> String {
-        let mut description = String::new();
-
-        writeln!(description, "Title: '{}'", self.title).unwrap();
-        writeln!(description, "Output path: {}", self.output_path.to_str().unwrap_or("(Not set)")).unwrap();
-        writeln!(description, "").unwrap();
-        writeln!(description, "{}", describe_list("Components", &self.components)).unwrap();
-
-        description
-    }
-
-    fn describe_short(&self) -> String {
-        self.describe()
     }
 }
 
@@ -114,6 +112,9 @@ pub trait Component<'a> {
 
     /// Return the number of atoms in the object.
     fn num_atoms(&self) -> u64;
+
+    /// Return the component with its coordinates adjusted to lie within its box.
+    fn with_pbc(self) -> Self;
 }
 
 #[macro_export]
@@ -149,6 +150,16 @@ macro_rules! impl_component {
                         .unwrap_or(0);
 
                     (residue_len * self.coords.len()) as u64
+                }
+
+                fn with_pbc(mut self) -> Self {
+                    let box_size = self.calc_box_size();
+
+                    self.coords
+                        .iter_mut()
+                        .for_each(|c| *c = c.with_pbc(box_size));
+
+                    self
                 }
             }
         )*
@@ -333,10 +344,36 @@ mod tests {
             residue: None,
             size,
             origin,
+            density: None,
             coords: vec![],
         };
 
         assert_eq!(origin + size, cuboid.box_size());
+    }
+
+    #[test]
+    fn with_pbc_in_macro_generated_impls_works_locally() {
+        let origin = Coord::new(10.0, 20.0, 30.0);
+        let size = Coord::new(1.0, 2.0, 3.0);
+
+        let cuboid = Cuboid {
+            origin,
+            size,
+            coords: vec![
+                Coord::new(-0.9, 0.1, 0.1), // outside locally
+                Coord::new(0.1, 0.1, 0.1),  // inside locally
+                Coord::new(1.1, 0.1, 0.1),  // outside locally
+            ],
+            .. Cuboid::default()
+        }.with_pbc();
+
+        let expected = vec![
+            Coord::new(0.1, 0.1, 0.1), // moved inside
+            Coord::new(0.1, 0.1, 0.1), // unmoved
+            Coord::new(0.1, 0.1, 0.1), // moved inside
+        ];
+
+        assert_eq!(cuboid.coords, expected);
     }
 
     #[test]
@@ -360,6 +397,7 @@ mod tests {
             residue: Some(residue1.clone()),
             origin: Coord::default(),
             size: Coord::default(),
+            density: None,
             coords: vec![Coord::default(), Coord::default(), Coord::default()],
         };
 
@@ -373,6 +411,7 @@ mod tests {
             residue: Some(residue2.clone()),
             origin: origin,
             size: Coord::default(),
+            density: None,
             coords: vec![position, Coord::default()],
         };
 
@@ -407,6 +446,7 @@ mod tests {
             residue: Some(residue.clone()),
             origin: Coord::default(),
             size: Coord::default(),
+            density: None,
             coords: vec![Coord::default(), Coord::default(), Coord::default()],
         });
 
@@ -428,6 +468,7 @@ mod tests {
             residue: None,
             origin: Coord::new(0.0, 0.0, 0.0),
             size: Coord::new(5.0, 5.0, 5.0),
+            density: None,
             coords: vec![],
         });
 
@@ -436,6 +477,7 @@ mod tests {
             residue: None,
             origin: Coord::new(3.0, 3.0, 3.0),
             size: Coord::new(3.0, 2.0, 1.0),
+            density: None,
             coords: vec![],
         });
 

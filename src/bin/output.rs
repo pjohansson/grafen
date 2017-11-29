@@ -2,7 +2,7 @@
 
 use error::Result;
 
-use grafen::system::{Component, System};
+use grafen::system::System;
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
