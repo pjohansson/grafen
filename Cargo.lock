@@ -53,6 +53,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "colored"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "console"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -88,6 +96,7 @@ version = "0.9.1-dev"
 dependencies = [
  "ansi_term 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.23.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dialoguer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -352,6 +361,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1370e9fc2a6ae53aea8b7a5110edbd08836ed87c88736dfabccade1c2b44bff4"
 "checksum clap 2.23.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f57e9b63057a545ad2ecd773ea61e49422ed1b1d63d74d5da5ecaee55b3396cd"
 "checksum clicolors-control 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "61bd6bff2f99f947c2dbdc73cd0ebd55d8263b921fd4f68a44598555be49f32b"
+"checksum colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0aa3473e85a3161b59845d6096b289bb577874cafeaf75ea1b1beaa6572c7fc"
 "checksum console 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "21d6020031c1b7b2b1aa3f9c35568735c46270c6b0e9b338aae6e4a062301711"
 "checksum dialoguer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ace6c8080a9c258d231914bfd0962a99883d5c26cc12b2b62d201d072f5aa683"
 "checksum dtoa 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "80c8b71fd71146990a9742fc06dcbbde19161a267e0ad4e572c35162f4578c90"

@@ -16,7 +16,7 @@ use describe::{describe_list, Describe};
 use database::{ComponentEntry, DataBase};
 use iterator::AtomIterItem;
 
-use std::fmt::Write;
+use colored::*;
 use std::path::PathBuf;
 
 /// Main structure of a constructed system with several components.
@@ -45,6 +45,21 @@ impl<'a> System {
                     z: max_size.z.max(current.z),
                 }
             })
+    }
+
+    /// Print the system state to standard error.
+    pub fn print_state(&self) {
+        eprintln!("{}", "System".underline().color("yellow"));
+        eprintln!("Title       '{}'", self.title);
+        eprintln!("Output path  {}", self.output_path.to_str().unwrap_or("(Not set)"));
+        eprintln!("Box size     {}", self.box_size());
+        eprintln!("");
+
+        if self.components.len() > 0 {
+            eprintln!("{}", describe_list("Components", &self.components));
+        } else {
+            eprintln!("(no constructed components)\n");
+        }
     }
 
     /// Return an `Iterator` over all atoms in the whole system as `CurrentAtom` objects.
@@ -81,30 +96,6 @@ impl<'a> System {
     /// Calculate the total number of atoms in the system.
     pub fn num_atoms(&self) -> u64 {
         self.components.iter().map(|object| object.num_atoms()).sum()
-    }
-}
-
-impl Describe for System {
-    fn describe(&self) -> String {
-        let mut description = String::new();
-
-        writeln!(description, "[ System ]").unwrap();
-        writeln!(description, "  Title: '{}'", self.title).unwrap();
-        writeln!(description, "  Output path: {}", self.output_path.to_str().unwrap_or("(Not set)")).unwrap();
-        writeln!(description, "  Box size: {}", self.box_size()).unwrap();
-        writeln!(description, "").unwrap();
-
-        if self.components.len() > 0 {
-            writeln!(description, "{}", describe_list("Components", &self.components)).unwrap();
-        } else {
-            writeln!(description, "(no constructed components)").unwrap();
-        }
-
-        description
-    }
-
-    fn describe_short(&self) -> String {
-        self.describe()
     }
 }
 

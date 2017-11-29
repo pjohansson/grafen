@@ -10,7 +10,7 @@ use super::Config;
 use error::{GrafenCliError, Result, UIErrorKind, UIResult};
 use output;
 use ui::utils::{MenuResult, YesOrNo,
-    get_value_from_user, get_position_from_user, print_description,
+    get_value_from_user, get_position_from_user,
     remove_items, reorder_list, select_command, select_item};
 
 use grafen::coord::Coord;
@@ -36,7 +36,7 @@ pub fn user_menu(config: Config) -> Result<()> {
     };
 
     create_menu![
-        @pre: { print_description(&system); };
+        @pre: { system.print_state() };
 
         AddComponent, "Construct a component" => {
             create_component(&mut system)
