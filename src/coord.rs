@@ -544,7 +544,7 @@ mod tests {
         ];
 
         // Z to Y and back
-        let sheet_y = rotate_coords_to_alignment(&sheet_z, Z, Y);
+        let sheet_y = rotate_planar_coords_to_alignment(&sheet_z, Z, Y);
         let expected = vec![
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(1.0, 0.0, 0.0),
@@ -553,10 +553,10 @@ mod tests {
         ];
 
         assert_eq!(sheet_y, expected);
-        assert_eq!(sheet_z, rotate_coords_to_alignment(&sheet_y, Y, Z));
+        assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_y, Y, Z));
 
         // Z to X and back
-        let sheet_x = rotate_coords_to_alignment(&sheet_z, Z, X);
+        let sheet_x = rotate_planar_coords_to_alignment(&sheet_z, Z, X);
         let expected = vec![
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(0.0, 0.0, 1.0),
@@ -565,7 +565,7 @@ mod tests {
         ];
 
         assert_eq!(sheet_x, expected);
-        assert_eq!(sheet_z, rotate_coords_to_alignment(&sheet_x, X, Z));
+        assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_x, X, Z));
 
         // X to Y and back (create from scratch since rotations around
         // different axes do not commute)
@@ -576,7 +576,7 @@ mod tests {
             Coord::new(0.0, 1.0, 1.0)
         ];
 
-        let sheet_y = rotate_coords_to_alignment(&sheet_x, X, Y);
+        let sheet_y = rotate_planar_coords_to_alignment(&sheet_x, X, Y);
         let expected = vec![
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(1.0, 0.0, 0.0),
@@ -585,11 +585,11 @@ mod tests {
         ];
 
         assert_eq!(sheet_y, expected);
-        assert_eq!(sheet_x, rotate_coords_to_alignment(&sheet_y, Y, X));
+        assert_eq!(sheet_x, rotate_planar_coords_to_alignment(&sheet_y, Y, X));
 
         // No rotation changes expected
-        assert_eq!(sheet_x, rotate_coords_to_alignment(&sheet_x, X, X));
-        assert_eq!(sheet_y, rotate_coords_to_alignment(&sheet_y, Y, Y));
-        assert_eq!(sheet_z, rotate_coords_to_alignment(&sheet_z, Z, Z));
+        assert_eq!(sheet_x, rotate_planar_coords_to_alignment(&sheet_x, X, X));
+        assert_eq!(sheet_y, rotate_planar_coords_to_alignment(&sheet_y, Y, Y));
+        assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_z, Z, Z));
     }
 }
