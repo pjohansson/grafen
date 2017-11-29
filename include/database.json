@@ -94,8 +94,8 @@
             "a": 0.142
           }
         },
-        "normal": "Z",
-        "std_z": null
+        "std_z": null,
+        "normal": "Z"
       }
     },
     {
@@ -137,8 +137,8 @@
             "gamma": 60.0
           }
         },
-        "normal": "Z",
-        "std_z": null
+        "std_z": null,
+        "normal": "Z"
       }
     },
     {

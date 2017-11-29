@@ -141,18 +141,25 @@ struct SheetBuilder {
     name: String,
     lattice: LatticeType,
     residue: Residue,
+    normal: Direction,
     std_z: Option<f64>,
 }
 
 impl SheetBuilder {
     fn initialize(residue_list: &[Residue]) -> UIResult<SheetBuilder> {
         let lattice = select_lattice()?;
+
+        eprintln!("Residue:");
         let residue = select_residue(&residue_list)?;
+
+        eprintln!("Sheet normal vector direction:");
+        let normal = select_direction()?;
 
         Ok(SheetBuilder {
             name: String::new(),
             lattice,
             residue,
+            normal,
             std_z: None,
         })
     }
@@ -167,7 +174,7 @@ impl SheetBuilder {
                 lattice: self.lattice.clone(),
                 std_z: self.std_z,
                 origin: Coord::default(),
-                normal: Direction::Z,
+                normal: self.normal,
                 length: 0.0,
                 width: 0.0,
                 coords: vec![],
@@ -183,6 +190,7 @@ impl Describe for SheetBuilder {
 
         writeln!(description, "Name: {}", &self.name).expect(ERR);
         writeln!(description, "Lattice: {:?}", &self.lattice).expect(ERR);
+        writeln!(description, "Normal: {}", &self.normal).expect(ERR);
         writeln!(description, "Residue: {}", &self.residue.code).expect(ERR);
         writeln!(description, "Z-variance: {}", &self.std_z.unwrap_or(0.0)).expect(ERR);
 
@@ -197,6 +205,7 @@ enum SheetMenu {
     ChangeComponent,
     SetName,
     SetLattice,
+    SetNormal,
     SetResidue,
     SetVarianceZ,
     QuitAndSave,
@@ -211,6 +220,7 @@ fn create_sheet(residue_list: &[Residue]) -> result::Result<ComponentEntry, Chan
         (SetName, "Set name"),
         (SetResidue, "Set residue"),
         (SetLattice, "Set lattice"),
+        (SetNormal, "Set normal vector direction"),
         (SetVarianceZ, "Set variance of residue positions along z"),
         (QuitAndSave, "Finalize component definition and return"),
         (QuitWithoutSaving, "Abort")
@@ -244,6 +254,12 @@ fn create_sheet(residue_list: &[Residue]) -> result::Result<ComponentEntry, Chan
                     builder.lattice = new_lattice;
                 },
                 Err(_) => eprintln!("error: Could not select new lattice"),
+            },
+            SetNormal => match select_direction() {
+                Ok(new_direction) => {
+                    builder.normal = new_direction;
+                },
+                Err(_) => eprintln!("error: Could not select new direction"),
             },
             SetVarianceZ => match get_variance() {
                 Ok(new_std_z) => {
