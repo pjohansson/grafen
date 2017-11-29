@@ -365,8 +365,9 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system::*;
+    use coord::Direction;
     use surface::{LatticeType, Sheet};
+    use system::*;
     use volume::Cuboid;
 
     #[test]
