@@ -278,6 +278,7 @@ struct CylinderBuilder {
     cylinder_type: ComponentType,
     lattice: Option<LatticeType>,
     residue: Residue,
+    density: Option<f64>,
     cap: Option<CylinderCap>,
     alignment: Direction,
 }
@@ -298,6 +299,7 @@ impl CylinderBuilder {
             cylinder_type,
             lattice,
             residue,
+            density: None,
             cap: None,
             alignment: Direction::Z,
         })
@@ -330,6 +332,7 @@ impl CylinderBuilder {
                         origin: Coord::default(),
                         radius: 0.0,
                         height: 0.0,
+                        density: self.density,
                         coords: vec![],
                     }))
                 },
@@ -348,7 +351,13 @@ impl Describe for CylinderBuilder {
         match self.cylinder_type {
             Surface => {
                 writeln!(description, "Type: Cylinder Surface").expect(ERR);
-                writeln!(description, "Lattice: {:?}", self.lattice.unwrap()).expect(ERR);
+
+                let lattice_string = match self.lattice {
+                    Some(lattice) => format!("{:?}", lattice),
+                    None => "".into(),
+                };
+
+                writeln!(description, "Lattice: {}", lattice_string).expect(ERR);
                 writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
 
                 let cap_string = self.cap
@@ -360,6 +369,11 @@ impl Describe for CylinderBuilder {
             Volume => {
                 writeln!(description, "Type: Cylinder Volume").expect(ERR);
                 writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
+
+                let density_string = self.density
+                    .map(|dens| format!("{}", dens))
+                    .unwrap_or("None".into());
+                writeln!(description, "Density: {}", density_string).expect(ERR);
             },
         }
 
@@ -389,6 +403,7 @@ enum CylinderVolumeMenu {
     ChangeCylinderType,
     SetName,
     SetResidue,
+    SetDensity,
     SetAlignment,
     QuitAndSave,
     QuitWithoutSaving,
@@ -424,7 +439,14 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     ChangeComponent => return Err(ChangeOrError::ChangeComponent),
                     ChangeCylinderType => match select_cylinder_type() {
                         Ok(new_type) => {
+                            let lattice = if new_type == Surface {
+                                Some(select_lattice()?)
+                            } else {
+                                None
+                            };
+
                             builder.cylinder_type = new_type;
+                            builder.lattice = lattice;
                         },
                         Err(_) => eprintln!("error: Could not select new cylinder type"),
                     },
@@ -471,6 +493,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     (ChangeCylinderType, "Change cylinder type"),
                     (SetName, "Set name"),
                     (SetResidue, "Set residue"),
+                    (SetDensity, "Set default density"),
                     (SetAlignment, "Set cylinder main axis alignment"),
                     (QuitAndSave, "Finalize component definition and return"),
                     (QuitWithoutSaving, "Abort")
@@ -483,7 +506,14 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     ChangeComponent => return Err(ChangeOrError::ChangeComponent),
                     ChangeCylinderType => match select_cylinder_type() {
                         Ok(new_type) => {
+                            let lattice = if new_type == Surface {
+                                Some(select_lattice()?)
+                            } else {
+                                None
+                            };
+
                             builder.cylinder_type = new_type;
+                            builder.lattice = lattice;
                         },
                         Err(_) => eprintln!("error: Could not select new cylinder type"),
                     },
@@ -500,6 +530,12 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                             builder.residue = new_residue;
                         },
                         Err(_) => eprintln!("error: Could not select new residue"),
+                    },
+                    SetDensity => match get_density() {
+                        Ok(density) => {
+                            builder.density = density;
+                        },
+                        Err(_) => eprintln!("error: Could not set density"),
                     },
                     SetAlignment => match select_direction() {
                         Ok(new_direction) => {
@@ -660,7 +696,7 @@ fn create_cuboid(residue_list: &[Residue]) -> result::Result<ComponentEntry, Cha
                 Ok(density) => {
                     builder.density = density;
                 },
-                Err(_) => eprintln!("error: Could not select new cap"),
+                Err(_) => eprintln!("error: Could not set density"),
             },
             QuitAndSave => match builder.finalize() {
                 Ok(component) => return Ok(component),
@@ -670,16 +706,6 @@ fn create_cuboid(residue_list: &[Residue]) -> result::Result<ComponentEntry, Cha
         }
 
         eprintln!("");
-    }
-}
-
-fn get_density() -> UIResult<Option<f64>> {
-    let density = get_value_from_user::<f64>("Density (1/nm^3, negative: unset)")?;
-
-    if density > 0.0 {
-        Ok(Some(density))
-    } else {
-        Ok(None)
     }
 }
 
@@ -695,6 +721,16 @@ enum LatticeSelection {
     Triclinic,
     Hexagonal,
     PoissonDisc,
+}
+
+fn get_density() -> UIResult<Option<f64>> {
+    let density = get_value_from_user::<f64>("Density (1/nm^3, negative: unset)")?;
+
+    if density > 0.0 {
+        Ok(Some(density))
+    } else {
+        Ok(None)
+    }
 }
 
 fn select_residue(residue_list: &[Residue]) -> UIResult<Residue> {

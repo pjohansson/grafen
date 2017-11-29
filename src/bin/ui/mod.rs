@@ -7,10 +7,11 @@ mod edit_component;
 mod edit_database;
 
 use super::Config;
-use error::{Result, UIErrorKind};
+use error::{GrafenCliError, Result, UIErrorKind, UIResult};
 use output;
-use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_description,
-                remove_items, reorder_list, select_command, select_item};
+use ui::utils::{MenuResult, YesOrNo,
+    get_value_from_user, get_position_from_user, print_description,
+    remove_items, reorder_list, select_command, select_item};
 
 use grafen::coord::Coord;
 use grafen::database::*;
@@ -83,21 +84,23 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             let length = get_value_from_user::<f64>("Length ΔX (nm)")?;
             let width = get_value_from_user::<f64>("Width ΔY (nm)")?;
             let height = get_value_from_user::<f64>("Height ΔZ (nm)")?;
-            let num_residues = get_value_from_user::<u64>("Number of residues")?;
+
+            let fill_type = select_num_coords_or_density_with_default(conf.density)?;
 
             conf.origin = position;
             conf.size = Coord::new(length, width, height);
 
-            Ok(ComponentEntry::from(conf.fill(FillType::NumCoords(num_residues))))
+            Ok(ComponentEntry::from(conf.fill(fill_type)))
         },
 
         ComponentEntry::VolumeCylinder(mut conf) => {
             conf.origin = get_position_from_user(Some("0 0 0"))?;
             conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
-            let num_residues = get_value_from_user::<u64>("Number of residues")?;
 
-            Ok(ComponentEntry::from(conf.fill(FillType::NumCoords(num_residues))))
+            let fill_type = select_num_coords_or_density_with_default(conf.density)?;
+
+            Ok(ComponentEntry::from(conf.fill(fill_type)))
         },
 
         ComponentEntry::SurfaceSheet(mut conf) => {
@@ -124,4 +127,48 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             )?))
         },
     }
+}
+
+fn select_num_coords_or_density_with_default(default_density: Option<f64>) -> UIResult<FillType> {
+    match default_density {
+
+        Some(density) => {
+            let (commands, item_texts) = create_menu_items![
+                (YesOrNo::Yes, "Yes"),
+                (YesOrNo::No, "No")
+            ];
+
+            eprintln!("Use default density for component ({})?", density);
+            let command = select_command(item_texts, commands)?;
+
+            match command {
+                YesOrNo::Yes => Ok(FillType::Density(density)),
+                YesOrNo::No => select_num_coords_or_density(),
+            }
+        },
+        None => {
+            select_num_coords_or_density()
+        },
+    }
+}
+
+fn select_num_coords_or_density() -> UIResult<FillType> {
+    create_menu![
+        @pre: { };
+
+        Density, "Use density" => {
+            let density = get_value_from_user::<f64>("Density (1/nm^3)")?;
+
+            if density > 0.0 {
+                return Ok(FillType::Density(density));
+            } else {
+                Err(GrafenCliError::ConstructError("Invalid density: it must be positive".into()))
+            }
+        },
+        NumCoords, "Use a specific number of residues" => {
+            let num_coords = get_value_from_user::<u64>("Number of residues")?;
+
+            return Ok(FillType::NumCoords(num_coords));
+        }
+    ];
 }

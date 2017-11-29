@@ -36,6 +36,7 @@ pub fn user_menu(components: &mut [ComponentEntry]) -> MenuResult {
             let num_before = component.num_atoms();
 
             let pruned_coords = prune_residues_from_volume(component.get_coords(),
+                component.get_origin(),
                 component.get_residue().as_ref().unwrap(),
                 volume.as_ref());
 
@@ -115,6 +116,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               origin: obj.origin,
                               radius: obj.radius,
                               height: obj.height,
+                              density: obj.density,
                               alignment: obj.alignment,
                               coords: vec![],
                           };
@@ -129,6 +131,7 @@ fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
                               origin: obj.origin,
                               radius: obj.radius,
                               height: obj.height,
+                              density: None,
                               alignment: obj.alignment,
                               coords: vec![],
                           };

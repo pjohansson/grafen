@@ -230,3 +230,10 @@ pub fn print_list_description_short<T: Describe>(description: &str, list: &[T]) 
 pub fn print_list_description<T: Describe>(description: &str, list: &[T]) {
     eprintln!("{}", describe_list(description, list));
 }
+
+#[derive(Clone, Copy, Debug)]
+/// Yes or no selection.
+pub enum YesOrNo {
+    Yes,
+    No,
+}

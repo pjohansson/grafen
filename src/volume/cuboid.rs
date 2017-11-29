@@ -31,11 +31,10 @@ pub struct Cuboid {
 impl_component![Cuboid];
 impl_translate![Cuboid];
 
-#[allow(dead_code)]
 impl Cuboid {
     /// Calculate the center position of the cuboid, relative to the origin.
     fn center(&self) -> Coord {
-        Coord { x: self.size.x / 2.0, y: self.size.y / 2.0, z: self.size.y / 2.0 }
+        Coord { x: self.size.x / 2.0, y: self.size.y / 2.0, z: self.size.z / 2.0 }
     }
 
     /// Calculate the box size.
@@ -45,7 +44,7 @@ impl Cuboid {
 
     /// Construct a `Cylinder` from the cuboid by cutting its coordinates.
     /// It will be directed along the default cylinder alignment.
-    fn to_cylinder(&self, radius: f64, height: f64, alignment: Direction) -> Cylinder {
+    pub fn to_cylinder(&self, radius: f64, height: f64, alignment: Direction) -> Cylinder {
         // Check if we need to extend the cube to create the complete cylinder.
         let diameter = 2.0 * radius;
         let pbc_multiples = match alignment {
@@ -83,23 +82,25 @@ impl Cuboid {
             },
             (nx, ny, nz) => {
                 let extended = self.pbc_multiply(nx, ny, nz);
-                let bottom_center = get_bottom_center(&self);
+                let bottom_center = get_bottom_center(&extended);
                 cut_to_cylinder(&extended.coords, bottom_center, alignment, radius, height)
             },
         };
 
         Cylinder {
-            name: None,
+            name: self.name.clone(),
             residue: self.residue.clone(),
             origin: self.origin,
             radius,
             height,
+            density: self.density,
             alignment,
             coords,
         }
     }
 
     /// Construct a `Sphere` from the cuboid by cutting its coordinates.
+    #[allow(dead_code)]
     fn to_sphere(&self, radius: f64) -> Sphere {
         // Check whether we need to extend the cuboid to create the full sphere
         let diameter = 2.0 * radius;
@@ -309,6 +310,27 @@ mod tests {
     }
 
     #[test]
+    fn cuboid_to_cylinder_keeps_an_expected_number_of_coordinates() {
+        let density = 100.0;
+
+        let radius = 2.5;
+        let diameter = radius * 2.0;
+
+        let cuboid = Cuboid {
+            // size: Coord::new(1.0 * diameter, diameter, diameter),
+            size: Coord::new(radius, radius, radius),
+            .. Cuboid::default()
+        }.fill(FillType::Density(density));
+
+        let cylinder = cuboid.to_cylinder(radius, diameter, Direction::X);
+        let expected_coords = (cylinder.volume() * density).round() as usize;
+
+        let ratio = cylinder.coords.len() as f64 / expected_coords as f64;
+
+        assert!(ratio >= 0.95 && ratio <= 1.05);
+    }
+
+    #[test]
     fn cuboid_expands_to_create_full_cylinder_if_too_small() {
         let cuboid = setup_cuboid(10.0, 10.0, 10.0, 1.0);
 
@@ -441,5 +463,17 @@ mod tests {
         };
 
         assert_eq!(cuboid.volume(), 1.0 * 3.0 * 7.0);
+    }
+
+    #[test]
+    fn cuboid_center_calculation_is_correct() {
+        let size = Coord::new(1.0, 7.0, 13.0);
+
+        let cuboid = Cuboid {
+            size,
+            .. Cuboid::default()
+        };
+
+        assert_eq!(cuboid.center(), Coord::new(size.x / 2.0, size.y / 2.0, size.z / 2.0));
     }
 }
