@@ -102,7 +102,13 @@ impl Sheet {
     /// Calculate the box size. The height of a pure sheet is set to 0.1 (nm)
     /// as a lower limit of the system.
     fn calc_box_size(&self) -> Coord {
-        Coord::new(self.length, self.width, 0.1)
+        let margin = 0.1;
+
+        match self.normal {
+            Direction::X => Coord::new(margin, self.width, self.length),
+            Direction::Y => Coord::new(self.length, margin, self.width),
+            Direction::Z => Coord::new(self.length, self.width, margin),
+        }
     }
 
     /// Cut a circle out of coordinates in the sheet.
@@ -263,12 +269,31 @@ mod tests {
     }
 
     #[test]
-    fn calc_box_size_of_sheet() {
+    fn calc_box_size_of_sheet_accounts_for_sheet_normal() {
         let length = 5.0;
         let width = 4.0;
         let lattice = Hexagonal { a: 0.1 };
 
-        let sheet = setup_sheet(length, width, &lattice).construct().unwrap();
+        let margin = 0.1;
+
+        let sheet = Sheet {
+            normal: Direction::X,
+            .. setup_sheet(length, width, &lattice)
+        }.construct().unwrap();
+
+        assert_eq!(Coord::new(margin, sheet.width, sheet.length), sheet.calc_box_size());
+
+        let sheet = Sheet {
+            normal: Direction::Y,
+            .. setup_sheet(length, width, &lattice)
+        }.construct().unwrap();
+
+        assert_eq!(Coord::new(sheet.length, margin, sheet.width), sheet.calc_box_size());
+
+        let sheet = Sheet {
+            normal: Direction::Z,
+            .. setup_sheet(length, width, &lattice)
+        }.construct().unwrap();
 
         assert_eq!(Coord::new(sheet.length, sheet.width, 0.1), sheet.calc_box_size());
     }
