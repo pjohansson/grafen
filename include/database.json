@@ -94,6 +94,7 @@
             "a": 0.142
           }
         },
+        "normal": "Z",
         "std_z": null
       }
     },
@@ -136,6 +137,7 @@
             "gamma": 60.0
           }
         },
+        "normal": "Z",
         "std_z": null
       }
     },

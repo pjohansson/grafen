@@ -467,6 +467,7 @@ mod tests {
             lattice: LatticeType::Hexagonal { a: 0.1 },
             std_z: None,
             origin: Coord::ORIGO,
+            normal: Direction::Z,
             length: 2.0,
             width: 1.0,
             coords: vec![

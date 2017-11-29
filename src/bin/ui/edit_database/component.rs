@@ -167,6 +167,7 @@ impl SheetBuilder {
                 lattice: self.lattice.clone(),
                 std_z: self.std_z,
                 origin: Coord::default(),
+                normal: Direction::Z,
                 length: 0.0,
                 width: 0.0,
                 coords: vec![],

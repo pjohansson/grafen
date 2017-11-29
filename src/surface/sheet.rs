@@ -5,7 +5,8 @@ use surface::lattice::Lattice;
 use surface::LatticeType;
 use surface::LatticeType::*;
 
-use coord::{Coord, Direction, Periodic, Translate};
+use coord::{Coord, Direction, Periodic, Translate,
+    rotate_planar_coords_to_alignment};
 use describe::{unwrap_name, Describe};
 use error::{GrafenError, Result};
 use iterator::{AtomIterator, AtomIterItem};
@@ -57,7 +58,7 @@ impl Sheet {
             );
         }
 
-        let mut coords = match self.lattice {
+        let mut coords_lattice = match self.lattice {
             Hexagonal { a } => {
                 Lattice::hexagonal(a)
                     .with_size(self.length, self.width)
@@ -79,15 +80,22 @@ impl Sheet {
         };
 
         if let Some(std) = self.std_z {
-            coords = coords.uniform_distribution(std);
+            coords_lattice = coords_lattice.uniform_distribution(std);
         };
 
-        let (length, width, _) = coords.box_size.to_tuple();
+        let (length, width, _) = coords_lattice.box_size.to_tuple();
+
+        let coords = match self.normal {
+            Direction::Z => coords_lattice.coords,
+            direction => {
+                rotate_planar_coords_to_alignment(&coords_lattice.coords, Direction::Z, direction)
+            },
+        };
 
         Ok(Sheet {
             length,
             width,
-            coords: coords.coords,
+            coords,
             .. self
         })
     }
@@ -310,6 +318,38 @@ mod tests {
 
     #[test]
     fn sheet_can_be_constructed_along_x_and_y() {
+        let length = 10.0;
+        let density = 10.0;
+        let min_expected_coords = (length * length * density) as usize / 2;
 
+        let sheet_x = Sheet {
+            normal: Direction::X,
+            .. setup_sheet(length, length, &PoissonDisc { density })
+        }.construct().unwrap();
+
+        assert!(sheet_x.coords.len() > min_expected_coords);
+        for coord in sheet_x.coords {
+            assert_eq!(coord.x, 0.0);
+        }
+
+        let sheet_y = Sheet {
+            normal: Direction::Y,
+            .. setup_sheet(length, length, &PoissonDisc { density })
+        }.construct().unwrap();
+
+        assert!(sheet_y.coords.len() > min_expected_coords);
+        for coord in sheet_y.coords {
+            assert_eq!(coord.y, 0.0);
+        }
+
+        let sheet_z = Sheet {
+            normal: Direction::Z,
+            .. setup_sheet(length, length, &PoissonDisc { density })
+        }.construct().unwrap();
+
+        assert!(sheet_z.coords.len() > min_expected_coords);
+        for coord in sheet_z.coords {
+            assert_eq!(coord.z, 0.0);
+        }
     }
 }
