@@ -108,9 +108,9 @@ impl Coord {
     /// ```
     pub fn rotate(self, axis: Direction) -> Coord {
         match axis {
-            Direction::X => Coord::new(self.x, -self.z, self.y),
-            Direction::Y => Coord::new(self.z, self.y, -self.x),
-            Direction::Z => Coord::new(-self.y, self.x, self.z),
+            Direction::X => Coord { x: self.x, y: -self.z, z: self.y },
+            Direction::Y => Coord { x: self.z, y: self.y, z: -self.x },
+            Direction::Z => Coord { x: -self.y, y: self.x, z: self.z },
         }
     }
 
