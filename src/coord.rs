@@ -94,6 +94,17 @@ impl Coord {
         (dr, dh)
     }
 
+    /// Rotate the coordinate around an axis and return.
+    ///
+    /// The rotation is relative to (0, 0, 0).
+    fn rotate(self, axis: Direction) -> Coord {
+        match axis {
+            Direction::X => Coord::new(self.x, -self.z, self.y),
+            Direction::Y => Coord::new(self.z, self.y, -self.x),
+            Direction::Z => Coord::new(-self.y, self.x, self.z),
+        }
+    }
+
     /// Return the coordinate with its position adjusted to lie within the input box.
     ///
     /// If an input box size side is 0.0 (or smaller) the coordinate is not changed
@@ -192,16 +203,6 @@ impl FromStr for Coord {
     }
 }
 
-impl Rotate for Coord {
-    fn rotate(self, axis: Direction) -> Coord {
-        match axis {
-            Direction::X => Coord::new(self.x, -self.z, self.y),
-            Direction::Y => Coord::new(self.z, self.y, -self.x),
-            Direction::Z => Coord::new(-self.y, self.x, self.z),
-        }
-    }
-}
-
 impl Add for Coord {
     type Output = Coord;
 
@@ -279,13 +280,6 @@ impl PartialEq for Coord {
 /// For a `Sheet` the normal.
 pub enum Direction { X, Y, Z }
 
-impl Direction {
-    /// Default alignment of a cylinder.
-    pub fn default_cylinder() -> Direction {
-        Direction::Z
-    }
-}
-
 impl Display for Direction {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match *self {
@@ -293,31 +287,6 @@ impl Display for Direction {
             Direction::Y => write!(f, "Y"),
             Direction::Z => write!(f, "Z"),
         }
-    }
-}
-
-/// Rotate an object around an input axis.
-pub trait Rotate {
-    fn rotate(self, axis: Direction) -> Self;
-}
-
-#[macro_export]
-/// Macro to implement `Rotate` for an object with a `coords` variable.
-macro_rules! impl_rotate {
-    ( $($class:path),+ ) => {
-        $(
-            impl Rotate for $class {
-                /// Rotate the object around an input axis.
-                fn rotate(self, axis: Direction) -> Self {
-                    let coords = rotate_coords(&self.coords, axis);
-
-                    Self {
-                        coords,
-                        .. self
-                    }
-                }
-            }
-        )*
     }
 }
 
@@ -331,7 +300,7 @@ pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
 /// Rotate a set of coordinates from one alignment to another.
 ///
 /// This function (the code) highlights how stupid the current rotation implementation is.
-fn rotate_coords_to_alignment(coords: &[Coord], from: Direction, to: Direction) -> Vec<Coord> {
+pub fn rotate_coords_to_alignment(coords: &[Coord], from: Direction, to: Direction) -> Vec<Coord> {
     use self::Direction::*;
 
     match (from, to) {
@@ -518,18 +487,6 @@ mod tests {
         assert_eq!(Coord::new(1.0, -3.0, 2.0), coord.clone().rotate(Direction::X));
         assert_eq!(Coord::new(3.0, 2.0, -1.0), coord.clone().rotate(Direction::Y));
         assert_eq!(Coord::new(-2.0, 1.0, 3.0), coord.clone().rotate(Direction::Z));
-    }
-
-    #[test]
-    fn impl_rotate_macro() {
-        struct RotateTest { coords: Vec<Coord> }
-        impl_rotate![RotateTest];
-
-        let rotated = RotateTest {
-            coords: vec![Coord::new(1.0, 2.0, 3.0)],
-        }.rotate(Direction::Z);
-
-        assert_eq!(Coord::new(-2.0, 1.0, 3.0), rotated.coords[0]);
     }
 
     #[test]
