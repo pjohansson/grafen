@@ -11,6 +11,7 @@
 -----
 * Add the ability to edit constructed components by translating them or cutting coordinates from them using another constructed component.
 * Sheets are now constructed with periodic boundary conditions being applied. Residue coordinates will not extend beyond the component box size (although atoms belonging to the residue might).
+* Sheets can now be constructed with their normal vector pointing along any axis.
 * The user menus have been rewritten using a macro to ensure more consistent behaviour.
 
 0.8
