@@ -5,7 +5,7 @@ mod lattice;
 mod points;
 
 use coord::{Coord, Direction, Periodic, Translate,
-    rotate_coords, rotate_coords_to_alignment};
+    rotate_coords, rotate_planar_coords_to_alignment};
 use error::{GrafenError, Result};
 use self::distribution::PoissonDistribution;
 use self::lattice::Lattice;
@@ -282,7 +282,8 @@ impl Cylinder {
             // the same sheet and rotate it to match.
 
             let mut bottom = sheet.to_circle(final_radius); //.rotate(Direction::X);
-            bottom.coords = rotate_coords_to_alignment(&bottom.coords, Direction::Z, Direction::Y);
+            bottom.coords = rotate_planar_coords_to_alignment(&bottom.coords,
+                Direction::Z, Direction::Y);
 
             // Get the top cap coordinates by shifting the bottom ones, not just the origin.
             let top_coords: Vec<_> = bottom.coords

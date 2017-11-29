@@ -97,7 +97,16 @@ impl Coord {
     /// Rotate the coordinate around an axis and return.
     ///
     /// The rotation is relative to (0, 0, 0).
-    fn rotate(self, axis: Direction) -> Coord {
+    ///
+    /// # Examples
+    /// ```
+    /// # use grafen::coord::{Coord, Direction};
+    /// let coord = Coord::new(1.0, 0.0, 0.0);
+    /// assert_eq!(coord.rotate(Direction::X), Coord::new(1.0, 0.0, 0.0));
+    /// assert_eq!(coord.rotate(Direction::Y), Coord::new(0.0, 0.0, -1.0));
+    /// assert_eq!(coord.rotate(Direction::Z), Coord::new(0.0, 1.0, 0.0));
+    /// ```
+    pub fn rotate(self, axis: Direction) -> Coord {
         match axis {
             Direction::X => Coord::new(self.x, -self.z, self.y),
             Direction::Y => Coord::new(self.z, self.y, -self.x),
@@ -299,8 +308,14 @@ pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
 
 /// Rotate a set of coordinates from one alignment to another.
 ///
-/// This function (the code) highlights how stupid the current rotation implementation is.
-pub fn rotate_coords_to_alignment(coords: &[Coord], from: Direction, to: Direction) -> Vec<Coord> {
+/// Note that this is meant mostly for planar objects, ie. sheets! The rotation along `Y`
+/// is actually negative, to make a plane aligned along `Z` with its origin at origo
+/// spread out in the positive z plane after rotation (ie. with its normal poining in
+/// the direction of negative y). This is obviously pretty stupid design. I need to revisit
+/// it sometime to make that a special case.
+///
+/// This code highlights how stupid the current rotation implementation is.
+pub fn rotate_planar_coords_to_alignment(coords: &[Coord], from: Direction, to: Direction) -> Vec<Coord> {
     use self::Direction::*;
 
     match (from, to) {
