@@ -32,10 +32,6 @@ impl_component![Cylinder];
 impl_translate![Cylinder];
 
 impl Cylinder {
-    #[allow(dead_code)]
-    /// Default alignment for a cylinder is along the z axis.
-    const DEFAULT_ALIGNMENT: Direction = Direction::Z;
-
     /// Calculate the box size.
     fn calc_box_size(&self) -> Coord {
         let diameter = 2.0 * self.radius;

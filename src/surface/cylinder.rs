@@ -4,16 +4,15 @@ use surface::{Sheet, LatticeType};
 
 use coord::{Coord, Direction, Translate,
     rotate_coords, rotate_planar_coords_to_alignment};
+use describe::{unwrap_name, Describe};
 use error::Result;
+use iterator::{AtomIterator, AtomIterItem};
 use system::*;
 
 use std::f64::consts::PI;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use describe::{unwrap_name, Describe};
-use iterator::{AtomIterator, AtomIterItem};
-use system::Component;
 
 impl_component![Cylinder];
 impl_translate![Cylinder];
@@ -308,10 +307,5 @@ mod tests {
 
         cylinder.alignment = Direction::Z;
         assert_eq!(Coord::new(diameter, diameter, height), cylinder.calc_box_size());
-    }
-
-    #[test]
-    fn sheet_can_be_constructed_along_x_and_y() {
-
     }
 }

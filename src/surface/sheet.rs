@@ -6,13 +6,12 @@ use surface::LatticeType;
 use surface::LatticeType::*;
 
 use coord::{Coord, Direction, Periodic, Translate};
-use error::{GrafenError, Result};
-use system::*;
-
 use describe::{unwrap_name, Describe};
-use volume::pbc_multiply_volume;
+use error::{GrafenError, Result};
 use iterator::{AtomIterator, AtomIterItem};
-use system::Component;
+use system::*;
+use volume::pbc_multiply_volume;
+
 
 impl_component![Sheet];
 impl_translate![Circle, Sheet];
