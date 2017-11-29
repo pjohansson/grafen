@@ -4,7 +4,8 @@ mod distribution;
 mod lattice;
 mod points;
 
-use coord::{rotate_coords, Coord, Direction, Periodic, Rotate, Translate};
+use coord::{Coord, Direction, Periodic, Translate,
+    rotate_coords, rotate_coords_to_alignment};
 use error::{GrafenError, Result};
 use self::distribution::PoissonDistribution;
 use self::lattice::Lattice;
@@ -42,7 +43,6 @@ use self::LatticeType::*;
 
 impl_component![Cylinder, Sheet];
 impl_translate![Circle, Cylinder, Sheet];
-impl_rotate![Circle, Sheet];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A rectangular sheet.
@@ -262,6 +262,7 @@ impl Cylinder {
         let final_radius = sheet.length / (2.0 * PI);
         let final_height = sheet.width;
 
+        // The cylinder will be created aligned to the Y axis
         let mut coords: Vec<_> = sheet.coords
             .iter()
             .map(|coord| {
@@ -278,9 +279,10 @@ impl Cylinder {
 
         if let Some(cap) = self.cap {
             // The cylinder is aligned along the y axis. Construct a cap from
-            // the same sheet and rotate it along the x-axis to set the normal
-            // along the y-axis.
-            let bottom = sheet.to_circle(final_radius).rotate(Direction::X);
+            // the same sheet and rotate it to match.
+
+            let mut bottom = sheet.to_circle(final_radius); //.rotate(Direction::X);
+            bottom.coords = rotate_coords_to_alignment(&bottom.coords, Direction::Z, Direction::Y);
 
             // Get the top cap coordinates by shifting the bottom ones, not just the origin.
             let top_coords: Vec<_> = bottom.coords
@@ -298,7 +300,7 @@ impl Cylinder {
             }
         }
 
-        // Rotate the coordinates once along the x-axis to align them to the z-axis.
+        // Rotate the cylinder once along the x-axis to align them to the z-axis.
         Ok(Cylinder {
             alignment: Direction::Z,
             radius: final_radius,
@@ -555,21 +557,41 @@ mod tests {
 
         // With a bottom cap
         conf.cap = Some(CylinderCap::Bottom);
-        let cylinder = conf.clone().construct().unwrap();
-        let num_coords_bottom = cylinder.coords.len() - num_coords;
-        assert!(num_coords_bottom > 0);
+        let cylinder_cap = conf.clone().construct().unwrap();
+
+        // The first coordinates should be the original cylinder
+        let (original, bottom) = cylinder_cap.coords.split_at(num_coords);
+        assert_eq!(&original, &cylinder.coords.as_slice());
+        assert!(bottom.len() > 0);
+
+        // All the bottom coordinates should be at z = 0
+        for coord in bottom {
+            assert_eq!(coord.z, 0.0);
+        }
 
         // A top cap
         conf.cap = Some(CylinderCap::Top);
-        let cylinder = conf.clone().construct().unwrap();
-        let num_coords_top = cylinder.coords.len() - num_coords;
-        assert_eq!(num_coords_bottom, num_coords_top);
+        let cylinder_cap = conf.clone().construct().unwrap();
+
+        let (original, top) = cylinder_cap.coords.split_at(num_coords);
+        assert_eq!(&original, &cylinder.coords.as_slice());
+        assert_eq!(top.len(), bottom.len());
+
+        // All the top coordinates should be at the cylinder height
+        for coord in top {
+            assert_eq!(coord.z, cylinder.height);
+        }
 
         // Both caps
         conf.cap = Some(CylinderCap::Both);
-        let cylinder = conf.clone().construct().unwrap();
-        let num_coords_both = cylinder.coords.len() - num_coords;
-        assert_eq!(2 * num_coords_bottom, num_coords_both);
+        let cylinder_cap = conf.clone().construct().unwrap();
+
+        let (original, bottom_and_top) = cylinder_cap.coords.split_at(num_coords);
+        assert_eq!(&original, &cylinder.coords.as_slice());
+
+        let (bottom_from_both, top_from_both) = bottom_and_top.split_at(bottom.len());
+        assert_eq!(bottom, bottom_from_both);
+        assert_eq!(top, top_from_both);
     }
 
     #[test]
