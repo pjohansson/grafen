@@ -2,7 +2,7 @@
 
 use grafen::error::GrafenError;
 
-use ansi_term::Colour::{Yellow, Red};
+use colored::*;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Display;
@@ -78,7 +78,7 @@ impl Error for GrafenCliError {
 
 impl Display for GrafenCliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let red_error = Red.paint("error:");
+        let red_error = "error:".color("red");
 
         match *self {
             GrafenCliError::IoError(ref err) => {
@@ -88,7 +88,7 @@ impl Display for GrafenCliError {
                 write!(f, "{} {}", red_error, err)
             },
             GrafenCliError::ConstructError(ref err) => {
-                write!(f, "{}", Yellow.paint(err.as_str()))
+                write!(f, "{}", err.as_str().color("yellow"))
             },
             GrafenCliError::UIError(ref err) => {
                 write!(f, "{} {}", red_error, err)

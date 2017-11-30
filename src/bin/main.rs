@@ -1,6 +1,6 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
 
-extern crate ansi_term;
+extern crate colored;
 extern crate dialoguer;
 extern crate serde;
 extern crate serde_json;
@@ -60,7 +60,7 @@ struct CliOptions {
     /// Title of output system
     title: Option<String>,
     #[structopt(short = "o", long = "output", default_value = "conf.gro")]
-    /// Output configuration file 
+    /// Output configuration file
     output: String,
     #[structopt(short = "d", long = "database")]
     /// Path to residue and component database
