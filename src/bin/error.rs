@@ -3,7 +3,6 @@
 use grafen::error::GrafenError;
 
 use ansi_term::Colour::{Yellow, Red};
-use clap;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Display;
@@ -18,8 +17,6 @@ pub type Result<T> = result::Result<T, GrafenCliError>;
 /// Types of user interface errors. These are parsed into a `GrafenCliError::UIError`
 /// using a `From` implementation below.
 pub enum UIErrorKind {
-    /// No selection was made when one was requested.
-    NoSelection,
     /// An input value which was requested could not be parsed.
     BadValue(String),
     /// User aborted a process.
@@ -55,8 +52,6 @@ impl<'a, T: Display + ?Sized> From<&'a T> for UIErrorKind {
 #[derive(Debug)]
 /// A class for configuration or runtime errors.
 pub enum GrafenCliError {
-    /// Some command line arguments were bad or non-existant.
-    BadArgs(clap::Error),
     /// Something went wrong when reading or writing.
     IoError(io::Error),
     /// Something went wrong when creating the system.
@@ -65,8 +60,6 @@ pub enum GrafenCliError {
     ConstructError(String),
     /// User interface error.
     UIError(String),
-    /// Exit the program without saving any system to disk.
-    QuitWithoutSaving,
 }
 
 impl Error for GrafenCliError {
@@ -88,10 +81,6 @@ impl Display for GrafenCliError {
         let red_error = Red.paint("error:");
 
         match *self {
-            // Clap already colours the `error: ` in red so we do not repeat that
-            GrafenCliError::BadArgs(ref err) => {
-                write!(f, "{}", err)
-            },
             GrafenCliError::IoError(ref err) => {
                 write!(f, "{} {}", red_error, err)
             },
@@ -103,9 +92,6 @@ impl Display for GrafenCliError {
             },
             GrafenCliError::UIError(ref err) => {
                 write!(f, "{} {}", red_error, err)
-            },
-            GrafenCliError::QuitWithoutSaving => {
-                write!(f, "Exiting without saving system.")
             },
         }
     }
@@ -123,12 +109,6 @@ impl From<io::Error> for GrafenCliError {
     }
 }
 
-impl From<clap::Error> for GrafenCliError {
-    fn from(err: clap::Error) -> GrafenCliError {
-        GrafenCliError::BadArgs(err)
-    }
-}
-
 impl From<GrafenError> for GrafenCliError {
     fn from(err: GrafenError) -> GrafenCliError {
         GrafenCliError::RunError(err.description().to_string())
@@ -138,7 +118,6 @@ impl From<GrafenError> for GrafenCliError {
 impl From<UIErrorKind> for GrafenCliError {
     fn from(err: UIErrorKind) -> GrafenCliError {
         match err {
-            UIErrorKind::NoSelection => GrafenCliError::UIError("No selection".to_string()),
             UIErrorKind::BadValue(err) => GrafenCliError::UIError(err),
             UIErrorKind::Abort => GrafenCliError::UIError("Discarding changes".to_string()),
         }

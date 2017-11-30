@@ -1,10 +1,11 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
 
 extern crate ansi_term;
-#[macro_use] extern crate clap;
 extern crate dialoguer;
 extern crate serde;
 extern crate serde_json;
+extern crate structopt;
+#[macro_use] extern crate structopt_derive;
 
 extern crate grafen;
 
@@ -18,6 +19,7 @@ use grafen::database::{read_database, DataBase};
 
 use std::process;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 /// The program run configuration.
 pub struct Config {
@@ -33,38 +35,40 @@ impl Config {
     /// Parse the input command line arguments and read the `DataBase`.
     ///
     /// # Errors
-    /// Returns an error if any of the arguments could not be properly parsed
-    /// or the `DataBase` (if input) not opened.
-    pub fn from_matches(matches: clap::ArgMatches) -> Result<Config> {
-        let output_path = PathBuf::from(
-            value_t!(matches, "output", String).unwrap_or("conf.gro".to_string())
-        );
-        let title = value_t!(matches, "title", String)
-            .unwrap_or("System created by grafen".to_string()
-        );
+    /// Returns an error if the `DataBase` (if given as an input) could not be read.
+    fn new() -> Result<Config> {
+        let options = CliOptions::from_args();
 
-        let database = match value_t!(matches, "database", String) {
-            Ok(path) => read_database(&path),
-            Err(_) => Ok(DataBase::new()),
+        let output_path = PathBuf::from(options.output);
+        let title = options.title;
+
+        let database = match options.database {
+            Some(path) => read_database(&path),
+            None => Ok(DataBase::new()),
         }?;
+
+        eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
         Ok(Config { title, output_path, database })
     }
 }
 
+#[derive(StructOpt, Debug)]
+/// Command line options
+struct CliOptions {
+    #[structopt(short = "t", long = "title", default_value = "System created by grafen")]
+    /// Title of output system
+    title: String,
+    #[structopt(short = "o", long = "output", default_value = "conf.gro")]
+    /// Output configuration file (Gromos87 format)
+    output: String,
+    #[structopt(short = "d", long = "database")]
+    /// Path to residue and component database
+    database: Option<String>,
+}
+
 fn main() {
-    let matches = clap_app!(grafen =>
-        (version: crate_version!())
-        (author: crate_authors!())
-        (about: crate_description!())
-        (@arg output: -o --output [PATH] +takes_value "Output GROMOS configuration file (conf.gro)")
-        (@arg title: -t --title [STR] +takes_value "Title of output system")
-        (@arg database: -d --database [PATH] +takes_value "Path to database")
-    ).get_matches();
-
-    eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-
-    if let Err(err) = Config::from_matches(matches).and_then(|conf| ui::user_menu(conf)) {
+    if let Err(err) = Config::new().and_then(|conf| ui::user_menu(conf)) {
         eprintln!("{}", err);
         process::exit(1);
     }
