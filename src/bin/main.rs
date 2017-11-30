@@ -40,7 +40,7 @@ impl Config {
         let options = CliOptions::from_args();
 
         let output_path = PathBuf::from(options.output);
-        let title = options.title;
+        let title = options.title.unwrap_or("System created by grafen".into());
 
         let database = match options.database {
             Some(path) => read_database(&path),
@@ -56,11 +56,11 @@ impl Config {
 #[derive(StructOpt, Debug)]
 /// Command line options
 struct CliOptions {
-    #[structopt(short = "t", long = "title", default_value = "System created by grafen")]
+    #[structopt(short = "t", long = "title")]
     /// Title of output system
-    title: String,
+    title: Option<String>,
     #[structopt(short = "o", long = "output", default_value = "conf.gro")]
-    /// Output configuration file (Gromos87 format)
+    /// Output configuration file 
     output: String,
     #[structopt(short = "d", long = "database")]
     /// Path to residue and component database
