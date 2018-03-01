@@ -37,7 +37,7 @@ impl Coord {
     /// assert_eq!(Coord { x: 0.0, y: 1.0, z: 2.0 }, coord);
     /// ```
     pub fn new(x: f64, y: f64, z: f64) -> Coord {
-        Coord { x: x, y: y, z: z }
+        Coord { x, y, z }
     }
 
     /// Unpack the coordinate into a tuple.
