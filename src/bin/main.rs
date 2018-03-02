@@ -54,6 +54,7 @@ impl Config {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 /// Command line options
 struct CliOptions {
     #[structopt(short = "t", long = "title")]
