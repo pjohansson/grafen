@@ -39,7 +39,7 @@ impl Config {
     fn new() -> Result<Config> {
         let options = CliOptions::from_args();
 
-        let output_path = PathBuf::from(options.output);
+        let output_path = options.output;
         let title = options.title.unwrap_or("System created by grafen".into());
 
         let database = match options.database {
@@ -59,12 +59,12 @@ struct CliOptions {
     #[structopt(short = "t", long = "title")]
     /// Title of output system
     title: Option<String>,
-    #[structopt(short = "o", long = "output", default_value = "conf.gro")]
+    #[structopt(short = "o", long = "output", default_value = "conf.gro", parse(from_os_str))]
     /// Output configuration file
-    output: String,
-    #[structopt(short = "d", long = "database")]
+    output: PathBuf,
+    #[structopt(short = "d", long = "database", parse(from_os_str))]
     /// Path to residue and component database
-    database: Option<String>,
+    database: Option<PathBuf>,
 }
 
 fn main() {
