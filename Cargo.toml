@@ -16,6 +16,7 @@ travis-ci = { repository = "pjohansson/grafen", branch = "master" }
 [dependencies]
 colored = "1.6"
 dialoguer = "0.1"
+mdio = { path = "/home/petter/Work/mdio", version = "0.1" }
 rand = "~0.3.0"
 serde = "^1.0.8"
 serde_json = "1.0"
