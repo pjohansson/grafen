@@ -121,13 +121,11 @@ pub trait Component<'a> {
 /// Macro to implement `Component` for an object.
 ///
 /// The object has to contain the fields
-/// ```
 /// {
 ///     residue: Option<Residue>,
 ///     origin: Coord,
 ///     coords: [Coord]
 /// }
-/// ```
 /// and the method `calc_box_size`.
 macro_rules! impl_component {
     ( $( $class:path ),+ ) => {
