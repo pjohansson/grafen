@@ -3,7 +3,7 @@
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
-use iterator::AtomIterItem;
+use iterator::{AtomIterItem, ResidueIter};
 use surface;
 use system::{Component, Residue};
 use volume;
@@ -47,7 +47,7 @@ pub enum DataBaseError {
 /// # #[macro_use] extern crate serde_derive;
 /// # use grafen::coord::{Coord, Translate};
 /// # use grafen::describe::Describe;
-/// # use grafen::iterator::{AtomIterator, AtomIterItem};
+/// # use grafen::iterator::{AtomIterator, AtomIterItem, ResidueIter};
 /// # use grafen::system::{Component, Residue};
 /// #
 /// #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -118,6 +118,7 @@ macro_rules! create_entry_wrapper {
             $(
                 $entry($class),
             )*
+            Conf,
         }
 
         impl<'a> $name {
@@ -127,6 +128,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => &object.coords,
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -136,6 +138,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref mut object) => &mut object.coords,
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -144,6 +147,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.origin,
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -153,6 +157,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => &object.residue,
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -163,6 +168,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.describe(),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -171,6 +177,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.describe_short(),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -181,6 +188,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.box_size(),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -189,14 +197,26 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.iter_atoms(),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
+            fn iter_residues(&self) -> ResidueIter {
+                unimplemented!();
+                // match *self {
+                //     $(
+                //         $name::$entry(ref object) => object.iter_atoms(),
+                //     )*
+                //     $name::Conf => unimplemented!(),
+                // }
+            }
+
 
             fn num_atoms(&self) -> u64 {
                 match *self {
                     $(
                         $name::$entry(ref object) => object.num_atoms(),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -205,6 +225,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(object) => $name::$entry(object.with_pbc()),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -215,6 +236,7 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(object) => $name::$entry(object.translate(coord)),
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -224,6 +246,7 @@ macro_rules! create_entry_wrapper {
                         $name::$entry(ref mut object)
                             => { object.translate_in_place(coord); }
                     )*
+                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -335,7 +358,7 @@ impl Describe for DataBase {
 pub fn read_database(path: &Path) -> Result<DataBase, io::Error> {
     let buffer = File::open(&path)?;
     let mut database = DataBase::from_reader(buffer)?;
-    
+
     database.path = Some(PathBuf::from(&path));
 
     Ok(database)

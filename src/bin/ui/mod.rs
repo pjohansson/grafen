@@ -127,6 +127,8 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
                 UIErrorKind::from("Could not construct cylinder")
             )?))
         },
+
+        ComponentEntry::Conf => unimplemented!(),
     }
 }
 

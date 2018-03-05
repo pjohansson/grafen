@@ -14,7 +14,7 @@
 use coord::Coord;
 use describe::{describe_list, Describe};
 use database::{ComponentEntry, DataBase};
-use iterator::AtomIterItem;
+use iterator::{AtomIterItem, ResidueIter};
 
 use colored::*;
 use mdio::Conf;
@@ -119,6 +119,9 @@ pub trait Component<'a> {
     /// Return an `Iterator` over all atoms in the object as `CurrentAtom` objects.
     fn iter_atoms(&'a self) -> AtomIterItem<'a>;
 
+    /// Return an `Iterator` over all residues of an object.
+    fn iter_residues(&self) -> ResidueIter;
+
     /// Return the number of atoms in the object.
     fn num_atoms(&self) -> u64;
 
@@ -148,6 +151,13 @@ macro_rules! impl_component {
                     Box::new(
                         AtomIterator::new(self.residue.as_ref(), &self.coords, self.origin)
                     )
+                }
+
+                fn iter_residues(&self) -> ResidueIter {
+                    match self.residue {
+                        None => ResidueIter::None,
+                        Some(ref code) => ResidueIter::Component(code, self.coords.iter()),
+                    }
                 }
 
                 fn num_atoms(&self) -> u64 {
@@ -325,6 +335,52 @@ mod tests {
     }
 
     #[test]
+    fn iterate_over_residues_in_macro_generated_impl_object_works_and_ignores_origin() {
+        let residue = resbase!["RES", ("A", 0.0, 0.1, 0.2), ("B", 0.3, 0.4, 0.5)];
+        let constructed = TestObject {
+            residue: Some(residue.clone()),
+            origin: Coord::new(10.0, 20.0, 30.0), // Will be ignored
+            coords: vec![Coord::new(0.0, 2.0, 4.0), Coord::new(1.0, 3.0, 5.0)],
+        };
+
+        let mut iter = constructed.iter_residues();
+
+        // Check the last residue.
+        assert!(iter.next().is_some());
+        let res = iter.next().unwrap();
+
+        let res_name = res.get_residue();
+        assert_eq!(*res_name.borrow(), "RES");
+
+        let atoms = res.get_atoms();
+        assert_eq!(atoms.len(), 2);
+        assert_eq!(*atoms[0].0.borrow(), "A");
+        assert_eq!(atoms[0].1, Coord::new(1.0, 3.1, 5.2));
+        assert_eq!(*atoms[1].0.borrow(), "B");
+        assert_eq!(atoms[1].1, Coord::new(1.3, 3.4, 5.5));
+
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn iterate_over_residues_in_either_empty_or_without_residue_returns_none() {
+        let residue = resbase!["RES", ("A", 0.0, 0.1, 0.2), ("B", 0.3, 0.4, 0.5)];
+        let empty_component = TestObject {
+            residue: Some(residue.clone()),
+            origin: Coord::ORIGO,
+            coords: Vec::new(),
+        };
+        assert!(empty_component.iter_residues().next().is_none());
+
+        let without_residue = TestObject {
+            residue: None,
+            origin: Coord::ORIGO,
+            coords: Vec::new(),
+        };
+        assert!(without_residue.iter_residues().next().is_none());
+    }
+
+    #[test]
     fn num_atoms_in_macro_generated_impl_objects() {
         // An object with 2 residues * 2 atoms / residue = 4 atoms
         let residue = resbase!["RES", ("A", 0.0, 0.1, 0.2), ("B", 0.3, 0.4, 0.5)];
@@ -430,6 +486,7 @@ mod tests {
                 ComponentEntry::VolumeCuboid(component1),
                 ComponentEntry::VolumeCuboid(component2)
             ],
+            configurations: vec![],
         };
 
         let iter = system.iter_atoms();
@@ -462,7 +519,9 @@ mod tests {
             output_path: PathBuf::new(),
             database: DataBase::new(),
             components: vec![
-                component.clone(), component.clone()],
+                component.clone(), component.clone()
+            ],
+            configurations: vec![],
         };
 
         assert_eq!(12, system.num_atoms());
@@ -496,6 +555,7 @@ mod tests {
                 component1.clone(),
                 component2.clone()
             ],
+            configurations: vec![],
         };
 
         assert_eq!(Coord::new(6.0, 5.0, 5.0), system.box_size());

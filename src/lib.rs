@@ -1,5 +1,7 @@
 //! Define and construct systems used for molecular simulations.
 
+#![feature(underscore_lifetimes)] 
+
 extern crate colored;
 extern crate mdio;
 extern crate rand;
@@ -13,5 +15,6 @@ pub mod describe;
 pub mod database;
 pub mod error;
 pub mod iterator;
+pub mod read_conf;
 pub mod surface;
 pub mod volume;

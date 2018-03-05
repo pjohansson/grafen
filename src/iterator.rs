@@ -3,6 +3,93 @@
 use coord::Coord;
 use system::{Atom, Residue};
 
+use mdio;
+
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::slice::Iter;
+
+/// Iteration object which owns the iterator. Used to ensure that it always exists.
+///
+/// May be unnecessary, should test sometime.
+pub struct ConfIter<'a> {
+    /// The iterator over residues inside the borrowed configuration.
+    iter: mdio::ResidueIter<'a>,
+}
+
+impl<'a> ConfIter<'a> {
+    /// Create an iteration object from an input configuration which owns the iterator.
+    pub fn new(conf: &'a mdio::Conf) -> ConfIter<'a> {
+        ConfIter {
+            // conf: conf,
+            iter: conf.iter_residues(),
+        }
+    }
+}
+
+pub enum ResidueIter<'a> {
+    Conf(ConfIter<'a>),
+    Component(&'a Residue, Iter<'a, Coord>),
+    None,
+}
+
+pub enum ResidueIterOut<'a> {
+    FromConf(Vec<&'a mdio::Atom>),
+    FromComp(Rc<RefCell<String>>, Vec<(Rc<RefCell<String>>, Coord)>),
+}
+
+impl<'a> ResidueIterOut<'a> {
+    /// Return a reference counted pointer to the residue name.
+    pub fn get_residue(&self) -> Rc<RefCell<String>> {
+        match self {
+            &ResidueIterOut::FromConf(ref atoms) => Rc::clone(&atoms[0].residue.borrow().name),
+            &ResidueIterOut::FromComp(ref res, _) => Rc::clone(&res),
+        }
+    }
+
+    /// Return a list of the atoms in the residue. The atom names are pointers.
+    pub fn get_atoms(&self) -> Vec<(Rc<RefCell<String>>, Coord)> {
+        match self {
+            &ResidueIterOut::FromConf(ref atoms) => {
+                atoms
+                    .iter()
+                    .map(|atom| (Rc::clone(&atom.name), Coord::from(atom.position)))
+                    .collect()
+            },
+            &ResidueIterOut::FromComp(_, ref atoms) => atoms.clone(),
+        }
+    }
+}
+
+impl<'a> Iterator for ResidueIter<'a> {
+    type Item = ResidueIterOut<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            &mut ResidueIter::None => None,
+            &mut ResidueIter::Conf(ref mut conf_iter) => {
+                conf_iter.iter
+                    .next()
+                    .map(|res| res.unwrap())
+                    .map(|res| ResidueIterOut::FromConf(res))
+            },
+            &mut ResidueIter::Component(ref res, ref mut iter) => {
+                iter.next()
+                    .map(|&coord| ResidueIterOut::FromComp(
+                        Rc::new(RefCell::new(res.code.clone())),
+                        res.atoms
+                            .iter()
+                            .map(|atom| (
+                                Rc::new(RefCell::new(atom.code.clone())),
+                                atom.position + coord
+                            ))
+                            .collect::<Vec<_>>()
+                    ))
+            },
+        }
+    }
+}
+
 /// The return type for `Iterator` functions.
 ///
 /// Has to be boxed to return a fixed size. `impl Iterator` could be used
@@ -143,4 +230,3 @@ mod tests {
         assert!(iter.next().is_none());
     }
 }
-

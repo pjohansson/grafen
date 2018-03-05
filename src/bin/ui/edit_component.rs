@@ -39,18 +39,19 @@ pub fn user_menu(components: &mut Vec<ComponentEntry>) -> MenuResult {
             Ok(None)
         },
         PruneByVolume, "Remove residues which overlap another component" => {
-            let volume = get_volume_from_user(components)?;
-            let num_before = component.num_atoms();
+            unimplemented!("This is being reimplemented!");
+            // let volume = get_volume_from_user(components)?;
+            // let num_before = component.num_atoms();
 
-            let pruned_coords = prune_residues_from_volume(component.get_coords(),
-                component.get_origin(),
-                component.get_residue().as_ref().unwrap(),
-                volume.as_ref());
-
-            component.get_coords_mut().clone_from(&pruned_coords);
-            let num_after = component.num_atoms();
-
-            Ok(Some(format!("Removed {} atoms from the component", num_before - num_after)))
+            // let pruned_coords = prune_residues_from_volume(component.get_coords(),
+            //     component.get_origin(),
+            //     component.get_residue().as_ref().unwrap(),
+            //     volume.as_ref());
+            //
+            // component.get_coords_mut().clone_from(&pruned_coords);
+            // let num_after = component.num_atoms();
+            //
+            // Ok(Some(format!("Removed {} atoms from the component", num_before - num_after)))
         },
         QuitAndSave, "Finish editing component" => {
             components[index] = component;

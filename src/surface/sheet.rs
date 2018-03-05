@@ -9,7 +9,7 @@ use coord::{Coord, Direction, Periodic, Translate,
     rotate_planar_coords_to_alignment};
 use describe::{unwrap_name, Describe};
 use error::{GrafenError, Result};
-use iterator::{AtomIterator, AtomIterItem};
+use iterator::{AtomIterator, AtomIterItem, ResidueIter};
 use system::*;
 use volume::pbc_multiply_volume;
 
