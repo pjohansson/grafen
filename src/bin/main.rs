@@ -8,6 +8,7 @@ extern crate structopt;
 #[macro_use] extern crate structopt_derive;
 
 extern crate grafen;
+extern crate mdio;
 
 mod error;
 mod output;
@@ -39,7 +40,7 @@ impl Config {
     fn new() -> Result<Config> {
         let options = CliOptions::from_args();
 
-        let output_path = PathBuf::from(options.output);
+        let output_path = options.output;
         let title = options.title.unwrap_or("System created by grafen".into());
 
         let database = match options.database {
@@ -54,17 +55,21 @@ impl Config {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 /// Command line options
 struct CliOptions {
     #[structopt(short = "t", long = "title")]
     /// Title of output system
     title: Option<String>,
-    #[structopt(short = "o", long = "output", default_value = "conf.gro")]
+    #[structopt(short = "o", long = "output", default_value = "conf.gro", parse(from_os_str))]
     /// Output configuration file
-    output: String,
-    #[structopt(short = "d", long = "database")]
+    output: PathBuf,
+    #[structopt(short = "d", long = "database", parse(from_os_str))]
     /// Path to residue and component database
-    database: Option<String>,
+    database: Option<PathBuf>,
+    #[structopt(short = "c", long = "conf", parse(from_os_str))]
+    /// Path to an input configuration file to add as a component
+    input_conf: Option<PathBuf>,
 }
 
 fn main() {

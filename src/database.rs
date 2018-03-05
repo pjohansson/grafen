@@ -332,12 +332,11 @@ impl Describe for DataBase {
 
 /// Read a `DataBase` from a JSON formatted file.
 /// The owned path is set to the input path.
-pub fn read_database(from_path: &str) -> Result<DataBase, io::Error> {
-    let path = Path::new(from_path);
+pub fn read_database(path: &Path) -> Result<DataBase, io::Error> {
     let buffer = File::open(&path)?;
-
     let mut database = DataBase::from_reader(buffer)?;
-    database.path = Some(PathBuf::from(&from_path));
+    
+    database.path = Some(PathBuf::from(&path));
 
     Ok(database)
 }
