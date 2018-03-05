@@ -17,6 +17,7 @@ use database::{ComponentEntry, DataBase};
 use iterator::AtomIterItem;
 
 use colored::*;
+use mdio::Conf;
 use std::path::PathBuf;
 
 /// Main structure of a constructed system with several components.
@@ -29,6 +30,8 @@ pub struct System {
     pub database: DataBase,
     /// List of constructed components.
     pub components: Vec<ComponentEntry>,
+    /// List of configurations.
+    pub configurations: Vec<Conf>,
 }
 
 impl<'a> System {
@@ -59,6 +62,12 @@ impl<'a> System {
             eprintln!("{}", describe_list("Components", &self.components));
         } else {
             eprintln!("(no constructed components)\n");
+        }
+
+        if self.configurations.len() > 0 {
+            eprintln!("{}", describe_list("Configurations", &self.components));
+        } else {
+            eprintln!("(no configurations)\n");
         }
     }
 

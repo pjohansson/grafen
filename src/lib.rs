@@ -1,6 +1,7 @@
 //! Define and construct systems used for molecular simulations.
 
 extern crate colored;
+extern crate mdio;
 extern crate rand;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;

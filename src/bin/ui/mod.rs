@@ -32,7 +32,8 @@ pub fn user_menu(config: Config) -> Result<()> {
         title: config.title,
         output_path: config.output_path,
         database: config.database,
-        components: vec![],
+        components: Vec::new(),
+        configurations: Vec::new(),
     };
 
     create_menu![

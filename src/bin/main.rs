@@ -8,6 +8,7 @@ extern crate structopt;
 #[macro_use] extern crate structopt_derive;
 
 extern crate grafen;
+extern crate mdio;
 
 mod error;
 mod output;
@@ -66,6 +67,9 @@ struct CliOptions {
     #[structopt(short = "d", long = "database", parse(from_os_str))]
     /// Path to residue and component database
     database: Option<PathBuf>,
+    #[structopt(short = "c", long = "conf", parse(from_os_str))]
+    /// Path to an input configuration file to add as a component
+    input_conf: Option<PathBuf>,
 }
 
 fn main() {
