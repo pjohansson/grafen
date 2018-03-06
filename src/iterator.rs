@@ -13,6 +13,7 @@ use std::slice::Iter;
 ///
 /// May be unnecessary, should test sometime.
 pub struct ConfIter<'a> {
+    conf: &'a mdio::Conf,
     /// The iterator over residues inside the borrowed configuration.
     iter: mdio::ResidueIter<'a>,
 }
@@ -21,7 +22,7 @@ impl<'a> ConfIter<'a> {
     /// Create an iteration object from an input configuration which owns the iterator.
     pub fn new(conf: &'a mdio::Conf) -> ConfIter<'a> {
         ConfIter {
-            // conf: conf,
+            conf: conf,
             iter: conf.iter_residues(),
         }
     }

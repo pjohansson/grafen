@@ -1,6 +1,8 @@
 //! Define and construct systems used for molecular simulations.
 
-#![feature(underscore_lifetimes)] 
+// Needed for the `ResidueIter` object.
+// TODO: Figure out how to otherwise solve the lifetimes!
+#![feature(underscore_lifetimes)]
 
 extern crate colored;
 extern crate mdio;
