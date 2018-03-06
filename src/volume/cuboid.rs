@@ -2,7 +2,7 @@
 
 use coord::{Coord, Direction, Periodic, Translate};
 use describe::{unwrap_name, Describe};
-use iterator::{AtomIterator, AtomIterItem, ResidueIter};
+use iterator::ResidueIter;
 use system::{Component, Residue};
 use volume::*;
 

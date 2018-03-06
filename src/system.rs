@@ -30,8 +30,6 @@ pub struct System {
     pub database: DataBase,
     /// List of constructed components.
     pub components: Vec<ComponentEntry>,
-    /// List of configurations.
-    pub configurations: Vec<Conf>,
 }
 
 impl<'a> System {
@@ -63,44 +61,40 @@ impl<'a> System {
         } else {
             eprintln!("(no constructed components)\n");
         }
-
-        if self.configurations.len() > 0 {
-            eprintln!("{}", describe_list("Configurations", &self.components));
-        } else {
-            eprintln!("(no configurations)\n");
-        }
     }
 
     /// Return an `Iterator` over all atoms in the whole system as `CurrentAtom` objects.
     ///
     /// Corrects residue and atom index numbers to be system-absolute instead
     /// of for each component.
-    pub fn iter_atoms(&'a self) -> AtomIterItem {
-        // We want to return system-wide atom and residue indices. The atom index
-        // is easy to increase by one for each iterated atom, but to update the residue
-        // index we have to see if it has changed from the previous iteration.
-        struct Indices { atom: u64, residue: u64, last_residue: u64 }
-
-        Box::new(self.components
-            .iter()
-            .flat_map(|object| object.iter_atoms())
-            .scan(Indices { atom: 0, residue: 0, last_residue: 0 }, |state, mut current| {
-                // Find out if the component residue number has increased, if so update it
-                if current.residue_index != state.last_residue {
-                    state.last_residue = current.residue_index;
-                    state.residue += 1;
-                }
-
-                // Set the absolute atom and residue indices to the object
-                current.atom_index = state.atom;
-                current.residue_index = state.residue;
-
-                state.atom += 1;
-
-                Some(current)
-            })
-        )
-    }
+    // pub fn iter_atoms(&'a self) -> AtomIterItem {
+    //     // We want to return system-wide atom and residue indices. The atom index
+    //     // is easy to increase by one for each iterated atom, but to update the residue
+    //     // index we have to see if it has changed from the previous iteration.
+    //     struct Indices { atom: u64, residue: u64, last_residue: u64 }
+    //
+    //     unimplemented!();
+    //     //
+    //     // Box::new(self.components
+    //     //     .iter()
+    //     //     .flat_map(|object| object.iter_atoms())
+    //     //     .scan(Indices { atom: 0, residue: 0, last_residue: 0 }, |state, mut current| {
+    //     //         // Find out if the component residue number has increased, if so update it
+    //     //         if current.residue_index != state.last_residue {
+    //     //             state.last_residue = current.residue_index;
+    //     //             state.residue += 1;
+    //     //         }
+    //     //
+    //     //         // Set the absolute atom and residue indices to the object
+    //     //         current.atom_index = state.atom;
+    //     //         current.residue_index = state.residue;
+    //     //
+    //     //         state.atom += 1;
+    //     //
+    //     //         Some(current)
+    //     //     })
+    //     // )
+    // }
 
     /// Calculate the total number of atoms in the system.
     pub fn num_atoms(&self) -> u64 {
@@ -116,8 +110,8 @@ pub trait Component<'a> {
     /// this returns (2, 2, 2).
     fn box_size(&self) -> Coord;
 
-    /// Return an `Iterator` over all atoms in the object as `CurrentAtom` objects.
-    fn iter_atoms(&'a self) -> AtomIterItem<'a>;
+    /// Return the origin of the component.
+    fn get_origin(&self) -> Coord;
 
     /// Return an `Iterator` over all residues of an object.
     fn iter_residues(&self) -> ResidueIter;
@@ -147,10 +141,8 @@ macro_rules! impl_component {
                     self.calc_box_size() + self.origin
                 }
 
-                fn iter_atoms(&self) -> AtomIterItem {
-                    Box::new(
-                        AtomIterator::new(self.residue.as_ref(), &self.coords, self.origin)
-                    )
+                fn get_origin(&self) -> Coord {
+                    self.origin
                 }
 
                 fn iter_residues(&self) -> ResidueIter {
@@ -299,8 +291,6 @@ mod tests {
         assert_eq!(expect, result);
     }
 
-    // Verify that the macro generated `iter_atoms` methods work as expected.
-
     #[derive(Debug, Deserialize, Serialize)]
     struct TestObject { residue: Option<Residue>, origin: Coord, coords: Vec<Coord> }
     impl Describe for TestObject {
@@ -311,28 +301,6 @@ mod tests {
 
     impl_translate![TestObject];
     impl_component![TestObject];
-
-    #[test]
-    fn iterate_over_atoms_in_macro_generated_impl_object() {
-        let residue = resbase!["RES", ("A", 0.0, 0.1, 0.2), ("B", 0.3, 0.4, 0.5)];
-        let constructed = TestObject {
-            residue: Some(residue.clone()),
-            origin: Coord::ORIGO,
-            coords: vec![Coord::new(0.0, 2.0, 4.0), Coord::new(1.0, 3.0, 5.0)],
-        };
-
-        // Skip to and compare against the last atom
-        let mut iter = constructed.iter_atoms().skip(3);
-
-        let atom = iter.next().unwrap();
-        assert_eq!(3, atom.atom_index);
-        assert_eq!(1, atom.residue_index);
-        assert_eq!(&residue.atoms[1], atom.atom);
-        assert_eq!(&residue, atom.residue);
-        assert_eq!(residue.atoms[1].position + constructed.coords[1], atom.position);
-
-        assert_eq!(None, iter.next());
-    }
 
     #[test]
     fn iterate_over_residues_in_macro_generated_impl_object_works_and_ignores_origin() {
@@ -398,6 +366,18 @@ mod tests {
     }
 
     #[test]
+    fn origin_in_macro_generated_impl_objects() {
+        let origin = Coord::new(1.0, 2.0, 3.0);
+        let mut component = TestObject {
+            residue: None,
+            origin,
+            coords: Vec::new(),
+        };
+
+        assert_eq!(component.get_origin(), origin);
+    }
+
+    #[test]
     fn box_size_in_macro_generated_impls_adds_origin() {
         let origin = Coord::new(0.0, 1.0, 2.0);
         let size = Coord::new(5.0, 6.0, 7.0);
@@ -438,68 +418,55 @@ mod tests {
 
         assert_eq!(cuboid.coords, expected);
     }
-
-    #[test]
-    fn iterate_over_atoms_in_macro_generated_impl_without_residue_returns_empty_iterator() {
-        let constructed = TestObject {
-            residue: None,
-            origin: Coord::ORIGO,
-            coords: vec![Coord::new(0.0, 2.0, 4.0), Coord::new(1.0, 3.0, 5.0)],
-        };
-
-        let mut iter = constructed.iter_atoms();
-        assert_eq!(None, iter.next());
-    }
-
-    #[test]
-    fn iterate_over_atoms_in_whole_system_gives_correct_results() {
-        // The first component has 3 residues * 2 atoms / residue = 6 atoms
-        let residue1 = resbase!["ONE", ("A", 1.0, 1.0, 1.0), ("B", 2.0, 2.0, 2.0)];
-        let component1 = Cuboid {
-            name: None,
-            residue: Some(residue1.clone()),
-            origin: Coord::default(),
-            size: Coord::default(),
-            density: None,
-            coords: vec![Coord::default(), Coord::default(), Coord::default()],
-        };
-
-        let origin = Coord::new(10.0, 20.0, 30.0);
-        let position = Coord::new(1.0, 2.0, 3.0);
-
-        // The second component has 2 residues * 1 atom / residue = 2 atoms
-        let residue2 = resbase!["TWO", ("C", 5.0, 6.0, 7.0)];
-        let component2 = Cuboid {
-            name: None,
-            residue: Some(residue2.clone()),
-            origin: origin,
-            size: Coord::default(),
-            density: None,
-            coords: vec![position, Coord::default()],
-        };
-
-        let system = System {
-            title: String::new(),
-            output_path: PathBuf::new(),
-            database: DataBase::new(),
-            components: vec![
-                ComponentEntry::VolumeCuboid(component1),
-                ComponentEntry::VolumeCuboid(component2)
-            ],
-            configurations: vec![],
-        };
-
-        let iter = system.iter_atoms();
-
-        // Inspect the seventh atom: the first in the second component
-        let atom = iter.skip(6).next().unwrap();
-
-        assert_eq!(6, atom.atom_index);
-        assert_eq!(3, atom.residue_index);
-        assert_eq!(&residue2.atoms[0], atom.atom);
-        assert_eq!(&residue2, atom.residue);
-        assert_eq!(origin + position + residue2.atoms[0].position, atom.position);
-    }
+    //
+    // #[test]
+    // fn iterate_over_atoms_in_whole_system_gives_correct_results() {
+    //     // The first component has 3 residues * 2 atoms / residue = 6 atoms
+    //     let residue1 = resbase!["ONE", ("A", 1.0, 1.0, 1.0), ("B", 2.0, 2.0, 2.0)];
+    //     let component1 = Cuboid {
+    //         name: None,
+    //         residue: Some(residue1.clone()),
+    //         origin: Coord::default(),
+    //         size: Coord::default(),
+    //         density: None,
+    //         coords: vec![Coord::default(), Coord::default(), Coord::default()],
+    //     };
+    //
+    //     let origin = Coord::new(10.0, 20.0, 30.0);
+    //     let position = Coord::new(1.0, 2.0, 3.0);
+    //
+    //     // The second component has 2 residues * 1 atom / residue = 2 atoms
+    //     let residue2 = resbase!["TWO", ("C", 5.0, 6.0, 7.0)];
+    //     let component2 = Cuboid {
+    //         name: None,
+    //         residue: Some(residue2.clone()),
+    //         origin: origin,
+    //         size: Coord::default(),
+    //         density: None,
+    //         coords: vec![position, Coord::default()],
+    //     };
+    //
+    //     let system = System {
+    //         title: String::new(),
+    //         output_path: PathBuf::new(),
+    //         database: DataBase::new(),
+    //         components: vec![
+    //             ComponentEntry::VolumeCuboid(component1),
+    //             ComponentEntry::VolumeCuboid(component2)
+    //         ],
+    //     };
+    //
+    //     let iter = system.iter_atoms();
+    //
+    //     // Inspect the seventh atom: the first in the second component
+    //     let atom = iter.skip(6).next().unwrap();
+    //
+    //     assert_eq!(6, atom.atom_index);
+    //     assert_eq!(3, atom.residue_index);
+    //     assert_eq!(&residue2.atoms[0], atom.atom);
+    //     assert_eq!(&residue2, atom.residue);
+    //     assert_eq!(origin + position + residue2.atoms[0].position, atom.position);
+    // }
 
     #[test]
     fn num_atoms_in_system() {
@@ -521,7 +488,6 @@ mod tests {
             components: vec![
                 component.clone(), component.clone()
             ],
-            configurations: vec![],
         };
 
         assert_eq!(12, system.num_atoms());
@@ -555,7 +521,6 @@ mod tests {
                 component1.clone(),
                 component2.clone()
             ],
-            configurations: vec![],
         };
 
         assert_eq!(Coord::new(6.0, 5.0, 5.0), system.box_size());

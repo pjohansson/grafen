@@ -3,7 +3,8 @@
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
-use iterator::{AtomIterItem, ResidueIter};
+use iterator::ResidueIter;
+use read_conf;
 use surface;
 use system::{Component, Residue};
 use volume;
@@ -47,7 +48,7 @@ pub enum DataBaseError {
 /// # #[macro_use] extern crate serde_derive;
 /// # use grafen::coord::{Coord, Translate};
 /// # use grafen::describe::Describe;
-/// # use grafen::iterator::{AtomIterator, AtomIterItem, ResidueIter};
+/// # use grafen::iterator::ResidueIter;
 /// # use grafen::system::{Component, Residue};
 /// #
 /// #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -101,10 +102,10 @@ pub enum DataBaseError {
 /// ];
 ///
 /// assert_eq!("StructOne", &objects[0].describe());
-/// assert_eq!(None, objects[0].iter_atoms().next());
+/// assert!(objects[0].iter_residues().next().is_none());
 ///
 /// assert_eq!("StructTwo", &objects[1].describe());
-/// assert_eq!(None, objects[1].iter_atoms().next());
+/// assert!(objects[1].iter_residues().next().is_none());
 /// # }
 /// ```
 macro_rules! create_entry_wrapper {
@@ -118,49 +119,44 @@ macro_rules! create_entry_wrapper {
             $(
                 $entry($class),
             )*
-            Conf,
         }
 
-        impl<'a> $name {
-            /// Get a reference to the coordinates of the component.
-            pub fn get_coords(&'a self) -> &Vec<Coord> {
-                match *self {
-                    $(
-                        $name::$entry(ref object) => &object.coords,
-                    )*
-                    $name::Conf => unimplemented!(),
-                }
-            }
-
-            /// Get a mutable reference to the coordinates of the component.
-            pub fn get_coords_mut(&'a mut self) -> &mut Vec<Coord> {
-                match *self {
-                    $(
-                        $name::$entry(ref mut object) => &mut object.coords,
-                    )*
-                    $name::Conf => unimplemented!(),
-                }
-            }
-
-            pub fn get_origin(&self) -> Coord {
-                match *self {
-                    $(
-                        $name::$entry(ref object) => object.origin,
-                    )*
-                    $name::Conf => unimplemented!(),
-                }
-            }
-
-            /// Get a reference to the component's optional `Residue`.
-            pub fn get_residue(&'a self) -> &'a Option<Residue> {
-                match *self {
-                    $(
-                        $name::$entry(ref object) => &object.residue,
-                    )*
-                    $name::Conf => unimplemented!(),
-                }
-            }
-        }
+        // impl<'a> $name {
+        //     /// Get a reference to the coordinates of the component.
+        //     pub fn get_coords(&'a self) -> &Vec<Coord> {
+        //         match *self {
+        //             $(
+        //                 $name::$entry(ref object) => &object.coords,
+        //             )*
+        //         }
+        //     }
+        //
+        //     /// Get a mutable reference to the coordinates of the component.
+        //     pub fn get_coords_mut(&'a mut self) -> &mut Vec<Coord> {
+        //         match *self {
+        //             $(
+        //                 $name::$entry(ref mut object) => &mut object.coords,
+        //             )*
+        //         }
+        //     }
+        //
+        //     pub fn get_origin(&self) -> Coord {
+        //         match *self {
+        //             $(
+        //                 $name::$entry(ref object) => object.origin,
+        //             )*
+        //         }
+        //     }
+        //
+        //     /// Get a reference to the component's optional `Residue`.
+        //     pub fn get_residue(&'a self) -> &'a Option<Residue> {
+        //         match *self {
+        //             $(
+        //                 $name::$entry(ref object) => &object.residue,
+        //             )*
+        //         }
+        //     }
+        // }
 
         impl Describe for $name {
             fn describe(&self) -> String {
@@ -168,7 +164,6 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.describe(),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -177,7 +172,6 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.describe_short(),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -188,26 +182,23 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.box_size(),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
 
-            fn iter_atoms(&'a self) -> AtomIterItem {
+            fn get_origin(&self) -> Coord {
                 match *self {
                     $(
-                        $name::$entry(ref object) => object.iter_atoms(),
+                        $name::$entry(ref object) => object.get_origin(),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
+
             fn iter_residues(&self) -> ResidueIter {
-                unimplemented!();
-                // match *self {
-                //     $(
-                //         $name::$entry(ref object) => object.iter_atoms(),
-                //     )*
-                //     $name::Conf => unimplemented!(),
-                // }
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.iter_residues(),
+                    )*
+                }
             }
 
 
@@ -216,7 +207,6 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(ref object) => object.num_atoms(),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -225,7 +215,6 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(object) => $name::$entry(object.with_pbc()),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -236,7 +225,6 @@ macro_rules! create_entry_wrapper {
                     $(
                         $name::$entry(object) => $name::$entry(object.translate(coord)),
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
 
@@ -246,7 +234,6 @@ macro_rules! create_entry_wrapper {
                         $name::$entry(ref mut object)
                             => { object.translate_in_place(coord); }
                     )*
-                    $name::Conf => unimplemented!(),
                 }
             }
         }
@@ -267,7 +254,8 @@ create_entry_wrapper![
     (volume::Cuboid => VolumeCuboid),
     (volume::Cylinder => VolumeCylinder),
     (surface::Sheet => SurfaceSheet),
-    (surface::Cylinder => SurfaceCylinder)
+    (surface::Cylinder => SurfaceCylinder),
+    (read_conf::ReadConf => Conf)
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -506,6 +494,10 @@ mod tests {
         ];
         let pbc_component = component.with_pbc();
 
-        assert_eq!(pbc_component.get_coords(), &pbc_coords);
+        if let ComponentEntry::SurfaceSheet(ref sheet) = pbc_component {
+            assert_eq!(&sheet.coords, &pbc_coords);
+        } else {
+            panic!("From component was selected in the constructed test")
+        }
     }
 }

@@ -1,6 +1,6 @@
 use coord::{Coord, Translate};
 use describe::Describe;
-use iterator::{AtomIterItem, ResidueIter};
+use iterator::ResidueIter;
 use system::Component;
 
 use mdio;
@@ -11,21 +11,11 @@ use std::path::PathBuf;
 pub struct ReadConf {
     #[serde(skip)]
     /// A configuration that may have been read by the system.
-    conf: Option<mdio::Conf>,
+    pub conf: Option<mdio::Conf>,
     /// The path to the configuration on disk.
-    path: PathBuf,
+    pub path: PathBuf,
     /// A short description of the configuration.
-    description: String,
-}
-
-impl ReadConf {
-    fn get_origin(&self) -> Coord {
-        self.conf.as_ref().map(|c| Coord::from(c.origin)).unwrap_or(Coord::ORIGO)
-    }
-    //
-    // fn get_name(&self) -> Option<String> {
-    //     self.conf.as_ref().map(|c| c.title.clone())
-    // }
+    pub description: String,
 }
 
 use iterator::ConfIter;
@@ -45,8 +35,8 @@ impl<'a> Component<'a> for ReadConf {
         }
     }
 
-    fn iter_atoms(&'a self) -> AtomIterItem<'a> {
-        unimplemented!();
+    fn get_origin(&self) -> Coord {
+        self.conf.as_ref().map(|c| Coord::from(c.origin)).unwrap_or(Coord::ORIGO)
     }
 
     fn iter_residues(&self) -> ResidueIter<'_> {
