@@ -47,16 +47,8 @@ pub fn user_menu(components: &mut Vec<ComponentEntry>) -> MenuResult {
             let remaining_residues = prune_residues_from_volume::<_, Contains>(
                 &component, volume.borrow());
 
-            // component.assign_residues(&remaining_residues);
+            component.assign_residues(&remaining_residues);
 
-            unimplemented!("This is being reimplemented!");
-
-            // let pruned_coords = prune_residues_from_volume(component.get_coords(),
-            //     component.get_origin(),
-            //     component.get_residue().as_ref().unwrap(),
-            //     volume.as_ref());
-            //
-            // component.get_coords_mut().clone_from(&pruned_coords);
             let num_after = component.num_atoms();
 
             Ok(Some(format!("Removed {} atoms from the component", num_before - num_after)))

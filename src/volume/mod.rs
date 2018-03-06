@@ -108,7 +108,7 @@ pub fn pbc_multiply_volume(coords: &[Coord], size: Coord, nx: usize, ny: usize, 
 /// Checks all atoms within residues to see if any are contained by the volume.
 /// If any are, the residue is filtered from the returned list.
 pub fn prune_residues_from_volume<'a, T, V>(component: &'a T, pruning_vol: &V)
-     -> Vec<ResidueIterOut<'a>>
+     -> Vec<ResidueIterOut>
         where T: Component<'a>, V: ?Sized + Contains {
     let origin = component.get_origin();
 

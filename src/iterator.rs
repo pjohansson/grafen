@@ -34,16 +34,17 @@ pub enum ResidueIter<'a> {
     None,
 }
 
-pub enum ResidueIterOut<'a> {
-    FromConf(Vec<&'a mdio::Atom>),
+#[derive(Debug, Clone)]
+pub enum ResidueIterOut {
+    FromConf(Vec<Rc<RefCell<mdio::Atom>>>),
     FromComp(Rc<RefCell<String>>, Vec<(Rc<RefCell<String>>, Coord)>),
 }
 
-impl<'a> ResidueIterOut<'a> {
+impl ResidueIterOut {
     /// Return a reference counted pointer to the residue name.
     pub fn get_residue(&self) -> Rc<RefCell<String>> {
         match self {
-            &ResidueIterOut::FromConf(ref atoms) => Rc::clone(&atoms[0].residue.borrow().name),
+            &ResidueIterOut::FromConf(ref atoms) => Rc::clone(&atoms[0].borrow().residue.borrow().name),
             &ResidueIterOut::FromComp(ref res, _) => Rc::clone(&res),
         }
     }
@@ -54,7 +55,7 @@ impl<'a> ResidueIterOut<'a> {
             &ResidueIterOut::FromConf(ref atoms) => {
                 atoms
                     .iter()
-                    .map(|atom| (Rc::clone(&atom.name), Coord::from(atom.position)))
+                    .map(|atom| (Rc::clone(&atom.borrow().name), Coord::from(atom.borrow().position)))
                     .collect()
             },
             &ResidueIterOut::FromComp(_, ref atoms) => atoms.clone(),
@@ -63,7 +64,7 @@ impl<'a> ResidueIterOut<'a> {
 }
 
 impl<'a> Iterator for ResidueIter<'a> {
-    type Item = ResidueIterOut<'a>;
+    type Item = ResidueIterOut;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -72,7 +73,9 @@ impl<'a> Iterator for ResidueIter<'a> {
                 conf_iter.iter
                     .next()
                     .map(|res| res.unwrap())
-                    .map(|res| ResidueIterOut::FromConf(res))
+                    .map(|res| {
+                        ResidueIterOut::FromConf(res.iter().map(|&atom| Rc::new(RefCell::new(atom.clone()))).collect())
+                    })
             },
             &mut ResidueIter::Component(ref res, ref mut iter) => {
                 iter.next()

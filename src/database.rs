@@ -32,9 +32,6 @@ pub enum DataBaseError {
 ///
 /// Implements `Describe`, `Component` and `Translate` for the enum.
 ///
-/// Also sets up some getter functions directly to the object data and
-/// the `with_pbc` method to move residue coordinates within the box.
-///
 /// # Requires
 /// Wrapped objects have to implement the above traits and `Clone`, `Debug`,
 /// `Deserialize` and `Serialize` (the last two from `serde`).
@@ -48,7 +45,7 @@ pub enum DataBaseError {
 /// # #[macro_use] extern crate serde_derive;
 /// # use grafen::coord::{Coord, Translate};
 /// # use grafen::describe::Describe;
-/// # use grafen::iterator::ResidueIter;
+/// # use grafen::iterator::{ResidueIter, ResidueIterOut};
 /// # use grafen::system::{Component, Residue};
 /// #
 /// #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -121,43 +118,6 @@ macro_rules! create_entry_wrapper {
             )*
         }
 
-        // impl<'a> $name {
-        //     /// Get a reference to the coordinates of the component.
-        //     pub fn get_coords(&'a self) -> &Vec<Coord> {
-        //         match *self {
-        //             $(
-        //                 $name::$entry(ref object) => &object.coords,
-        //             )*
-        //         }
-        //     }
-        //
-        //     /// Get a mutable reference to the coordinates of the component.
-        //     pub fn get_coords_mut(&'a mut self) -> &mut Vec<Coord> {
-        //         match *self {
-        //             $(
-        //                 $name::$entry(ref mut object) => &mut object.coords,
-        //             )*
-        //         }
-        //     }
-        //
-        //     pub fn get_origin(&self) -> Coord {
-        //         match *self {
-        //             $(
-        //                 $name::$entry(ref object) => object.origin,
-        //             )*
-        //         }
-        //     }
-        //
-        //     /// Get a reference to the component's optional `Residue`.
-        //     pub fn get_residue(&'a self) -> &'a Option<Residue> {
-        //         match *self {
-        //             $(
-        //                 $name::$entry(ref object) => &object.residue,
-        //             )*
-        //         }
-        //     }
-        // }
-
         impl Describe for $name {
             fn describe(&self) -> String {
                 match *self {
@@ -177,7 +137,7 @@ macro_rules! create_entry_wrapper {
         }
 
         impl<'a> Component<'a> for $name {
-            fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]) {
+            fn assign_residues(&mut self, residues: &[ResidueIterOut]) {
                 match *self {
                     $(
                         $name::$entry(ref mut object) => object.assign_residues(residues),

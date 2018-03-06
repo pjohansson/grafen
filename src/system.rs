@@ -110,7 +110,7 @@ pub trait Component<'a> {
     /// # Note
     /// It is assumed that the assignment is to an object of the same type that created
     /// the residue collection. Any differing information will be thrown away.
-    fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]);
+    fn assign_residues(&mut self, residues: &[ResidueIterOut]);
 
     /// Return the size of the object's bounding box seen from origo.
     ///
@@ -175,7 +175,7 @@ macro_rules! impl_component {
                 /// no atoms. This *should* never happen since we should always assign
                 /// residues to complete objects of the same type, but we could consider
                 /// this to returning a `Result` to guard against it.
-                fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]) {
+                fn assign_residues(&mut self, residues: &[ResidueIterOut]) {
                     let residue = self.residue.clone().unwrap();
 
                     self.coords = residues.iter()

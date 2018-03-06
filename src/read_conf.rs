@@ -1,10 +1,11 @@
 use coord::{Coord, Translate};
 use describe::Describe;
-use iterator::{ResidueIter, ResidueIterOut};
+use iterator::{ConfIter, ResidueIter, ResidueIterOut};
 use system::Component;
 
 use mdio;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// Wrap a configuration that is read from disk into an object we can handle.
@@ -18,11 +19,32 @@ pub struct ReadConf {
     pub description: String,
 }
 
-use iterator::ConfIter;
-
 impl<'a> Component<'a> for ReadConf {
-    fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]) {
-        unimplemented!();
+    fn assign_residues(&mut self, residues: &[ResidueIterOut]) {
+        if let Some(mut conf) = self.conf.as_mut() {
+            let mut atoms: Vec<mdio::Atom> = Vec::new();
+
+            residues
+                .iter()
+                .for_each(|res| {
+                    let res_name = res.get_residue();
+                    res.get_atoms().iter().for_each(|atom_data| {
+                        let (x, y, z) = atom_data.1.to_tuple();
+                        let (residue, atom) = mdio::get_or_insert_atom_and_residue(
+                            &res_name.borrow(), &atom_data.0.borrow(), &mut conf.residues
+                        ).unwrap();
+
+                        atoms.push(mdio::Atom {
+                            name: Rc::clone(&atom),
+                            residue: Rc::clone(&residue),
+                            position: mdio::RVec { x, y, z },
+                            velocity: None,
+                        });
+                    });
+                });
+
+            conf.atoms = atoms;
+        }
     }
 
     /// Returns the box size of a read configuration, or (0, 0, 0) if it has not been read.
@@ -284,33 +306,25 @@ pub mod tests {
         };
 
         let original: Vec<ResidueIterOut> = read_conf.iter_residues().collect::<Vec<_>>();
-        let two = read_conf.clone().iter_residues().collect::<Vec<_>>();
+        assert_eq!(original.len(), 2);
 
-        // Modify the residue list by shifting the aotms and then reassign them
-        let shift = Coord::new(1.0, 2.0, 3.0);
+        // Modify the residue list by reversing it
         let modified = original
-            .iter()
-            .map(|res| {
-                res.clone()
-            })
-            .collect::<Vec<_>>();
-        // let residues = read_conf
-        //         .iter_residues()
-        //         .map(|mut res| {
-        //             res.get_atoms()
-        //                 .iter_mut()
-        //                 .map(|atom| atom.1 += shift);
-        //
-        //             res
-        //         })
-        //         .collect::<Vec<_>>();
+                .iter()
+                .cloned()
+                .rev()
+                .collect::<Vec<_>>();
 
-        // let residues: Vec<ResidueIterOut> = Vec::new();
+        read_conf.assign_residues(&modified);
 
-        // read_conf.assign_residues(modified.as_slice());
+        // Assert that the residues have been modified
+        let result = read_conf.iter_residues().collect::<Vec<_>>();
+        assert_eq!(result.len(), original.len());
 
-
-        panic!();
-
+        for (orig, res) in original.iter().rev().zip(result.iter()) {
+            assert!(Rc::ptr_eq(&orig.get_residue(), &res.get_residue()));
+            assert!(Rc::ptr_eq(&orig.get_atoms()[0].0, &res.get_atoms()[0].0));
+            assert_eq!(orig.get_atoms()[0].1, res.get_atoms()[0].1);
+        }
     }
 }

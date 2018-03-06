@@ -1,7 +1,5 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
 
-#![feature(nll)]
-
 extern crate colored;
 extern crate dialoguer;
 extern crate serde;
