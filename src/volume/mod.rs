@@ -109,7 +109,7 @@ pub fn pbc_multiply_volume(coords: &[Coord], size: Coord, nx: usize, ny: usize, 
 /// If any are, the residue is filtered from the returned list.
 pub fn prune_residues_from_volume<'a, T, V>(component: &'a T, pruning_vol: &V)
      -> Vec<ResidueIterOut<'a>>
-        where T: Component<'a>, V: Contains {
+        where T: Component<'a>, V: ?Sized + Contains {
     let origin = component.get_origin();
 
     component

@@ -6,7 +6,7 @@ use coord::{Coord, Direction, Translate,
     rotate_coords, rotate_planar_coords_to_alignment};
 use describe::{unwrap_name, Describe};
 use error::Result;
-use iterator::ResidueIter;
+use iterator::{ResidueIter, ResidueIterOut};
 use system::*;
 
 use std::f64::consts::PI;

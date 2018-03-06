@@ -1,6 +1,6 @@
 use coord::{Coord, Translate};
 use describe::Describe;
-use iterator::ResidueIter;
+use iterator::{ResidueIter, ResidueIterOut};
 use system::Component;
 
 use mdio;
@@ -21,6 +21,10 @@ pub struct ReadConf {
 use iterator::ConfIter;
 
 impl<'a> Component<'a> for ReadConf {
+    fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]) {
+        unimplemented!();
+    }
+
     /// Returns the box size of a read configuration, or (0, 0, 0) if it has not been read.
     ///
     /// # Notes
@@ -173,6 +177,61 @@ pub mod tests {
     }
 
     #[test]
+    fn iterating_over_residues_in_read_configuration_returns_pointers_to_the_original() {
+        let residues = vec![
+            Rc::new(RefCell::new(mdio::Residue {
+                name: Rc::new(RefCell::new("RES1".to_string())),
+                atoms: vec![Rc::new(RefCell::new("AT1".to_string()))],
+            })),
+            Rc::new(RefCell::new(mdio::Residue {
+                name: Rc::new(RefCell::new("RES2".to_string())),
+                atoms: vec![Rc::new(RefCell::new("AT2".to_string()))],
+            })),
+        ];
+
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: 10.0, y: 20.0, z: 30.0 }, // Will be ignored
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            residues: residues.clone(),
+            atoms: vec![
+                // Residue 1
+                mdio::Atom {
+                    name: Rc::clone(&residues[0].borrow().atoms[0]),
+                    residue: Rc::clone(&residues[0]),
+                    position: RVec { x: 0.0, y: 1.0, z: 2.0 },
+                    velocity: Some(RVec { x: 0.0, y: 0.1, z: 0.2 }),
+                },
+                // Residue 2
+                mdio::Atom {
+                    name: Rc::clone(&residues[1].borrow().atoms[0]),
+                    residue: Rc::clone(&residues[1]),
+                    position: RVec { x: 3.0, y: 4.0, z: 5.0 },
+                    velocity: Some(RVec { x: 0.3, y: 0.4, z: 0.5 }),
+                },
+            ]
+        };
+
+        let read_conf = ReadConf {
+            conf: Some(conf),
+            path: PathBuf::from(""),
+            description: String::new(),
+        };
+
+        let mut iter = read_conf.iter_residues();
+
+        let res1 = iter.next().unwrap();
+        let atoms = res1.get_atoms();
+        assert!(Rc::ptr_eq(&res1.get_residue(), &residues[0].borrow().name));
+        assert!(Rc::ptr_eq(&atoms[0].0, &residues[0].borrow().atoms[0]));
+
+        let res2 = iter.next().unwrap();
+        let atoms = res2.get_atoms();
+        assert!(Rc::ptr_eq(&res2.get_residue(), &residues[1].borrow().name));
+        assert!(Rc::ptr_eq(&atoms[0].0, &residues[1].borrow().atoms[0]));
+    }
+
+    #[test]
     fn iterate_over_residues_in_an_unread_configuration_returns_none() {
         let unread_conf = ReadConf {
             conf: None,
@@ -180,5 +239,78 @@ pub mod tests {
             description: String::new(),
         };
         assert!(unread_conf.iter_residues().next().is_none());
+    }
+
+    #[test]
+    fn assign_modified_residues_to_read_configuration() {
+        let residues = vec![
+            Rc::new(RefCell::new(mdio::Residue {
+                name: Rc::new(RefCell::new("RES1".to_string())),
+                atoms: vec![Rc::new(RefCell::new("AT1".to_string()))],
+            })),
+            Rc::new(RefCell::new(mdio::Residue {
+                name: Rc::new(RefCell::new("RES2".to_string())),
+                atoms: vec![Rc::new(RefCell::new("AT2".to_string()))],
+            })),
+        ];
+
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: 10.0, y: 20.0, z: 30.0 }, // Will be ignored
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            residues: residues.clone(),
+            atoms: vec![
+                // Residue 1
+                mdio::Atom {
+                    name: Rc::clone(&residues[0].borrow().atoms[0]),
+                    residue: Rc::clone(&residues[0]),
+                    position: RVec { x: 0.0, y: 1.0, z: 2.0 },
+                    velocity: Some(RVec { x: 0.0, y: 0.1, z: 0.2 }),
+                },
+                // Residue 2
+                mdio::Atom {
+                    name: Rc::clone(&residues[1].borrow().atoms[0]),
+                    residue: Rc::clone(&residues[1]),
+                    position: RVec { x: 3.0, y: 4.0, z: 5.0 },
+                    velocity: Some(RVec { x: 0.3, y: 0.4, z: 0.5 }),
+                },
+            ]
+        };
+
+        let mut read_conf = ReadConf {
+            conf: Some(conf),
+            path: PathBuf::from(""),
+            description: String::new(),
+        };
+
+        let original: Vec<ResidueIterOut> = read_conf.iter_residues().collect::<Vec<_>>();
+        let two = read_conf.clone().iter_residues().collect::<Vec<_>>();
+
+        // Modify the residue list by shifting the aotms and then reassign them
+        let shift = Coord::new(1.0, 2.0, 3.0);
+        let modified = original
+            .iter()
+            .map(|res| {
+                res.clone()
+            })
+            .collect::<Vec<_>>();
+        // let residues = read_conf
+        //         .iter_residues()
+        //         .map(|mut res| {
+        //             res.get_atoms()
+        //                 .iter_mut()
+        //                 .map(|atom| atom.1 += shift);
+        //
+        //             res
+        //         })
+        //         .collect::<Vec<_>>();
+
+        // let residues: Vec<ResidueIterOut> = Vec::new();
+
+        // read_conf.assign_residues(modified.as_slice());
+
+
+        panic!();
+
     }
 }

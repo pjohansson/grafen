@@ -3,7 +3,7 @@
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
-use iterator::ResidueIter;
+use iterator::{ResidueIter, ResidueIterOut};
 use read_conf;
 use surface;
 use system::{Component, Residue};
@@ -177,6 +177,14 @@ macro_rules! create_entry_wrapper {
         }
 
         impl<'a> Component<'a> for $name {
+            fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]) {
+                match *self {
+                    $(
+                        $name::$entry(ref mut object) => object.assign_residues(residues),
+                    )*
+                }
+            }
+
             fn box_size(&self) -> Coord {
                 match *self {
                     $(

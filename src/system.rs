@@ -14,7 +14,7 @@
 use coord::Coord;
 use describe::{describe_list, Describe};
 use database::{ComponentEntry, DataBase};
-use iterator::{AtomIterItem, ResidueIter};
+use iterator::{AtomIterItem, ResidueIter, ResidueIterOut};
 
 use colored::*;
 use mdio::Conf;
@@ -104,6 +104,14 @@ impl<'a> System {
 
 /// Methods for yielding atoms and output information from constructed objects.
 pub trait Component<'a> {
+    /// Assign some residues from an `iter_residues()` call to the component, presumably
+    /// after modifying it.
+    ///
+    /// # Note
+    /// It is assumed that the assignment is to an object of the same type that created
+    /// the residue collection. Any differing information will be thrown away.
+    fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]);
+
     /// Return the size of the object's bounding box seen from origo.
     ///
     /// That is, for a component of size (1, 1, 1) with origin (1, 1, 1)
@@ -137,6 +145,44 @@ macro_rules! impl_component {
     ( $( $class:path ),+ ) => {
         $(
             impl<'a> Component<'a> for $class {
+                /// Assign a set of input residues to the component.
+                ///
+                /// # Downcasting information
+                /// Note that some information may be downcast in the particular implementation
+                /// for this `Component`. This is due to the base of it saving only as single
+                /// coordinate for every `Residue` position: the residue atoms are exactly
+                /// relative to this position, not set explicitly.
+                ///
+                /// However, the residues which result from calling eg. `iter_residues()`
+                /// on components results in objects which carry information about atoms
+                /// with all of their positions set explicitly (but relative to the containing
+                /// `Component`). This explicit information will be lost as it is downcast
+                /// to a single position per residue, with residue-relative positions that are
+                /// shared by all atoms.
+                ///
+                /// The component-relative position for the iterated residues is taken as
+                /// the first atom of every object. That position is subtracted by
+                /// the residue-relative position of the atom of the `Residue` that is set
+                /// to the `Component`, to find the component-relative position of the residue.
+                ///
+                /// Furthermore, note that any information about several different residue
+                /// types in the iterating object is lost. This object assumes that the
+                /// current set `Residue` is the only existing residue in the iterator.
+                ///
+                /// # Panics
+                /// Panics if no `Residue` is set to the `Component`, if the `Residue`
+                /// contains no `Atom`s or if any residue in the iterating object contains
+                /// no atoms. This *should* never happen since we should always assign
+                /// residues to complete objects of the same type, but we could consider
+                /// this to returning a `Result` to guard against it.
+                fn assign_residues(&mut self, residues: &[ResidueIterOut<'a>]) {
+                    let residue = self.residue.clone().unwrap();
+
+                    self.coords = residues.iter()
+                        .map(|res| res.get_atoms()[0].1 - residue.atoms[0].position)
+                        .collect::<Vec<_>>();
+                }
+
                 fn box_size(&self) -> Coord {
                     self.calc_box_size() + self.origin
                 }
@@ -294,10 +340,10 @@ mod tests {
     #[derive(Debug, Deserialize, Serialize)]
     struct TestObject { residue: Option<Residue>, origin: Coord, coords: Vec<Coord> }
     impl Describe for TestObject {
-        fn describe(&self) -> String { unimplemented!(); }
-        fn describe_short(&self) -> String { unimplemented!(); }
+        fn describe(&self) -> String { "Doesn't matter".to_string() }
+        fn describe_short(&self) -> String { "Doesn't matter".to_string() }
     }
-    impl TestObject { fn calc_box_size(&self) -> Coord { unimplemented!(); } }
+    impl TestObject { fn calc_box_size(&self) -> Coord { Coord::ORIGO } }
 
     impl_translate![TestObject];
     impl_component![TestObject];
@@ -375,6 +421,57 @@ mod tests {
         };
 
         assert_eq!(component.get_origin(), origin);
+    }
+
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    #[test]
+    fn assigning_residues_in_macro_generated_impl_objects() {
+        // The residue of the component has two atoms with these positions relative to the itself.
+        let atom1_relative = Coord::new(1.0, 2.0, 3.0);
+        let atom2_relative = Coord::new(1.1, 2.2, 3.3);
+
+        let residue = resbase![
+            "RES",
+            ("A", atom1_relative.x, atom1_relative.y, atom1_relative.z),
+            ("B", atom2_relative.x, atom2_relative.y, atom2_relative.z)
+        ];
+
+        let res_name = Rc::new(RefCell::new(residue.code.to_string()));
+        let atom1_name = Rc::new(RefCell::new(residue.atoms[0].code.to_string()));
+        let atom2_name = Rc::new(RefCell::new(residue.atoms[1].code.to_string()));
+
+        let mut cuboid = Cuboid {
+            residue: Some(residue.clone()),
+            .. Cuboid::default()
+        };
+
+        // The residue iterator has atom positions which are component-relative,
+        // not residue-relative. These are their positions in the component.
+        let res1_position = Coord::new(0.0, 10.0, 20.0);
+        let res2_position = Coord::new(30.0, 40.0, 50.0);
+
+        // In this list, the component-relative atom positions are used.
+        let residues = vec![
+            ResidueIterOut::FromComp(Rc::clone(&res_name), vec![
+                (Rc::clone(&atom1_name), res1_position + atom1_relative),
+                (Rc::clone(&atom2_name), res1_position + atom2_relative),
+            ]),
+            ResidueIterOut::FromComp(Rc::clone(&res_name), vec![
+                (Rc::clone(&atom1_name), res2_position + atom1_relative),
+                (Rc::clone(&atom2_name), res2_position + atom2_relative),
+            ])
+        ];
+
+        // Assign the residues and check that the main residue was not modified.
+        cuboid.assign_residues(&residues);
+        assert_eq!(cuboid.residue.unwrap(), residue);
+
+        // Assert that the coordinate vector contains the component-relative positions.
+        assert_eq!(cuboid.coords.len(), 2);
+        assert_eq!(cuboid.coords[0], res1_position);
+        assert_eq!(cuboid.coords[1], res2_position);
     }
 
     #[test]
