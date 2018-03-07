@@ -116,6 +116,7 @@ fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<C
             conf: None,
             path: conf.path.clone(),
             description: conf.description.clone(),
+            volume_type: conf.volume_type.clone(),
         })
         .map(|conf| ComponentEntry::Conf(conf))
         .collect::<Vec<_>>();

@@ -1,4 +1,4 @@
-use coord::{Coord, Translate};
+use coord::{Coord, Direction, Translate};
 use describe::Describe;
 use iterator::{ConfIter, ResidueIter, ResidueIterOut};
 use system::Component;
@@ -6,6 +6,20 @@ use system::Component;
 use mdio;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+/// The read configuration can be morphed into different types of elements.
+pub enum ConfType {
+    /// The cuboid uses the same data as the read configuration.
+    Cuboid,
+    /// The cylinder requires some data about its construction.
+    Cylinder {
+        radius: f64,
+        height: f64,
+        normal: Direction,
+    },
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// Wrap a configuration that is read from disk into an object we can handle.
@@ -17,6 +31,8 @@ pub struct ReadConf {
     pub path: PathBuf,
     /// A short description of the configuration.
     pub description: String,
+    /// The set construction of the configuration.
+    pub volume_type: ConfType,
 }
 
 impl ReadConf {
@@ -31,7 +47,23 @@ impl ReadConf {
             conf: Some(conf),
             path: PathBuf::from(path),
             description,
+            volume_type: ConfType::Cuboid,
         })
+    }
+
+    /// Get the component origin as it will be displayed to the user, not
+    /// the internal value which is used to translate all coordinates.
+    fn get_displayed_origin(&self) -> Coord {
+        match self.volume_type {
+            ConfType::Cuboid => self.get_origin(),
+            ConfType::Cylinder { radius, height: _, normal } => {
+                self.get_origin() + match normal {
+                    Direction::X => Coord::new(0.0, radius / 2.0, radius / 2.0),
+                    Direction::Y => Coord::new(radius / 2.0, 0.0, radius / 2.0),
+                    Direction::Z => Coord::new(radius / 2.0, radius / 2.0, 0.0),
+                }
+            },
+        }
     }
 }
 
@@ -109,8 +141,20 @@ impl Describe for ReadConf {
         };
 
         if self.conf.is_some() {
-            description.push_str(&format!(" (Configuration of {} atoms at {} with size {})",
-                self.num_atoms(), self.get_origin(), self.box_size()));
+            match self.volume_type {
+                ConfType::Cuboid => {
+                    description.push_str(&format!(
+                        " (Configuration of {} atoms at {} with size {})",
+                        self.num_atoms(), self.get_displayed_origin(), self.box_size()
+                    ));
+                },
+                ConfType::Cylinder { radius, height, normal: _ } => {
+                    description.push_str(&format!(
+                        " (Configuration cylinder of {} atoms at {} with radius {:.1} and height {:.1})",
+                        self.num_atoms(), self.get_displayed_origin(), radius, height
+                    ));
+                },
+            }
         }
 
         description
@@ -189,6 +233,7 @@ pub mod tests {
             conf: Some(conf),
             path: PathBuf::from(""),
             description: String::new(),
+            volume_type: ConfType::Cuboid,
         };
 
         let mut iter = read_conf.iter_residues();
@@ -254,6 +299,7 @@ pub mod tests {
             conf: Some(conf),
             path: PathBuf::from(""),
             description: String::new(),
+            volume_type: ConfType::Cuboid,
         };
 
         let mut iter = read_conf.iter_residues();
@@ -275,6 +321,7 @@ pub mod tests {
             conf: None,
             path: PathBuf::from(""),
             description: String::new(),
+            volume_type: ConfType::Cuboid,
         };
         assert!(unread_conf.iter_residues().next().is_none());
     }
@@ -319,6 +366,7 @@ pub mod tests {
             conf: Some(conf),
             path: PathBuf::from(""),
             description: String::new(),
+            volume_type: ConfType::Cuboid,
         };
 
         let original: Vec<ResidueIterOut> = read_conf.iter_residues().collect::<Vec<_>>();
@@ -342,5 +390,134 @@ pub mod tests {
             assert!(Rc::ptr_eq(&orig.get_atoms()[0].0, &res.get_atoms()[0].0));
             assert_eq!(orig.get_atoms()[0].1, res.get_atoms()[0].1);
         }
+    }
+
+    #[test]
+    fn read_configuration_cuboids_describe_their_positions_unchanged() {
+        let origin = Coord::new(10.0, 20.0, 30.0);
+        let (x0, y0, z0) = origin.to_tuple();
+
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: x0, y: y0, z: z0 },
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            residues: Vec::new(),
+            atoms: Vec::new(),
+        };
+
+        let comp = ReadConf {
+            conf: Some(conf),
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cuboid,
+        };
+
+        let description = comp.describe();
+        let needle = format!("at {}", Coord::new(x0, y0, z0));
+        assert!(description.contains(&needle));
+    }
+
+    #[test]
+    fn read_configuration_cylinders_describe_their_position_as_the_bottom_center() {
+        let origin = Coord::new(10.0, 20.0, 30.0);
+        let (x0, y0, z0) = origin.to_tuple();
+
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: x0, y: y0, z: z0 },
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            residues: Vec::new(),
+            atoms: Vec::new(),
+        };
+
+        let radius = 6.3;
+        let normal = Direction::Y;
+
+        let comp = ReadConf {
+            conf: Some(conf),
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cylinder {
+                radius,
+                height: 0.1, // unused here
+                normal,
+            },
+        };
+
+        // It's aligned with its normal to the y plane
+        let x = x0 + radius / 2.0;
+        let y = y0;
+        let z = z0 + radius / 2.0;
+
+        let description = comp.describe();
+        let needle = format!("at {}", Coord::new(x, y, z));
+        assert!(description.contains(&needle));
+    }
+
+    #[test]
+    fn get_displayed_origin_of_read_confs() {
+        let origin = Coord::new(3.0, 5.0, 7.0);
+        let (x0, y0, z0) = origin.to_tuple();
+
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: x0, y: y0, z: z0 },
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            residues: Vec::new(),
+            atoms: Vec::new(),
+        };
+
+        let cuboid = ReadConf {
+            conf: Some(conf.clone()),
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cuboid,
+        };
+
+        assert_eq!(cuboid.get_displayed_origin(), origin);
+
+        let radius = 6.3;
+
+        let cylinder_x = ReadConf {
+            conf: Some(conf.clone()),
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cylinder {
+                radius,
+                height: 0.1, // unused here
+                normal: Direction::X,
+            },
+        };
+
+        let cyl_origin = origin + Coord::new(0.0, radius / 2.0, radius / 2.0);
+        assert_eq!(cylinder_x.get_displayed_origin(), cyl_origin);
+
+        let cylinder_y = ReadConf {
+            conf: Some(conf.clone()),
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cylinder {
+                radius,
+                height: 0.1, // unused here
+                normal: Direction::Y,
+            },
+        };
+
+        let cyl_origin = origin + Coord::new(radius / 2.0, 0.0, radius / 2.0);
+        assert_eq!(cylinder_y.get_displayed_origin(), cyl_origin);
+
+        let cylinder_z = ReadConf {
+            conf: Some(conf.clone()),
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cylinder {
+                radius,
+                height: 0.1, // unused here
+                normal: Direction::Z,
+            },
+        };
+
+        let cyl_origin = origin + Coord::new(radius / 2.0, radius / 2.0, 0.0);
+        assert_eq!(cylinder_z.get_displayed_origin(), cyl_origin);
     }
 }
