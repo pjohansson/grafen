@@ -167,7 +167,7 @@
       }
     },
     {
-      "Conf": {
+      "ConfigurationFile": {
         "path": "include/wat_equil.gro",
         "description": "water box with water molecule from library",
         "volume_type": {
@@ -182,14 +182,14 @@
       }
     },
     {
-      "Conf": {
+      "ConfigurationFile": {
         "path": "include/wat_equil.gro",
         "description": "Water disk",
         "volume_type": {
           "Cylinder": {
-              "radius": 50.0,
+              "radius": 15.0,
               "height": 2.3383,
-              "normal": "Z"
+              "normal": "Y"
           }
         }
       }

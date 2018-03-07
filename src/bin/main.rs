@@ -119,12 +119,12 @@ fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<C
             description: conf.description.clone(),
             volume_type: conf.volume_type.clone(),
         })
-        .map(|conf| ComponentEntry::Conf(conf))
+        .map(|conf| ComponentEntry::ConfigurationFile(conf))
         .collect::<Vec<_>>();
 
     let components = configurations
         .into_iter()
-        .map(|conf| ComponentEntry::Conf(conf))
+        .map(|conf| ComponentEntry::ConfigurationFile(conf))
         .collect::<Vec<_>>();
 
     (components, entries)

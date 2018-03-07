@@ -121,15 +121,20 @@ impl ReadConf {
             ConfType::Cuboid { origin: _, size: _ } => self.get_origin(),
             ConfType::Cylinder { origin: _, radius, height: _, normal } => {
                 self.get_origin() + match normal {
-                    Direction::X => Coord::new(0.0, radius / 2.0, radius / 2.0),
-                    Direction::Y => Coord::new(radius / 2.0, 0.0, radius / 2.0),
-                    Direction::Z => Coord::new(radius / 2.0, radius / 2.0, 0.0),
+                    Direction::X => Coord::new(0.0, radius, radius),
+                    Direction::Y => Coord::new(radius, 0.0, radius),
+                    Direction::Z => Coord::new(radius, radius, 0.0),
                 }
             },
         }
     }
 
-    fn reconstruct(&mut self, new_conf_type: ConfType) {
+    pub fn construct(&mut self) {
+        let volume_type = self.volume_type.clone();
+        self.reconstruct(volume_type);
+    }
+
+    pub fn reconstruct(&mut self, new_conf_type: ConfType) {
         // Ensure that the volume we want to create has our origin.
         let new_conf_type = match new_conf_type {
             ConfType::Cuboid { origin: _, size } => {
@@ -547,9 +552,9 @@ pub mod tests {
         };
 
         // It's aligned with its normal to the y plane
-        let x = x0 + radius / 2.0;
+        let x = x0 + radius;
         let y = y0;
-        let z = z0 + radius / 2.0;
+        let z = z0 + radius;
 
         let description = comp.describe();
         let needle = format!("at {}", Coord::new(x, y, z));
@@ -594,7 +599,7 @@ pub mod tests {
             },
         };
 
-        let cyl_origin = origin + Coord::new(0.0, radius / 2.0, radius / 2.0);
+        let cyl_origin = origin + Coord::new(0.0, radius, radius);
         assert_eq!(cylinder_x.get_displayed_origin(), cyl_origin);
 
         let cylinder_y = ReadConf {
@@ -610,7 +615,7 @@ pub mod tests {
             },
         };
 
-        let cyl_origin = origin + Coord::new(radius / 2.0, 0.0, radius / 2.0);
+        let cyl_origin = origin + Coord::new(radius, 0.0, radius);
         assert_eq!(cylinder_y.get_displayed_origin(), cyl_origin);
 
         let cylinder_z = ReadConf {
@@ -626,7 +631,7 @@ pub mod tests {
             },
         };
 
-        let cyl_origin = origin + Coord::new(radius / 2.0, radius / 2.0, 0.0);
+        let cyl_origin = origin + Coord::new(radius, radius, 0.0);
         assert_eq!(cylinder_z.get_displayed_origin(), cyl_origin);
     }
 

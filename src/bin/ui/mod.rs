@@ -15,6 +15,7 @@ use ui::utils::{MenuResult, YesOrNo,
 
 use grafen::coord::Coord;
 use grafen::database::*;
+use grafen::read_conf;
 use grafen::system::*;
 use grafen::volume::{FillType, Volume};
 use mdio;
@@ -128,10 +129,19 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             )?))
         },
 
-        ComponentEntry::Conf(mut conf) => {
+        ComponentEntry::ConfigurationFile(mut conf) => {
             let read_conf = mdio::Conf::from_gromos87(&conf.path)
                 .map_err(|err| GrafenCliError::RunError(err.to_string()))?;
+
+            // UGLY HACK, REDO THIS
+            let to_volume = conf.volume_type.clone();
+            conf.volume_type = read_conf::ConfType::Cuboid {
+                origin: Coord::ORIGO,
+                size: Coord::from(read_conf.size),
+            };
             conf.conf = Some(read_conf);
+
+            conf.reconstruct(to_volume);
 
             Ok(ComponentEntry::from(conf))
         },
