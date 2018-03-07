@@ -27,19 +27,21 @@ pub fn user_menu(components: &mut Vec<ComponentEntry>) -> MenuResult {
             eprint!("\n");
         };
 
-        Clone, "Clone the component and edit it" => {
+        Clone, "Clone the component and edit the new copy" => {
             components.push(component);
             index = components.len() - 1;
             component = components[index].clone();
 
             Ok(None)
         },
+
         Translate, "Translate the component" => {
             let coord = get_position_from_user(None)?;
             component.translate_in_place(coord);
 
             Ok(None)
         },
+
         PruneByVolume, "Remove residues which overlap another component" => {
             let volume: Box<Contains> = get_volume_from_user(components)?;
             let num_before = component.num_atoms();
@@ -53,10 +55,12 @@ pub fn user_menu(components: &mut Vec<ComponentEntry>) -> MenuResult {
 
             Ok(Some(format!("Removed {} atoms from the component", num_before - num_after)))
         },
+
         QuitAndSave, "Finish editing component" => {
             components[index] = component;
             return Ok(Some("Finished editing component".to_string()));
         },
+
         QuitWithoutSaving, "Abort editing and discard changes" => {
             return Ok(Some("Discarding changes to component".to_string()));
         }
