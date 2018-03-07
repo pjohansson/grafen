@@ -14,7 +14,7 @@ pub use self::cylinder::Cylinder;
 pub use self::sphere::Sphere;
 
 /// Volumes can contain coordinates.
-pub trait Contains: Describe {
+pub trait Contains {
     /// Whether a coordinate is contained within the volume's space.
     fn contains(&self, coord: Coord) -> bool;
 }
@@ -119,6 +119,26 @@ pub fn prune_residues_from_volume<'a, T, V>(component: &'a T, pruning_vol: &V)
                 .iter()
                 .map(|atom| atom.1 + origin)
                 .all(|coord| !pruning_vol.contains(coord))
+        })
+        .collect()
+}
+
+/// Return residues of an input `Component` which are contained within an input volume.
+///
+/// Checks all atoms within residues to see if any are contained by it. If any are,
+/// the residue is kept in the returned list.
+pub fn keep_residues_within_volume<'a, T, V>(component: &'a T, containing_vol: &V)
+     -> Vec<ResidueIterOut>
+        where T: Component<'a>, V: ?Sized + Contains {
+    let origin = component.get_origin();
+
+    component
+        .iter_residues()
+        .filter(|res| {
+            res.get_atoms()
+                .iter()
+                .map(|atom| atom.1 + origin)
+                .any(|coord| containing_vol.contains(coord))
         })
         .collect()
 }
@@ -238,6 +258,53 @@ mod tests {
         assert_eq!(atoms[0][1].1, coord1_without + shift);
         assert_eq!(atoms[1][0].1, coord2_without);
         assert_eq!(atoms[1][1].1, coord2_without + shift);
+    }
+
+    #[test]
+    fn component_residues_are_kept_if_any_atoms_are_inside_the_containing_volume() {
+        let containing_vol = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let residue = resbase![
+            "RES",
+            ("A", 0.0, 0.0, 0.0),
+            ("B", 1.0, 0.0, 0.0) // Shifted by 1
+        ];
+
+        let coords_within = vec![
+            Coord::new(-0.9, 0.1, 0.1), // Atom B within
+            Coord::new(-0.5, 0.5, 0.5),
+            Coord::new(-0.1, 0.9, 0.9),
+            Coord::new(0.5, 0.9, 0.9),
+            Coord::new(0.9, 0.9, 0.9)
+        ];
+
+        // Neither of the atoms will be inside the volume for these coords
+        let coord1_without = Coord::new(-1.1, -0.1, -0.1);
+        let coord2_without = Coord::new(1.1, 1.1, 1.1);
+
+        let coords_without = vec![
+            coord1_without,
+            coord2_without
+        ];
+
+        let coords = coords_within
+            .iter()
+            .chain(coords_without.iter())
+            .cloned()
+            .collect::<Vec<Coord>>();
+
+        let component =  Cuboid {
+            residue: Some(residue),
+            coords,
+            .. Cuboid::default()
+        };
+
+        let contained = keep_residues_within_volume(&component, &containing_vol);
+        let atoms = contained.iter().map(|res| res.get_atoms()).collect::<Vec<_>>();
+        assert_eq!(atoms.len(), 5);
     }
 
     #[test]

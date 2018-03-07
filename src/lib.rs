@@ -3,7 +3,7 @@
 // Needed for the `ResidueIter` object.
 // TODO: Figure out how to otherwise solve the lifetimes!
 #![feature(underscore_lifetimes)]
-// #![feature(nll)]
+#![feature(nll)]
 
 extern crate colored;
 extern crate mdio;
