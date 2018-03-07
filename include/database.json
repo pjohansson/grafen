@@ -165,6 +165,12 @@
         "alignment": "Z",
         "cap": "Bottom"
       }
+    },
+    {
+      "Conf": {
+        "path": "include/wat_equil.gro",
+        "description": "water box with water molecule from library"
+      }
     }
   ]
 }

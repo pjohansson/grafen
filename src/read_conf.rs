@@ -4,7 +4,7 @@ use iterator::{ConfIter, ResidueIter, ResidueIterOut};
 use system::Component;
 
 use mdio;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -19,9 +19,25 @@ pub struct ReadConf {
     pub description: String,
 }
 
+impl ReadConf {
+    /// Read a configuration from a GROMOS87 formatted file. Set its description to
+    /// the title of the configuration file, and the path to that input.
+    pub fn from_gromos87(path: &Path) -> Result<ReadConf, String> {
+        let conf = mdio::Conf::from_gromos87(path).map_err(|err| err.to_string())?;
+
+        let description = conf.title.clone();
+
+        Ok(ReadConf {
+            conf: Some(conf),
+            path: PathBuf::from(path),
+            description,
+        })
+    }
+}
+
 impl<'a> Component<'a> for ReadConf {
     fn assign_residues(&mut self, residues: &[ResidueIterOut]) {
-        if let Some(mut conf) = self.conf.as_mut() {
+        if let Some(conf) = self.conf.as_mut() {
             let mut atoms: Vec<mdio::Atom> = Vec::new();
 
             residues
@@ -87,13 +103,13 @@ impl<'a> Component<'a> for ReadConf {
 impl Describe for ReadConf {
     fn describe(&self) -> String {
         let mut description = if self.description.is_empty() {
-            "(Unknown configuration)".to_string()
+            "Unknown".to_string()
         } else {
             self.description.clone()
         };
 
         if self.conf.is_some() {
-            description.push_str(&format!("(Configuration of {} atoms at {} with size {})",
+            description.push_str(&format!(" (Configuration of {} atoms at {} with size {})",
                 self.num_atoms(), self.get_origin(), self.box_size()));
         }
 
@@ -102,12 +118,12 @@ impl Describe for ReadConf {
 
     fn describe_short(&self) -> String {
         let description = if self.description.is_empty() {
-            "(Unknown configuration)".to_string()
+            "Unknown".to_string()
         } else {
             self.description.clone()
         };
 
-        description + "(Configuration)"
+        description + " (Configuration)"
     }
 }
 

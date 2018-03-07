@@ -16,7 +16,11 @@ mod ui;
 
 use error::Result;
 
-use grafen::database::{read_database, DataBase};
+use grafen::database::{read_database, ComponentEntry, DataBase};
+use grafen::read_conf::ReadConf;
+use grafen::system::Component;
+
+use colored::*;
 
 use std::process;
 use std::path::PathBuf;
@@ -28,6 +32,8 @@ pub struct Config {
     pub title: String,
     /// Path to output file.
     pub output_path: PathBuf,
+    /// Input components that were read from the command line.
+    pub components: Vec<ComponentEntry>,
     /// Database of residue and substrate definitions.
     pub database: DataBase,
 }
@@ -38,19 +44,22 @@ impl Config {
     /// # Errors
     /// Returns an error if the `DataBase` (if given as an input) could not be read.
     fn new() -> Result<Config> {
+        eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+
         let options = CliOptions::from_args();
 
         let output_path = options.output;
         let title = options.title.unwrap_or("System created by grafen".into());
 
-        let database = match options.database {
+        let mut database = match options.database {
             Some(path) => read_database(&path),
             None => Ok(DataBase::new()),
         }?;
 
-        eprintln!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        let (components, mut entries) = read_input_configurations(options.input_confs);
+        database.component_defs.append(&mut entries);
 
-        Ok(Config { title, output_path, database })
+        Ok(Config { title, output_path, components, database })
     }
 }
 
@@ -68,8 +77,8 @@ struct CliOptions {
     /// Path to residue and component database
     database: Option<PathBuf>,
     #[structopt(short = "c", long = "conf", parse(from_os_str))]
-    /// Path to an input configuration file to add as a component
-    input_conf: Option<PathBuf>,
+    /// Path to input configuration files to add as components
+    input_confs: Vec<PathBuf>,
 }
 
 fn main() {
@@ -77,4 +86,44 @@ fn main() {
         eprintln!("{}", err);
         process::exit(1);
     }
+}
+
+fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<ComponentEntry>) {
+    let mut configurations = Vec::new();
+
+    for path in confs {
+        match path.to_str() {
+            Some(p) => eprint!("Reading configuration at '{}' ... ", p),
+            None => eprint!("Reading configuration with a non-utf8 path ... "),
+        }
+
+        match ReadConf::from_gromos87(&path) {
+            Ok(conf) => {
+                eprint!("Done! Read {} atoms.", conf.num_atoms());
+                configurations.push(conf);
+            },
+            Err(err) => eprint!("{}", format!("Failed! {}.", err).color("yellow")),
+        }
+
+        eprint!("\n");
+    }
+
+    eprint!("\n");
+
+    let entries = configurations
+        .iter()
+        .map(|conf| ReadConf {
+            conf: None,
+            path: conf.path.clone(),
+            description: conf.description.clone(),
+        })
+        .map(|conf| ComponentEntry::Conf(conf))
+        .collect::<Vec<_>>();
+
+    let components = configurations
+        .into_iter()
+        .map(|conf| ComponentEntry::Conf(conf))
+        .collect::<Vec<_>>();
+
+    (components, entries)
 }

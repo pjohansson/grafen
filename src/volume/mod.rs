@@ -7,7 +7,7 @@ mod sphere;
 use coord::{Coord, Direction, Periodic};
 use describe::Describe;
 use iterator::ResidueIterOut;
-use system::{Component, Residue};
+use system::{Component};
 
 pub use self::cuboid::Cuboid;
 pub use self::cylinder::Cylinder;
@@ -126,7 +126,7 @@ pub fn prune_residues_from_volume<'a, T, V>(component: &'a T, pruning_vol: &V)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system::Atom;
+    use system::{Atom, Residue};
 
     #[test]
     fn fill_type_returns_correct_numbers() {
