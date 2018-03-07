@@ -17,6 +17,7 @@ use grafen::coord::Coord;
 use grafen::database::*;
 use grafen::system::*;
 use grafen::volume::{FillType, Volume};
+use mdio;
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -33,7 +34,6 @@ pub fn user_menu(config: Config) -> Result<()> {
         output_path: config.output_path,
         database: config.database,
         components: Vec::new(),
-        configurations: Vec::new(),
     };
 
     create_menu![
@@ -126,6 +126,14 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             Ok(ComponentEntry::from(conf.construct().map_err(|_|
                 UIErrorKind::from("Could not construct cylinder")
             )?))
+        },
+
+        ComponentEntry::Conf(mut conf) => {
+            let read_conf = mdio::Conf::from_gromos87(&conf.path)
+                .map_err(|err| GrafenCliError::RunError(err.to_string()))?;
+            conf.conf = Some(read_conf);
+
+            Ok(ComponentEntry::from(conf))
         },
     }
 }
