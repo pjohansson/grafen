@@ -116,7 +116,7 @@ impl ReadConf {
 
     /// Get the component origin as it will be displayed to the user, not
     /// the internal value which is used to translate all coordinates.
-    fn get_displayed_origin(&self) -> Coord {
+    pub fn get_displayed_origin(&self) -> Coord {
         match self.volume_type {
             ConfType::Cuboid { origin: _, size: _ } => self.get_origin(),
             ConfType::Cylinder { origin: _, radius, height: _, normal } => {
@@ -273,16 +273,19 @@ impl Describe for ReadConf {
 
 impl Translate for ReadConf {
     fn translate(mut self, coord: Coord) -> Self {
-        if let Some(ref mut conf) = self.conf {
-            conf.origin += mdio::RVec { x: coord.x, y: coord.y, z: coord.z };
-        }
+        self.translate_in_place(coord);
         self
     }
 
     fn translate_in_place(&mut self, coord: Coord) {
-        if let Some(ref mut conf) = self.conf {
-            conf.origin += mdio::RVec { x: coord.x, y: coord.y, z: coord.z };
-        }
+        self.volume_type = match self.volume_type {
+            ConfType::Cuboid { origin, size } => {
+                ConfType::Cuboid { origin: origin + coord, size }
+            },
+            ConfType::Cylinder { origin, radius, height, normal } => {
+                ConfType::Cylinder { origin: origin + coord, radius, height, normal }
+            },
+        };
     }
 }
 
@@ -849,7 +852,34 @@ pub mod tests {
         };
 
         // The cylinder normal is aligned along y
-        let cylinder_size = Coord::new(2.0 * radius, height, 2.0 * radius);
         assert_eq!(cylinder.get_origin(), origin);
+    }
+
+    #[test]
+    fn translate_uses_origin_in_volume_type() {
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: 0.0, y: 0.0, z: 0.0 }, // Will not be used
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            residues: Vec::new(),
+            atoms: Vec::new(),
+        };
+
+        let origin = Coord::new(1.0, 2.0, 3.0);
+        let target = Coord::ORIGO;
+
+        let mut cuboid = ReadConf {
+            conf: Some(conf.clone()),
+            backup_conf: None,
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cuboid { origin, size: Coord::ORIGO },
+        };
+
+        let cuboid_translated = cuboid.clone().translate(-origin);
+        assert_eq!(cuboid_translated.get_origin(), target);
+
+        cuboid.translate_in_place(-origin);
+        assert_eq!(cuboid.get_origin(), target);
     }
 }

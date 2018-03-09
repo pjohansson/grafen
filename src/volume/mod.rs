@@ -5,7 +5,6 @@ mod cylinder;
 mod sphere;
 
 use coord::{Coord, Direction, Periodic};
-use describe::Describe;
 use iterator::ResidueIterOut;
 use system::{Component};
 

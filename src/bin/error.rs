@@ -60,6 +60,8 @@ pub enum GrafenCliError {
     ConstructError(String),
     /// User interface error.
     UIError(String),
+    /// Reading a configuration error.
+    ReadConfError(String),
 }
 
 impl Error for GrafenCliError {
@@ -93,6 +95,9 @@ impl Display for GrafenCliError {
             GrafenCliError::UIError(ref err) => {
                 write!(f, "{} {}", red_error, err)
             },
+            GrafenCliError::ReadConfError(ref err) => {
+                write!(f, "{}", err.as_str().color("yellow"))
+            }
         }
     }
 }
