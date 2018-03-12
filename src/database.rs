@@ -223,7 +223,7 @@ create_entry_wrapper![
     (volume::Cylinder => VolumeCylinder),
     (surface::Sheet => SurfaceSheet),
     (surface::Cylinder => SurfaceCylinder),
-    (read_conf::ReadConf => Conf)
+    (read_conf::ReadConf => ConfigurationFile)
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

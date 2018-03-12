@@ -165,6 +165,34 @@
         "alignment": "Z",
         "cap": "Bottom"
       }
+    },
+    {
+      "ConfigurationFile": {
+        "path": "include/wat_equil.gro",
+        "description": "water box with water molecule from library",
+        "volume_type": {
+          "Cuboid": {
+            "size": {
+              "x": 4.4,
+              "y": 2.3383,
+              "z": 5.89539
+            }
+          }
+        }
+      }
+    },
+    {
+      "ConfigurationFile": {
+        "path": "include/wat_equil.gro",
+        "description": "Water disk",
+        "volume_type": {
+          "Cylinder": {
+              "radius": 15.0,
+              "height": 2.3383,
+              "normal": "Y"
+          }
+        }
+      }
     }
   ]
 }

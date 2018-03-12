@@ -14,10 +14,9 @@
 use coord::Coord;
 use describe::{describe_list, Describe};
 use database::{ComponentEntry, DataBase};
-use iterator::{AtomIterItem, ResidueIter, ResidueIterOut};
+use iterator::{ResidueIter, ResidueIterOut};
 
 use colored::*;
-use mdio::Conf;
 use std::path::PathBuf;
 
 /// Main structure of a constructed system with several components.
@@ -62,39 +61,6 @@ impl<'a> System {
             eprintln!("(no constructed components)\n");
         }
     }
-
-    /// Return an `Iterator` over all atoms in the whole system as `CurrentAtom` objects.
-    ///
-    /// Corrects residue and atom index numbers to be system-absolute instead
-    /// of for each component.
-    // pub fn iter_atoms(&'a self) -> AtomIterItem {
-    //     // We want to return system-wide atom and residue indices. The atom index
-    //     // is easy to increase by one for each iterated atom, but to update the residue
-    //     // index we have to see if it has changed from the previous iteration.
-    //     struct Indices { atom: u64, residue: u64, last_residue: u64 }
-    //
-    //     unimplemented!();
-    //     //
-    //     // Box::new(self.components
-    //     //     .iter()
-    //     //     .flat_map(|object| object.iter_atoms())
-    //     //     .scan(Indices { atom: 0, residue: 0, last_residue: 0 }, |state, mut current| {
-    //     //         // Find out if the component residue number has increased, if so update it
-    //     //         if current.residue_index != state.last_residue {
-    //     //             state.last_residue = current.residue_index;
-    //     //             state.residue += 1;
-    //     //         }
-    //     //
-    //     //         // Set the absolute atom and residue indices to the object
-    //     //         current.atom_index = state.atom;
-    //     //         current.residue_index = state.residue;
-    //     //
-    //     //         state.atom += 1;
-    //     //
-    //     //         Some(current)
-    //     //     })
-    //     // )
-    // }
 
     /// Calculate the total number of atoms in the system.
     pub fn num_atoms(&self) -> u64 {
@@ -316,7 +282,6 @@ macro_rules! resbase {
 mod tests {
     use super::*;
     use coord::Translate;
-    use iterator::AtomIterator;
     use volume::Cuboid;
 
     #[test]
@@ -414,7 +379,7 @@ mod tests {
     #[test]
     fn origin_in_macro_generated_impl_objects() {
         let origin = Coord::new(1.0, 2.0, 3.0);
-        let mut component = TestObject {
+        let component = TestObject {
             residue: None,
             origin,
             coords: Vec::new(),
