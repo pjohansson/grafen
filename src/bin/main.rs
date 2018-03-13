@@ -15,12 +15,10 @@ mod output;
 mod ui;
 
 use error::Result;
+use ui::read_configuration;
 
 use grafen::database::{read_database, ComponentEntry, DataBase};
 use grafen::read_conf::ReadConf;
-use grafen::system::Component;
-
-use colored::*;
 
 use std::process;
 use std::path::PathBuf;
@@ -92,20 +90,10 @@ fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<C
     let mut configurations = Vec::new();
 
     for path in confs {
-        match path.to_str() {
-            Some(p) => eprint!("Reading configuration at '{}' ... ", p),
-            None => eprint!("Reading configuration with a non-utf8 path ... "),
+        match read_configuration(&path) {
+            Ok(conf) => configurations.push(conf),
+            Err(err) => eprintln!("{}", err),
         }
-
-        match ReadConf::from_gromos87(&path) {
-            Ok(conf) => {
-                eprint!("Done! Read {} atoms.", conf.num_atoms());
-                configurations.push(conf);
-            },
-            Err(err) => eprint!("{}", format!("Failed! {}.", err).color("yellow")),
-        }
-
-        eprint!("\n");
     }
 
     eprint!("\n");

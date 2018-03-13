@@ -10,15 +10,17 @@ use super::Config;
 use error::{GrafenCliError, Result, UIErrorKind, UIResult};
 use output;
 use ui::utils::{MenuResult, YesOrNo,
-    get_value_from_user, get_position_from_user,
-    remove_items, reorder_list, select_command, select_item};
+    get_value_from_user, get_value_or_default_from_user, get_coord_from_user,
+    get_position_from_user, remove_items, reorder_list, select_command,
+    select_direction, select_item};
 
-use grafen::coord::Coord;
+use grafen::coord::{Coord, Translate};
 use grafen::database::*;
-use grafen::read_conf;
+use grafen::read_conf::{ConfType, ReadConf};
 use grafen::system::*;
 use grafen::volume::{FillType, Volume};
-use mdio;
+
+use std::path::Path;
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -129,28 +131,60 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
             )?))
         },
 
-        ComponentEntry::ConfigurationFile(mut conf) => {
-            let read_conf = mdio::Conf::from_gromos87(&conf.path)
-                .map_err(|err| GrafenCliError::RunError(err.to_string()))?;
+        ComponentEntry::ConfigurationFile(conf) => {
+            let default_volume = conf.volume_type.clone();
 
-            // UGLY HACK, REDO THIS
-            let to_volume = conf.volume_type.clone();
-            conf.volume_type = read_conf::ConfType::Cuboid {
-                origin: Coord::ORIGO,
-                size: Coord::from(read_conf.size),
+            let origin = get_position_from_user(Some("0 0 0"))?;
+
+            let to_volume = match default_volume {
+                ConfType::Cuboid { origin: _, size: default_size } => {
+                    let (x, y, z) = default_size.to_tuple();
+                    let size = get_coord_from_user(
+                        "Size (x y z nm)", Some(&format!("{} {} {}", x, y, z)))?;
+
+                    ConfType::Cuboid { origin, size }
+                },
+                ConfType::Cylinder { origin: _, radius, height, normal } => {
+                    let radius = get_value_or_default_from_user::<f64>(
+                        "Radius (nm)", &format!("{}", radius))?;
+                    let height = get_value_or_default_from_user::<f64>(
+                        "Height (nm)", &format!("{}", height))?;
+                    let normal = select_direction(Some("Select normal"), Some(normal))?;
+
+                    ConfType::Cylinder { origin, radius, height, normal }
+                },
             };
-            conf.conf = Some(read_conf);
 
-            conf.reconstruct(to_volume);
+            let mut new_conf = read_configuration(&conf.path)?;
 
-            Ok(ComponentEntry::from(conf))
+            new_conf.description = conf.description;
+            new_conf.reconstruct(to_volume);
+
+            // Make sure that the origin is adjusted to that desired by the user.
+            let displayed_origin = new_conf.get_displayed_origin();
+            new_conf.translate_in_place(origin - displayed_origin);
+
+            Ok(ComponentEntry::from(new_conf))
         },
     }
 }
 
+pub fn read_configuration(path: &Path) -> Result<ReadConf> {
+    match path.to_str() {
+        Some(p) => eprint!("Reading configuration at '{}' ... ", p),
+        None => eprint!("Reading configuration with a non-utf8 path ... "),
+    }
+
+    let conf = ReadConf::from_gromos87(&path)
+        .map_err(|err| GrafenCliError::ReadConfError(format!("Failed! {}.", err)))?;
+
+    eprintln!("Done! Read {} atoms.", conf.num_atoms());
+
+    Ok(conf)
+}
+
 fn select_num_coords_or_density_with_default(default_density: Option<f64>) -> UIResult<FillType> {
     match default_density {
-
         Some(density) => {
             let (commands, item_texts) = create_menu_items![
                 (YesOrNo::Yes, "Yes"),

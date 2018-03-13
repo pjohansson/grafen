@@ -4,7 +4,7 @@
 
 use error::{GrafenCliError, UIResult, UIErrorKind};
 use ui::utils::{MenuResult, get_value_from_user, print_description, print_list_description_short,
-                remove_items, reorder_list, select_command, select_item};
+                remove_items, reorder_list, select_command, select_direction, select_item};
 
 use grafen::coord::{Coord, Direction};
 use grafen::database::ComponentEntry;
@@ -152,8 +152,7 @@ impl SheetBuilder {
         eprintln!("Residue:");
         let residue = select_residue(&residue_list)?;
 
-        eprintln!("Sheet normal vector direction:");
-        let normal = select_direction()?;
+        let normal = select_direction(Some("Sheet normal axis"), None)?;
 
         Ok(SheetBuilder {
             name: String::new(),
@@ -255,7 +254,7 @@ fn create_sheet(residue_list: &[Residue]) -> result::Result<ComponentEntry, Chan
                 },
                 Err(_) => eprintln!("error: Could not select new lattice"),
             },
-            SetNormal => match select_direction() {
+            SetNormal => match select_direction(Some("Sheet normal axis"), None) {
                 Ok(new_direction) => {
                     builder.normal = new_direction;
                 },
@@ -444,7 +443,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     (SetName, "Set name"),
                     (SetResidue, "Set residue"),
                     (SetCap, "Cap either cylinder edge"),
-                    (SetAlignment, "Set cylinder main axis alignment"),
+                    (SetAlignment, "Set cylinder normal axis"),
                     (QuitAndSave, "Finalize component definition and return"),
                     (QuitWithoutSaving, "Abort")
                 ];
@@ -487,7 +486,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                         },
                         Err(_) => eprintln!("error: Could not select new cap"),
                     },
-                    SetAlignment => match select_direction() {
+                    SetAlignment => match select_direction(Some("Cylinder normal axis"), None) {
                         Ok(new_direction) => {
                             builder.alignment = new_direction;
                         },
@@ -511,7 +510,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     (SetName, "Set name"),
                     (SetResidue, "Set residue"),
                     (SetDensity, "Set default density"),
-                    (SetAlignment, "Set cylinder main axis alignment"),
+                    (SetAlignment, "Set cylinder normal axis"),
                     (QuitAndSave, "Finalize component definition and return"),
                     (QuitWithoutSaving, "Abort")
                 ];
@@ -554,7 +553,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                         },
                         Err(_) => eprintln!("error: Could not set density"),
                     },
-                    SetAlignment => match select_direction() {
+                    SetAlignment => match select_direction(Some("Cylinder normal axis"), None) {
                         Ok(new_direction) => {
                             builder.alignment = new_direction;
                         },
@@ -597,18 +596,6 @@ fn select_cap() -> UIResult<Option<CylinderCap>> {
         (false, true) => Ok(Some(CylinderCap::Top)),
         _ => Ok(None),
     }
-}
-
-fn select_direction() -> UIResult<Direction> {
-    use grafen::coord::Direction::*;
-
-    let (choices, item_texts) = create_menu_items![
-        (X, "X"),
-        (Y, "Y"),
-        (Z, "Z")
-    ];
-
-    select_command(item_texts, choices).map_err(|err| UIErrorKind::from(err))
 }
 
 /***********************
