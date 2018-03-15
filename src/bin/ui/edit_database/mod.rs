@@ -35,12 +35,6 @@ pub fn user_menu(database: &mut DataBase) -> MenuResult {
                     format!("Could not write database: {}", err.description())
                 ))
         },
-        SetLocation, "Change output location of database" => {
-            let path = get_value_from_user::<String>("New path")?;
-            database.set_path(&path)
-                .map(|_| None)
-                .map_err(|_| GrafenCliError::RunError("Could not change database path".into()))
-        },
         QuitAndSave, "Finish editing database" => {
             return Ok("Finished editing database".to_string().into());
         },
