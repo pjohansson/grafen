@@ -163,9 +163,13 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             let path = if conf.path.is_absolute() {
                 conf.path
             } else {
-                // If the database has no path, it has to be relative to the current directory.
-                // Just join on an empty path.
-                database_path.cloned().unwrap_or(PathBuf::new()).join(conf.path)
+                database_path
+                    .and_then(|db_path| db_path.parent())
+                    .map(|db_dir| PathBuf::from(db_dir))
+                    // If the database has no path, it has to be relative to
+                    // the current directory. Join with an empty path.
+                    .unwrap_or(PathBuf::new())
+                    .join(conf.path)
             };
 
             let mut new_conf = read_configuration(&path)?;

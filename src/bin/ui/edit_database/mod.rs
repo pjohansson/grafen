@@ -4,7 +4,7 @@ mod component;
 mod residue;
 
 use error::GrafenCliError;
-use ui::utils::{MenuResult, get_value_from_user, print_description, select_command};
+use ui::utils::{MenuResult, print_description, select_command};
 
 use grafen::database::{write_database, DataBase};
 use std::error::Error;
