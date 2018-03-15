@@ -240,17 +240,13 @@ pub mod tests {
         set_var("XDG_DATA_DIRS", xdg_data_dirs);
 
         let user_local_share = home_dir().unwrap().join(".local").join("share");
-        let root_local_share = PathBuf::from("/").join("usr").join("local").join("share");
-        let root_share = PathBuf::from("/").join("usr").join("share");
 
         let result = get_platform_dependent_data_dirs();
         let priority_list = vec![
             PathBuf::from(xdg_data_home),
             user_local_share,
             PathBuf::from(xdg_data_directories[0]),
-            PathBuf::from(xdg_data_directories[1]),
-            root_local_share,
-            root_share
+            PathBuf::from(xdg_data_directories[1])
         ];
 
         assert_eq!(result, priority_list);
