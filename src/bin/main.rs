@@ -14,12 +14,15 @@ mod error;
 mod output;
 mod ui;
 
-use error::Result;
+use error::{GrafenCliError, Result};
 use ui::read_configuration;
 
 use grafen::database::{read_database, ComponentEntry, DataBase};
 use grafen::read_conf::ReadConf;
 
+use colored::*;
+use std::env::{home_dir, var_os};
+use std::fs::DirBuilder;
 use std::process;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -50,8 +53,8 @@ impl Config {
         let title = options.title.unwrap_or("System created by grafen".into());
 
         let mut database = match options.database {
-            Some(path) => read_database(&path),
-            None => Ok(DataBase::new()),
+            Some(path) => read_database(&path).map_err(|err| GrafenCliError::from(err)),
+            None => read_or_create_default_database(),
         }?;
 
         let (components, mut entries) = read_input_configurations(options.input_confs);
@@ -86,6 +89,42 @@ fn main() {
     }
 }
 
+fn read_or_create_default_database() -> Result<DataBase> {
+    match get_default_database() {
+        Some(default_path) => {
+            if default_path.is_file() {
+                read_database(&default_path).map_err(|err| GrafenCliError::from(err))
+            } else {
+                let mut default_database = DataBase::new();
+
+                if let Some(parent_dir) = default_path.parent() {
+                    match DirBuilder::new().recursive(true).create(&parent_dir) {
+                        Ok(_) => default_database.set_path(&default_path).unwrap(),
+                        Err(err) => {
+                            eprintln!("{}", format!(
+                                "Warning: Could not create a folder for the \
+                                default database at '{}' ({}). \
+                                Opening a directory-local database.",
+                                default_path.to_str().unwrap(), err
+                            ).color("yellow"));
+                        },
+                    }
+                }
+
+                Ok(default_database)
+            }
+        },
+        None => {
+            eprintln!("{}", format!(
+                "Could not find a location for the default database. \
+                Opening a directory-local database."
+            ).color("yellow"));
+
+            Ok(DataBase::new())
+        },
+    }
+}
+
 fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<ComponentEntry>) {
     let mut configurations = Vec::new();
 
@@ -116,4 +155,22 @@ fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<C
         .collect::<Vec<_>>();
 
     (components, entries)
+}
+
+fn get_default_database() -> Option<PathBuf> {
+    const DEFAULT_DBNAME: &str = "database.json";
+    get_platform_dependent_data_dir().map(|dir| dir.join(DEFAULT_DBNAME))
+}
+
+fn get_platform_dependent_data_dir() -> Option<PathBuf> {
+    if cfg!(target_os = "linux") {
+        var_os("XDG_DATA_HOME").map(|dir| PathBuf::from(dir))
+            .or(home_dir().map(|dir| dir.join(".local").join("share")))
+    } else if cfg!(target_os = "macos") {
+        home_dir().map(|dir| dir.join("Library").join("Application Support"))
+    } else if cfg!(target_os = "windows") {
+        var_os("APPDATA").map(|dir| PathBuf::from(dir))
+    } else {
+        None
+    }.map(|dir| dir.join("grafen"))
 }
