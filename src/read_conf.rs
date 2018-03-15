@@ -199,11 +199,12 @@ impl<'a> Component<'a> for ReadConf {
     }
 
     fn box_size(&self) -> Coord {
-        self.conf
-            .as_ref()
-            .map(|c| Coord::from(c.origin))
-            .unwrap_or(Coord::ORIGO)
-            + self.calc_size()
+        self.get_origin() + self.calc_size()
+        // self.conf
+        //     .as_ref()
+        //     .map(|c| Coord::from(c.origin))
+        //     .unwrap_or(Coord::ORIGO)
+        //     + self.calc_size()
     }
 
     fn get_origin(&self) -> Coord {
@@ -724,7 +725,7 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cuboid { origin: Coord::ORIGO, size },
+            volume_type: ConfType::Cuboid { origin, size },
         };
 
         assert_eq!(cuboid.box_size(), origin + size);
@@ -738,12 +739,39 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cylinder { origin: Coord::ORIGO, radius, height, normal },
+            volume_type: ConfType::Cylinder { origin, radius, height, normal },
         };
 
         // The cylinder normal is aligned along y
         let cylinder_size = Coord::new(2.0 * radius, height, 2.0 * radius);
         assert_eq!(cylinder.box_size(), origin + cylinder_size);
+    }
+
+    #[test]
+    fn read_configurations_box_size_uses_origin_from_volume_type() {
+        let origin = Coord::new(10.0, 20.0, 30.0);
+        let (x0, y0, z0) = origin.to_tuple();
+        let size = Coord::new(3.0, 5.0, 7.0);
+
+        // This configuration has the wrong origin
+        let conf = mdio::Conf {
+            title: "A title".to_string(),
+            origin: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            size: RVec { x: 0.0, y: 0.0, z: 0.0 }, // Will not be used
+            residues: Vec::new(),
+            atoms: Vec::new(),
+        };
+
+        // This has the right and will be used
+        let cuboid = ReadConf {
+            conf: Some(conf.clone()),
+            backup_conf: None,
+            path: PathBuf::from(""),
+            description: "".to_string(),
+            volume_type: ConfType::Cuboid { origin, size },
+        };
+
+        assert_eq!(cuboid.box_size(), origin + size);
     }
 
     #[test]
