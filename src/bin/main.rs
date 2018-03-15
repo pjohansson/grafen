@@ -105,7 +105,7 @@ fn read_or_create_default_database() -> Result<DataBase> {
                                 "Warning: Could not create a folder for the \
                                 default database at '{}' ({}). \
                                 Opening a directory-local database.",
-                                default_path.to_str().unwrap(), err
+                                default_path.display(), err
                             ).color("yellow"));
                         },
                     }

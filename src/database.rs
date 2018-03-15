@@ -257,8 +257,7 @@ impl DataBase {
     /// otherwise the unenclosed string "None".
     pub fn get_path_pretty(&self) -> String {
         self.path.as_ref()
-            .map(|path| path.to_string_lossy().to_owned())
-            .map(|path| format!("'{}'", path))
+            .map(|path| format!("'{}'", path.display()))
             .unwrap_or("None".to_string())
     }
 

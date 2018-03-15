@@ -24,13 +24,9 @@ pub fn user_menu(database: &mut DataBase) -> MenuResult {
             component::user_menu(&mut database.component_defs, &database.residue_defs)
                 .map(|msg| msg.into())
         },
-        WriteToDisk, "Write database to disk" => {
+        WriteToDisk, "Write changes of database to disk" => {
             write_database(&database)
-                .map(|_| {
-                    format!("Wrote database to '{}'",
-                        database.path.as_ref().unwrap().to_str().unwrap()
-                    ).into()
-                })
+                .map(|_| String::from("Successfully wrote changes of database to disk.").into())
                 .map_err(|err| GrafenCliError::RunError(
                     format!("Could not write database: {}", err.description())
                 ))
