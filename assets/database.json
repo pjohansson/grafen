@@ -168,7 +168,7 @@
     },
     {
       "ConfigurationFile": {
-        "path": "include/wat_equil.gro",
+        "path": "include/water_block.gro",
         "description": "water box with water molecule from library",
         "volume_type": {
           "Cuboid": {
@@ -183,7 +183,7 @@
     },
     {
       "ConfigurationFile": {
-        "path": "include/wat_equil.gro",
+        "path": "include/water_block.gro",
         "description": "Water disk",
         "volume_type": {
           "Cylinder": {
