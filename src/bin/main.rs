@@ -21,7 +21,7 @@ use grafen::database::{read_database, ComponentEntry, DataBase};
 use grafen::read_conf::ReadConf;
 
 use colored::*;
-use std::env::{home_dir, var_os};
+use std::env::{current_dir, home_dir, var_os};
 use std::fs::DirBuilder;
 use std::process;
 use std::path::PathBuf;
@@ -137,11 +137,12 @@ fn read_input_configurations(confs: Vec<PathBuf>) -> (Vec<ComponentEntry>, Vec<C
 
     eprint!("\n");
 
+    let current_dir = current_dir().unwrap_or(PathBuf::new());
     let entries = configurations
         .iter()
         .map(|conf| ReadConf {
             conf: None,
-            path: conf.path.clone(),
+            path: current_dir.join(&conf.path),
             backup_conf: None,
             description: conf.description.clone(),
             volume_type: conf.volume_type.clone(),

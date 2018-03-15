@@ -71,7 +71,7 @@ fn create_component(system: &mut System) -> MenuResult {
     let component = select_item(&system.database.component_defs, Some("Available components"))?
         .clone();
 
-    match fill_component(component) {
+    match fill_component(component, system.database.path.as_ref()) {
         Ok(filled) => {
             system.components.push(filled);
             Ok(Some("Added component to system".to_string()))
@@ -80,8 +80,11 @@ fn create_component(system: &mut System) -> MenuResult {
     }
 }
 
+use std::path::PathBuf;
+
 /// Ask the user for information about the selected component, then return the constructed object.
-fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
+fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
+        -> Result<ComponentEntry> {
     match component {
         ComponentEntry::VolumeCuboid(mut conf) => {
             let position = get_position_from_user(Some("0 0 0"))?;
@@ -155,7 +158,17 @@ fn fill_component(component: ComponentEntry) -> Result<ComponentEntry> {
                 },
             };
 
-            let mut new_conf = read_configuration(&conf.path)?;
+            // If the path is relative, it is relative to the database location.
+            // Construct the full path.
+            let path = if conf.path.is_absolute() {
+                conf.path
+            } else {
+                // If the database has no path, it has to be relative to the current directory.
+                // Just join on an empty path.
+                database_path.cloned().unwrap_or(PathBuf::new()).join(conf.path)
+            };
+
+            let mut new_conf = read_configuration(&path)?;
 
             new_conf.description = conf.description;
             new_conf.reconstruct(to_volume);
