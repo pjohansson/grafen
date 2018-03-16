@@ -750,7 +750,6 @@ pub mod tests {
     #[test]
     fn read_configurations_box_size_uses_origin_from_volume_type() {
         let origin = Coord::new(10.0, 20.0, 30.0);
-        let (x0, y0, z0) = origin.to_tuple();
         let size = Coord::new(3.0, 5.0, 7.0);
 
         // This configuration has the wrong origin
