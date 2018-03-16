@@ -7,7 +7,7 @@ mod lattice;
 mod points;
 mod sheet;
 
-pub use self::cuboid::Cuboid;
+pub use self::cuboid::{Cuboid, Sides};
 pub use self::sheet::{Circle, Sheet};
 pub use self::cylinder::{Cylinder, CylinderCap};
 

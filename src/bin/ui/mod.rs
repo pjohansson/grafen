@@ -135,7 +135,7 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             Ok(ComponentEntry::from(conf.construct().map_err(|_| {
                     UIErrorKind::from("Could not construct cuboid surface")
                 })?
-            ).with_pbc())
+            ))
         },
 
         ComponentEntry::SurfaceCylinder(mut conf) => {
