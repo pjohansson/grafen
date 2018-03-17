@@ -4,6 +4,8 @@ Create graphene and other substrates or system configurations for use in molecul
 
 This is a pet project to help me set up simulation systems for my research. It is focused on formats used by [Gromacs](http://www.gromacs.org/).
 
+**As of 0.10 requires Rust Nightly for `nll` and `underscore_lifetimes` features.**
+
 # Usage
 ```
 USAGE:
