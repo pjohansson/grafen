@@ -1,11 +1,13 @@
 //! Define and construct 2D surface objects.
 
+mod cuboid;
 mod cylinder;
 mod distribution;
 mod lattice;
 mod points;
 mod sheet;
 
+pub use self::cuboid::{Cuboid, Sides};
 pub use self::sheet::{Circle, Sheet};
 pub use self::cylinder::{Cylinder, CylinderCap};
 

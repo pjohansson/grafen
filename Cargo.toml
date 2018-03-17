@@ -14,6 +14,7 @@ license = "Unlicense"
 travis-ci = { repository = "pjohansson/grafen", branch = "master" }
 
 [dependencies]
+bitflags = "1.0"
 colored = "1.6"
 dialoguer = "0.1"
 mdio = { path = "/home/petter/Work/mdio", version = "0.1" }

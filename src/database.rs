@@ -222,6 +222,7 @@ create_entry_wrapper![
     (volume::Cuboid => VolumeCuboid),
     (volume::Cylinder => VolumeCylinder),
     (surface::Sheet => SurfaceSheet),
+    (surface::Cuboid => SurfaceCuboid),
     (surface::Cylinder => SurfaceCylinder),
     (read_conf::ReadConf => ConfigurationFile)
 ];

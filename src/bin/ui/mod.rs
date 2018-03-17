@@ -124,6 +124,20 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             )
         },
 
+        ComponentEntry::SurfaceCuboid(mut conf) => {
+            conf.origin = get_position_from_user(Some("0 0 0"))?;
+
+            let length = get_value_from_user::<f64>("Length ΔX (nm)")?;
+            let width = get_value_from_user::<f64>("Width ΔY (nm)")?;
+            let height = get_value_from_user::<f64>("Height ΔZ (nm)")?;
+            conf.size = Coord::new(length, width, height);
+
+            Ok(ComponentEntry::from(conf.construct().map_err(|_| {
+                    UIErrorKind::from("Could not construct cuboid surface")
+                })?
+            ))
+        },
+
         ComponentEntry::SurfaceCylinder(mut conf) => {
             conf.origin = get_position_from_user(Some("0 0 0"))?;
             conf.radius = get_value_from_user::<f64>("Radius (nm)")?;

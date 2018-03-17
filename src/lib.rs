@@ -5,6 +5,7 @@
 #![feature(underscore_lifetimes)]
 #![feature(nll)]
 
+#[macro_use] extern crate bitflags;
 extern crate colored;
 extern crate mdio;
 extern crate rand;

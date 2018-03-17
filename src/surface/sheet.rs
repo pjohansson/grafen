@@ -41,7 +41,7 @@ pub struct Sheet {
     /// Length of the sheet along the y axis.
     pub width: f64,
     #[serde(skip)]
-    /// List of coordinates belonging to the sheet. Relative to the `origin.
+    /// List of coordinates belonging to the sheet. Relative to the `origin`.
     pub coords: Vec<Coord>,
 }
 
