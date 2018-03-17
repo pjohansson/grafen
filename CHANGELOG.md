@@ -1,3 +1,8 @@
+0.10
+===
+* Add the ability to read configuration files (currently only .gro) as components.
+* A default database is used to store data in. It is located in a platform-dependent source directory and is read if no database is supplied as a CLI argument.
+
 0.9
 ===
 * Rewrite of the object construction framework. Instead of a messy matching to different object types using `IntoComponent`, the simple trait `Component` has been redone to yield all necessary information from objects.

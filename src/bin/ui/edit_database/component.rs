@@ -4,14 +4,14 @@
 
 use error::{GrafenCliError, UIResult, UIErrorKind};
 use ui::utils::{MenuResult, get_value_from_user, print_description, print_list_description_short,
-                remove_items, reorder_list, select_command, select_item};
+                remove_items, reorder_list, select_command, select_direction, select_item};
 
 use grafen::coord::{Coord, Direction};
 use grafen::database::ComponentEntry;
 use grafen::database::ComponentEntry::*;
 use grafen::describe::Describe;
 use grafen::surface;
-use grafen::surface::{CylinderCap, LatticeType};
+use grafen::surface::{CylinderCap, LatticeType, Sides};
 use grafen::system::Residue;
 use grafen::volume;
 
@@ -152,8 +152,7 @@ impl SheetBuilder {
         eprintln!("Residue:");
         let residue = select_residue(&residue_list)?;
 
-        eprintln!("Sheet normal vector direction:");
-        let normal = select_direction()?;
+        let normal = select_direction(Some("Sheet normal axis"), None)?;
 
         Ok(SheetBuilder {
             name: String::new(),
@@ -255,7 +254,7 @@ fn create_sheet(residue_list: &[Residue]) -> result::Result<ComponentEntry, Chan
                 },
                 Err(_) => eprintln!("error: Could not select new lattice"),
             },
-            SetNormal => match select_direction() {
+            SetNormal => match select_direction(Some("Sheet normal axis"), None) {
                 Ok(new_direction) => {
                     builder.normal = new_direction;
                 },
@@ -444,7 +443,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     (SetName, "Set name"),
                     (SetResidue, "Set residue"),
                     (SetCap, "Cap either cylinder edge"),
-                    (SetAlignment, "Set cylinder main axis alignment"),
+                    (SetAlignment, "Set cylinder normal axis"),
                     (QuitAndSave, "Finalize component definition and return"),
                     (QuitWithoutSaving, "Abort")
                 ];
@@ -487,7 +486,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                         },
                         Err(_) => eprintln!("error: Could not select new cap"),
                     },
-                    SetAlignment => match select_direction() {
+                    SetAlignment => match select_direction(Some("Cylinder normal axis"), None) {
                         Ok(new_direction) => {
                             builder.alignment = new_direction;
                         },
@@ -511,7 +510,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                     (SetName, "Set name"),
                     (SetResidue, "Set residue"),
                     (SetDensity, "Set default density"),
-                    (SetAlignment, "Set cylinder main axis alignment"),
+                    (SetAlignment, "Set cylinder normal axis"),
                     (QuitAndSave, "Finalize component definition and return"),
                     (QuitWithoutSaving, "Abort")
                 ];
@@ -554,7 +553,7 @@ fn create_cylinder(residue_list: &[Residue]) -> result::Result<ComponentEntry, C
                         },
                         Err(_) => eprintln!("error: Could not set density"),
                     },
-                    SetAlignment => match select_direction() {
+                    SetAlignment => match select_direction(Some("Cylinder normal axis"), None) {
                         Ok(new_direction) => {
                             builder.alignment = new_direction;
                         },
@@ -599,49 +598,72 @@ fn select_cap() -> UIResult<Option<CylinderCap>> {
     }
 }
 
-fn select_direction() -> UIResult<Direction> {
-    use grafen::coord::Direction::*;
-
-    let (choices, item_texts) = create_menu_items![
-        (X, "X"),
-        (Y, "Y"),
-        (Z, "Z")
-    ];
-
-    select_command(item_texts, choices).map_err(|err| UIErrorKind::from(err))
-}
-
 /***********************
  * Cuboid construction *
  ***********************/
 
 struct CuboidBuilder {
     name: String,
+    cuboid_type: ComponentType,
     residue: Residue,
     density: Option<f64>,
+    lattice: Option<LatticeType>,
+    sides: Option<Sides>,
 }
 
 impl CuboidBuilder {
     fn initialize(residue_list: &[Residue]) -> UIResult<CuboidBuilder> {
+        let cuboid_type = select_cylinder_type()?;
         let residue = select_residue(&residue_list)?;
+
+        let lattice = if cuboid_type == Surface {
+            Some(select_lattice()?)
+        } else {
+            None
+        };
 
         Ok(CuboidBuilder {
             name: String::new(),
+            cuboid_type,
             residue,
             density: None,
+            lattice,
+            sides: Some(Sides::all()),
         })
     }
 
     fn finalize(&self) -> result::Result<ComponentEntry, &str> {
-        if self.name.is_empty() {
-            return Err("Cannot add component: No name is set")
-        } else {
-            Ok(VolumeCuboid(volume::Cuboid {
-                name: Some(self.name.clone()),
-                residue: Some(self.residue.clone()),
-                density: self.density.clone(),
-                .. volume::Cuboid::default()
-            }))
+        match self.cuboid_type {
+            ComponentType::Volume => {
+                if self.name.is_empty() {
+                    return Err("Cannot add component: No name is set")
+                } else {
+                    Ok(VolumeCuboid(volume::Cuboid {
+                        name: Some(self.name.clone()),
+                        residue: Some(self.residue.clone()),
+                        density: self.density.clone(),
+                        .. volume::Cuboid::default()
+                    }))
+                }
+            },
+            ComponentType::Surface => {
+                if self.name.is_empty() {
+                    return Err("Cannot add component: No name is set")
+                } else if self.lattice.is_none() {
+                    return Err("Cannot add component: No lattice is set")
+                } else {
+                    Ok(SurfaceCuboid(surface::Cuboid {
+                        name: Some(self.name.clone()),
+                        residue: Some(self.residue.clone()),
+                        lattice: self.lattice.unwrap().clone(),
+                        std_z: None,
+                        origin: Coord::ORIGO,
+                        size: Coord::ORIGO,
+                        sides: self.sides.unwrap_or(Sides::all()),
+                        coords: Vec::new(),
+                    }))
+                }
+            }
         }
     }
 }
@@ -652,10 +674,32 @@ impl Describe for CuboidBuilder {
         const ERR: &'static str = "could not construct a string";
 
         writeln!(description, "Name: {}", &self.name).expect(ERR);
-        writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
 
-        let density_string = self.density.map(|dens| format!("{}", dens)).unwrap_or("None".into());
-        writeln!(description, "Density: {}", density_string).expect(ERR);
+        match self.cuboid_type {
+            Surface => {
+                writeln!(description, "Type: Cuboid Surface").expect(ERR);
+
+                let lattice_string = match self.lattice {
+                    Some(lattice) => format!("{:?}", lattice),
+                    None => "".into(),
+                };
+
+                writeln!(description, "Lattice: {}", lattice_string).expect(ERR);
+                writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
+
+                writeln!(description, "Sides: {}", self.sides.unwrap_or(Sides::all())).expect(ERR);
+            },
+            Volume => {
+                writeln!(description, "Type: Cuboid Volume").expect(ERR);
+                writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
+
+                let density_string = self.density
+                    .map(|dens| format!("{}", dens))
+                    .unwrap_or("None".into());
+                writeln!(description, "Density: {}", density_string).expect(ERR);
+
+            },
+        }
 
         description
     }
@@ -666,6 +710,7 @@ impl Describe for CuboidBuilder {
 #[derive(Clone, Copy, Debug)]
 enum CuboidMenu {
     ChangeComponent,
+    ChangeCuboidType,
     SetName,
     SetResidue,
     SetDensity,
@@ -673,57 +718,187 @@ enum CuboidMenu {
     QuitWithoutSaving,
 }
 
+#[derive(Clone, Copy, Debug)]
+enum CuboidSurfaceMenu {
+    ChangeComponent,
+    ChangeCuboidType,
+    SetName,
+    SetResidue,
+    SetSides,
+    QuitAndSave,
+    QuitWithoutSaving,
+}
+
 fn create_cuboid(residue_list: &[Residue]) -> result::Result<ComponentEntry, ChangeOrError> {
     let mut builder = CuboidBuilder::initialize(&residue_list)?;
 
-    use self::CuboidMenu::*;
 
     loop {
         print_description(&builder);
 
-        let (commands, item_texts) = create_menu_items![
-            (ChangeComponent, "Change component type"),
-            (SetName, "Set name"),
-            (SetResidue, "Set residue"),
-            (SetDensity, "Set default density"),
-            (QuitAndSave, "Finalize component definition and return"),
-            (QuitWithoutSaving, "Abort")
-        ];
+        match builder.cuboid_type {
+            Surface => {
+                use self::CuboidSurfaceMenu::*;
 
-        let command = select_command(item_texts, commands)
-            .map_err(|err| UIErrorKind::from(err))?;
+                let (surface_commands, surface_texts) = create_menu_items![
+                    (ChangeComponent, "Change component type"),
+                    (ChangeCuboidType, "Change cuboid type"),
+                    (SetName, "Set name"),
+                    (SetResidue, "Set residue"),
+                    (SetSides, "Set which sides of the cuboid to construct"),
+                    (QuitAndSave, "Finalize component definition and return"),
+                    (QuitWithoutSaving, "Abort")
+                ];
 
-        match command {
-            ChangeComponent => return Err(ChangeOrError::ChangeComponent),
-            SetName => match get_value_from_user::<String>("Component name") {
-                Ok(new_name) => {
-                    builder.name = new_name;
-                },
-                Err(_) => {
-                    eprintln!("error: Could not read name");
-                },
+                let command = select_command(surface_texts, surface_commands)
+                    .map_err(|err| UIErrorKind::from(err))?;
+
+                match command {
+                    ChangeComponent => return Err(ChangeOrError::ChangeComponent),
+                    ChangeCuboidType => match select_cylinder_type() {
+                        Ok(new_type) => {
+                            let lattice = if new_type == Surface {
+                                Some(select_lattice()?)
+                            } else {
+                                None
+                            };
+
+                            builder.cuboid_type = new_type;
+                            builder.lattice = lattice;
+                        },
+                        Err(_) => eprintln!("error: Could not select new cylinder type"),
+                    },
+                    SetName => match get_value_from_user::<String>("Component name") {
+                        Ok(new_name) => {
+                            builder.name = new_name;
+                        },
+                        Err(_) => {
+                            eprintln!("error: Could not read name");
+                        },
+                    },
+                    SetResidue => match select_residue(&residue_list) {
+                        Ok(new_residue) => {
+                            builder.residue = new_residue;
+                        },
+                        Err(_) => eprintln!("error: Could not select new residue"),
+                    },
+                    SetSides => match select_sides() {
+                        Ok(sides) => builder.sides = Some(sides),
+                        Err(_) => eprintln!("error: Could not select sides"),
+                    },
+                    QuitAndSave => match builder.finalize() {
+                        Ok(component) => return Ok(component),
+                        Err(msg) => eprintln!("{}", msg),
+                    },
+                    QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
+                }
             },
-            SetResidue => match select_residue(&residue_list) {
-                Ok(new_residue) => {
-                    builder.residue = new_residue;
-                },
-                Err(_) => eprintln!("error: Could not select new residue"),
+
+            Volume => {
+                use self::CuboidMenu::*;
+
+                let (commands, item_texts) = create_menu_items![
+                    (ChangeComponent, "Change component type"),
+                    (ChangeCuboidType, "Change cuboid type"),
+                    (SetName, "Set name"),
+                    (SetResidue, "Set residue"),
+                    (SetDensity, "Set default density"),
+                    (QuitAndSave, "Finalize component definition and return"),
+                    (QuitWithoutSaving, "Abort")
+                ];
+
+                let command = select_command(item_texts, commands)
+                    .map_err(|err| UIErrorKind::from(err))?;
+
+                match command {
+                    ChangeComponent => return Err(ChangeOrError::ChangeComponent),
+                    ChangeCuboidType => match select_cylinder_type() {
+                        Ok(new_type) => {
+                            let lattice = if new_type == Surface {
+                                Some(select_lattice()?)
+                            } else {
+                                None
+                            };
+
+                            builder.cuboid_type = new_type;
+                            builder.lattice = lattice;
+                        },
+                        Err(_) => eprintln!("error: Could not select new cylinder type"),
+                    },
+                    SetName => match get_value_from_user::<String>("Component name") {
+                        Ok(new_name) => {
+                            builder.name = new_name;
+                        },
+                        Err(_) => {
+                            eprintln!("error: Could not read name");
+                        },
+                    },
+                    SetResidue => match select_residue(&residue_list) {
+                        Ok(new_residue) => {
+                            builder.residue = new_residue;
+                        },
+                        Err(_) => eprintln!("error: Could not select new residue"),
+                    },
+                    SetDensity => match get_density() {
+                        Ok(density) => {
+                            builder.density = density;
+                        },
+                        Err(_) => eprintln!("error: Could not set density"),
+                    },
+                    QuitAndSave => match builder.finalize() {
+                        Ok(component) => return Ok(component),
+                        Err(msg) => eprintln!("{}", msg),
+                    },
+                    QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
+                }
             },
-            SetDensity => match get_density() {
-                Ok(density) => {
-                    builder.density = density;
-                },
-                Err(_) => eprintln!("error: Could not set density"),
-            },
-            QuitAndSave => match builder.finalize() {
-                Ok(component) => return Ok(component),
-                Err(msg) => eprintln!("{}", msg),
-            },
-            QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
         }
 
         eprintln!("");
     }
+}
+
+fn select_sides() -> UIResult<Sides> {
+    let choices = &[
+        "X0",
+        "X1",
+        "Y0",
+        "Y1",
+        "Z0",
+        "Z1"
+    ];
+
+    eprintln!("Set which sides (X0/X1 etc. for each direction) to construct\n\
+               ([space] select, [enter] confirm):");
+
+    let selections = Checkboxes::new().items(choices).interact()?;
+    let mut sides = Sides::empty();
+
+    if selections.contains(&0) {
+        sides.insert(Sides::X0);
+    }
+
+    if selections.contains(&1) {
+        sides.insert(Sides::X1);
+    }
+
+    if selections.contains(&2) {
+        sides.insert(Sides::Y0);
+    }
+
+    if selections.contains(&3) {
+        sides.insert(Sides::Y1);
+    }
+
+    if selections.contains(&4) {
+        sides.insert(Sides::Z0);
+    }
+
+    if selections.contains(&5) {
+        sides.insert(Sides::Z1);
+    }
+
+    Ok(sides)
 }
 
 /************************************

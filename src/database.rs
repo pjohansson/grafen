@@ -3,7 +3,8 @@
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
-use iterator::AtomIterItem;
+use iterator::{ResidueIter, ResidueIterOut};
+use read_conf;
 use surface;
 use system::{Component, Residue};
 use volume;
@@ -31,9 +32,6 @@ pub enum DataBaseError {
 ///
 /// Implements `Describe`, `Component` and `Translate` for the enum.
 ///
-/// Also sets up some getter functions directly to the object data and
-/// the `with_pbc` method to move residue coordinates within the box.
-///
 /// # Requires
 /// Wrapped objects have to implement the above traits and `Clone`, `Debug`,
 /// `Deserialize` and `Serialize` (the last two from `serde`).
@@ -47,7 +45,7 @@ pub enum DataBaseError {
 /// # #[macro_use] extern crate serde_derive;
 /// # use grafen::coord::{Coord, Translate};
 /// # use grafen::describe::Describe;
-/// # use grafen::iterator::{AtomIterator, AtomIterItem};
+/// # use grafen::iterator::{ResidueIter, ResidueIterOut};
 /// # use grafen::system::{Component, Residue};
 /// #
 /// #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -101,10 +99,10 @@ pub enum DataBaseError {
 /// ];
 ///
 /// assert_eq!("StructOne", &objects[0].describe());
-/// assert_eq!(None, objects[0].iter_atoms().next());
+/// assert!(objects[0].iter_residues().next().is_none());
 ///
 /// assert_eq!("StructTwo", &objects[1].describe());
-/// assert_eq!(None, objects[1].iter_atoms().next());
+/// assert!(objects[1].iter_residues().next().is_none());
 /// # }
 /// ```
 macro_rules! create_entry_wrapper {
@@ -118,43 +116,6 @@ macro_rules! create_entry_wrapper {
             $(
                 $entry($class),
             )*
-        }
-
-        impl<'a> $name {
-            /// Get a reference to the coordinates of the component.
-            pub fn get_coords(&'a self) -> &Vec<Coord> {
-                match *self {
-                    $(
-                        $name::$entry(ref object) => &object.coords,
-                    )*
-                }
-            }
-
-            /// Get a mutable reference to the coordinates of the component.
-            pub fn get_coords_mut(&'a mut self) -> &mut Vec<Coord> {
-                match *self {
-                    $(
-                        $name::$entry(ref mut object) => &mut object.coords,
-                    )*
-                }
-            }
-
-            pub fn get_origin(&self) -> Coord {
-                match *self {
-                    $(
-                        $name::$entry(ref object) => object.origin,
-                    )*
-                }
-            }
-
-            /// Get a reference to the component's optional `Residue`.
-            pub fn get_residue(&'a self) -> &'a Option<Residue> {
-                match *self {
-                    $(
-                        $name::$entry(ref object) => &object.residue,
-                    )*
-                }
-            }
         }
 
         impl Describe for $name {
@@ -176,6 +137,14 @@ macro_rules! create_entry_wrapper {
         }
 
         impl<'a> Component<'a> for $name {
+            fn assign_residues(&mut self, residues: &[ResidueIterOut]) {
+                match *self {
+                    $(
+                        $name::$entry(ref mut object) => object.assign_residues(residues),
+                    )*
+                }
+            }
+
             fn box_size(&self) -> Coord {
                 match *self {
                     $(
@@ -184,13 +153,22 @@ macro_rules! create_entry_wrapper {
                 }
             }
 
-            fn iter_atoms(&'a self) -> AtomIterItem {
+            fn get_origin(&self) -> Coord {
                 match *self {
                     $(
-                        $name::$entry(ref object) => object.iter_atoms(),
+                        $name::$entry(ref object) => object.get_origin(),
                     )*
                 }
             }
+
+            fn iter_residues(&self) -> ResidueIter {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.iter_residues(),
+                    )*
+                }
+            }
+
 
             fn num_atoms(&self) -> u64 {
                 match *self {
@@ -244,7 +222,9 @@ create_entry_wrapper![
     (volume::Cuboid => VolumeCuboid),
     (volume::Cylinder => VolumeCylinder),
     (surface::Sheet => SurfaceSheet),
-    (surface::Cylinder => SurfaceCylinder)
+    (surface::Cuboid => SurfaceCuboid),
+    (surface::Cylinder => SurfaceCylinder),
+    (read_conf::ReadConf => ConfigurationFile)
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -278,8 +258,7 @@ impl DataBase {
     /// otherwise the unenclosed string "None".
     pub fn get_path_pretty(&self) -> String {
         self.path.as_ref()
-            .map(|path| path.to_string_lossy().to_owned())
-            .map(|path| format!("'{}'", path))
+            .map(|path| format!("'{}'", path.display()))
             .unwrap_or("None".to_string())
     }
 
@@ -332,12 +311,11 @@ impl Describe for DataBase {
 
 /// Read a `DataBase` from a JSON formatted file.
 /// The owned path is set to the input path.
-pub fn read_database(from_path: &str) -> Result<DataBase, io::Error> {
-    let path = Path::new(from_path);
+pub fn read_database(path: &Path) -> Result<DataBase, io::Error> {
     let buffer = File::open(&path)?;
-
     let mut database = DataBase::from_reader(buffer)?;
-    database.path = Some(PathBuf::from(&from_path));
+
+    database.path = Some(PathBuf::from(&path));
 
     Ok(database)
 }
@@ -484,6 +462,10 @@ mod tests {
         ];
         let pbc_component = component.with_pbc();
 
-        assert_eq!(pbc_component.get_coords(), &pbc_coords);
+        if let ComponentEntry::SurfaceSheet(ref sheet) = pbc_component {
+            assert_eq!(&sheet.coords, &pbc_coords);
+        } else {
+            panic!("From component was selected in the constructed test")
+        }
     }
 }

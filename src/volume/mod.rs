@@ -5,15 +5,15 @@ mod cylinder;
 mod sphere;
 
 use coord::{Coord, Direction, Periodic};
-use describe::Describe;
-use system::Residue;
+use iterator::ResidueIterOut;
+use system::{Component};
 
 pub use self::cuboid::Cuboid;
 pub use self::cylinder::Cylinder;
 pub use self::sphere::Sphere;
 
 /// Volumes can contain coordinates.
-pub trait Contains: Describe {
+pub trait Contains {
     /// Whether a coordinate is contained within the volume's space.
     fn contains(&self, coord: Coord) -> bool;
 }
@@ -102,30 +102,50 @@ pub fn pbc_multiply_volume(coords: &[Coord], size: Coord, nx: usize, ny: usize, 
     }
 }
 
-/// Return residue coordinates which are not contained by a volume.
+/// Return residues of an input `Component` which are not contained by a pruning volume.
 ///
-/// Checks all atoms within the input residue to see if any are contained by the volume.
-/// If any are, the residue coordinate is kept in the returned list.
-pub fn prune_residues_from_volume<T: ?Sized>(coords: &[Coord],
-                                             origin: Coord,
-                                             residue: &Residue,
-                                             volume: &T)
-        -> Vec<Coord> where T: Contains {
-    coords.iter()
-          .filter(|&c0| {
-              residue.atoms
+/// Checks all atoms within residues to see if any are contained by the volume.
+/// If any are, the residue is filtered from the returned list.
+pub fn prune_residues_from_volume<'a, T, V>(component: &'a T, pruning_vol: &V)
+     -> Vec<ResidueIterOut>
+        where T: Component<'a>, V: ?Sized + Contains {
+    let origin = component.get_origin();
+
+    component
+        .iter_residues()
+        .filter(|res| {
+            res.get_atoms()
                 .iter()
-                .map(|ref atom| atom.position + *c0 + origin)
-                .all(|c1| !volume.contains(c1))
-          })
-          .cloned()
-          .collect::<Vec<_>>()
+                .map(|atom| atom.1 + origin)
+                .all(|coord| !pruning_vol.contains(coord))
+        })
+        .collect()
+}
+
+/// Return residues of an input `Component` which are contained within an input volume.
+///
+/// Checks all atoms within residues to see if any are contained by it. If any are,
+/// the residue is kept in the returned list.
+pub fn keep_residues_within_volume<'a, T, V>(component: &'a T, containing_vol: &V)
+     -> Vec<ResidueIterOut>
+        where T: Component<'a>, V: ?Sized + Contains {
+    let origin = component.get_origin();
+
+    component
+        .iter_residues()
+        .filter(|res| {
+            res.get_atoms()
+                .iter()
+                .map(|atom| atom.1 + origin)
+                .any(|coord| containing_vol.contains(coord))
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system::Atom;
+    use system::{Atom, Residue};
 
     #[test]
     fn fill_type_returns_correct_numbers() {
@@ -146,8 +166,7 @@ mod tests {
 
     #[test]
     fn coordinates_within_cuboid_are_pruned() {
-        let residue = resbase!["RES", ("A", 0.0, 0.0, 0.0)];
-        let cuboid = Cuboid {
+        let pruning_vol = Cuboid {
             size: Coord::new(1.0, 1.0, 1.0),
             .. Cuboid::default()
         };
@@ -158,9 +177,12 @@ mod tests {
             Coord::new(0.9, 0.9, 0.9)
         ];
 
+        let coord1_without = Coord::new(-0.1, 0.1, 0.1);
+        let coord2_without = Coord::new(1.1, 0.9, 0.9);
+
         let coords_without = vec![
-            Coord::new(-0.1, 0.1, 0.1),
-            Coord::new(1.1, 0.9, 0.9)
+            coord1_without,
+            coord2_without
         ];
 
         let coords = coords_within
@@ -169,22 +191,32 @@ mod tests {
             .cloned()
             .collect::<Vec<Coord>>();
 
-        let pruned = prune_residues_from_volume(&coords, Coord::ORIGO, &residue, &cuboid);
+        let residue = resbase!["RES", ("A", 0.0, 0.0, 0.0)];
+        let component = Cuboid {
+            residue: Some(residue),
+            coords,
+            .. Cuboid::default()
+        };
 
-        assert_eq!(coords_without, pruned);
+        let pruned = prune_residues_from_volume(&component, &pruning_vol);
+        let atoms = pruned.iter().map(|res| res.get_atoms()).collect::<Vec<_>>();
+        assert_eq!(atoms.len(), 2);
+        assert_eq!(atoms[0][0].1, coord1_without);
+        assert_eq!(atoms[1][0].1, coord2_without);
     }
 
     #[test]
-    fn coordinates_within_cuboid_prune_with_respect_to_residue_atoms() {
+    fn component_residues_are_pruned_if_any_atoms_are_inside_the_pruning_volume() {
+        let pruning_vol = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
         let residue = resbase![
             "RES",
             ("A", 0.0, 0.0, 0.0),
             ("B", 1.0, 0.0, 0.0) // Shifted by 1
         ];
-        let cuboid = Cuboid {
-            size: Coord::new(1.0, 1.0, 1.0),
-            .. Cuboid::default()
-        };
 
         let coords_within = vec![
             Coord::new(-0.9, 0.1, 0.1), // Atom B within
@@ -195,9 +227,13 @@ mod tests {
             Coord::new(0.9, 0.9, 0.9)
         ];
 
+        // Neither of the atoms will be inside the volume for these coords
+        let coord1_without = Coord::new(-1.1, 0.1, 0.1);
+        let coord2_without = Coord::new(1.1, 0.9, 0.9);
+
         let coords_without = vec![
-            Coord::new(-1.1, 0.1, 0.1),
-            Coord::new(1.1, 0.9, 0.9)
+            coord1_without,
+            coord2_without
         ];
 
         let coords = coords_within
@@ -206,15 +242,74 @@ mod tests {
             .cloned()
             .collect::<Vec<Coord>>();
 
-        let pruned = prune_residues_from_volume(&coords, Coord::ORIGO, &residue, &cuboid);
+        let component =  Cuboid {
+            residue: Some(residue),
+            coords,
+            .. Cuboid::default()
+        };
 
-        assert_eq!(coords_without, pruned);
+        let pruned = prune_residues_from_volume(&component, &pruning_vol);
+        let atoms = pruned.iter().map(|res| res.get_atoms()).collect::<Vec<_>>();
+        assert_eq!(atoms.len(), 2);
+
+        let shift = Coord::new(1.0, 0.0, 0.0);
+        assert_eq!(atoms[0][0].1, coord1_without);
+        assert_eq!(atoms[0][1].1, coord1_without + shift);
+        assert_eq!(atoms[1][0].1, coord2_without);
+        assert_eq!(atoms[1][1].1, coord2_without + shift);
+    }
+
+    #[test]
+    fn component_residues_are_kept_if_any_atoms_are_inside_the_containing_volume() {
+        let containing_vol = Cuboid {
+            size: Coord::new(1.0, 1.0, 1.0),
+            .. Cuboid::default()
+        };
+
+        let residue = resbase![
+            "RES",
+            ("A", 0.0, 0.0, 0.0),
+            ("B", 1.0, 0.0, 0.0) // Shifted by 1
+        ];
+
+        let coords_within = vec![
+            Coord::new(-0.9, 0.1, 0.1), // Atom B within
+            Coord::new(-0.5, 0.5, 0.5),
+            Coord::new(-0.1, 0.9, 0.9),
+            Coord::new(0.5, 0.9, 0.9),
+            Coord::new(0.9, 0.9, 0.9)
+        ];
+
+        // Neither of the atoms will be inside the volume for these coords
+        let coord1_without = Coord::new(-1.1, -0.1, -0.1);
+        let coord2_without = Coord::new(1.1, 1.1, 1.1);
+
+        let coords_without = vec![
+            coord1_without,
+            coord2_without
+        ];
+
+        let coords = coords_within
+            .iter()
+            .chain(coords_without.iter())
+            .cloned()
+            .collect::<Vec<Coord>>();
+
+        let component =  Cuboid {
+            residue: Some(residue),
+            coords,
+            .. Cuboid::default()
+        };
+
+        let contained = keep_residues_within_volume(&component, &containing_vol);
+        let atoms = contained.iter().map(|res| res.get_atoms()).collect::<Vec<_>>();
+        assert_eq!(atoms.len(), 5);
     }
 
     #[test]
     fn pruning_accounts_for_the_relative_translation_of_objects() {
         // cuboid from (1.0, 0.0, 0.0) to (3.0, 1.0, 1.0)
-        let cuboid = Cuboid {
+        let pruning_vol = Cuboid {
             origin: Coord::new(1.0, 0.0, 0.0),
             size: Coord::new(2.0, 1.0, 1.0),
             .. Cuboid::default()
@@ -228,8 +323,16 @@ mod tests {
             Coord::new(2.5, 0.5, 0.5)  // at (3.5, 0.5, 0.5): outside the other cuboid
         ];
 
-        let pruned = prune_residues_from_volume(&coords, origin, &residue, &cuboid);
+        let component = Cuboid {
+            origin,
+            residue: Some(residue),
+            coords,
+            .. Cuboid::default()
+        };
 
-        assert_eq!(pruned, vec![Coord::new(2.5, 0.5, 0.5)]);
+        let pruned = prune_residues_from_volume(&component, &pruning_vol);
+        let atoms = pruned.iter().map(|res| res.get_atoms()).collect::<Vec<_>>();
+        assert_eq!(atoms.len(), 1);
+        assert_eq!(atoms[0][0].1, Coord::new(2.5, 0.5, 0.5));
     }
 }

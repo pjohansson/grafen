@@ -1,5 +1,7 @@
 //! Implement elementary coordinate operations.
 
+use mdio::RVec;
+
 use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -37,7 +39,7 @@ impl Coord {
     /// assert_eq!(Coord { x: 0.0, y: 1.0, z: 2.0 }, coord);
     /// ```
     pub fn new(x: f64, y: f64, z: f64) -> Coord {
-        Coord { x: x, y: y, z: z }
+        Coord { x, y, z }
     }
 
     /// Unpack the coordinate into a tuple.
@@ -147,6 +149,12 @@ impl Coord {
 
         let (x, y, z) = self.to_tuple();
         Coord::new(do_pbc(x, box_size.x), do_pbc(y, box_size.y), do_pbc(z, box_size.z))
+    }
+}
+
+impl From<RVec> for Coord {
+    fn from(rvec: RVec) -> Coord {
+        Coord { x: rvec.x, y: rvec.y, z: rvec.z }
     }
 }
 
@@ -591,5 +599,14 @@ mod tests {
         assert_eq!(sheet_x, rotate_planar_coords_to_alignment(&sheet_x, X, X));
         assert_eq!(sheet_y, rotate_planar_coords_to_alignment(&sheet_y, Y, Y));
         assert_eq!(sheet_z, rotate_planar_coords_to_alignment(&sheet_z, Z, Z));
+    }
+
+    #[test]
+    fn create_coord_from_mdio_rvec() {
+        let (x, y, z) = (1.0, 2.0, 3.0);
+        let rvec = RVec { x, y, z };
+        let coord = Coord::from(rvec);
+
+        assert_eq!(coord, Coord::new(x, y, z));
     }
 }

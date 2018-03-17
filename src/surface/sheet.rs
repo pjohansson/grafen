@@ -9,7 +9,7 @@ use coord::{Coord, Direction, Periodic, Translate,
     rotate_planar_coords_to_alignment};
 use describe::{unwrap_name, Describe};
 use error::{GrafenError, Result};
-use iterator::{AtomIterator, AtomIterItem};
+use iterator::{ResidueIter, ResidueIterOut};
 use system::*;
 use volume::pbc_multiply_volume;
 
@@ -41,7 +41,7 @@ pub struct Sheet {
     /// Length of the sheet along the y axis.
     pub width: f64,
     #[serde(skip)]
-    /// List of coordinates belonging to the sheet. Relative to the `origin.
+    /// List of coordinates belonging to the sheet. Relative to the `origin`.
     pub coords: Vec<Coord>,
 }
 
