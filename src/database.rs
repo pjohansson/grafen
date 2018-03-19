@@ -3,17 +3,19 @@
 
 use coord::{Coord, Translate};
 use describe::{describe_list_short, describe_list, Describe};
-use iterator::AtomIterItem;
+use iterator::{ResidueIter, ResidueIterOut};
+use read_conf;
 use surface;
 use system::{Component, Residue};
 use volume;
 
 use serde_json;
+use std::ffi::OsStr;
 use std::fmt::Write;
+use std::convert::From;
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::ffi::OsStr;
-use std::fs::File;
 use std::result;
 
 #[derive(Copy, Clone, Debug)]
@@ -43,7 +45,7 @@ pub enum DataBaseError {
 /// # #[macro_use] extern crate serde_derive;
 /// # use grafen::coord::{Coord, Translate};
 /// # use grafen::describe::Describe;
-/// # use grafen::iterator::{AtomIterator, AtomIterItem};
+/// # use grafen::iterator::{ResidueIter, ResidueIterOut};
 /// # use grafen::system::{Component, Residue};
 /// #
 /// #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -59,17 +61,17 @@ pub enum DataBaseError {
 ///     residue: Option<Residue>,
 ///     coords: Vec<Coord>
 /// }
-/// 
+///
 /// // Not shown: implement required traits
 /// # impl StructOne { fn calc_box_size(&self) -> Coord { Coord::default() } }
 /// # impl StructTwo { fn calc_box_size(&self) -> Coord { Coord::default() } }
-/// # impl Describe for StructOne { 
-/// #     fn describe(&self) -> String { "StructOne".to_string() } 
-/// #     fn describe_short(&self) -> String { self.describe() } 
+/// # impl Describe for StructOne {
+/// #     fn describe(&self) -> String { "StructOne".to_string() }
+/// #     fn describe_short(&self) -> String { self.describe() }
 /// # }
-/// # impl Describe for StructTwo { 
-/// #     fn describe(&self) -> String { "StructTwo".to_string() } 
-/// #     fn describe_short(&self) -> String { self.describe() } 
+/// # impl Describe for StructTwo {
+/// #     fn describe(&self) -> String { "StructTwo".to_string() }
+/// #     fn describe_short(&self) -> String { self.describe() }
 /// # }
 /// # impl_component![StructOne, StructTwo];
 /// # impl_translate![StructOne, StructTwo];
@@ -97,10 +99,10 @@ pub enum DataBaseError {
 /// ];
 ///
 /// assert_eq!("StructOne", &objects[0].describe());
-/// assert_eq!(None, objects[0].iter_atoms().next());
+/// assert!(objects[0].iter_residues().next().is_none());
 ///
 /// assert_eq!("StructTwo", &objects[1].describe());
-/// assert_eq!(None, objects[1].iter_atoms().next());
+/// assert!(objects[1].iter_residues().next().is_none());
 /// # }
 /// ```
 macro_rules! create_entry_wrapper {
@@ -135,6 +137,14 @@ macro_rules! create_entry_wrapper {
         }
 
         impl<'a> Component<'a> for $name {
+            fn assign_residues(&mut self, residues: &[ResidueIterOut]) {
+                match *self {
+                    $(
+                        $name::$entry(ref mut object) => object.assign_residues(residues),
+                    )*
+                }
+            }
+
             fn box_size(&self) -> Coord {
                 match *self {
                     $(
@@ -143,18 +153,35 @@ macro_rules! create_entry_wrapper {
                 }
             }
 
-            fn iter_atoms(&'a self) -> AtomIterItem {
+            fn get_origin(&self) -> Coord {
                 match *self {
                     $(
-                        $name::$entry(ref object) => object.iter_atoms(),
+                        $name::$entry(ref object) => object.get_origin(),
                     )*
                 }
             }
+
+            fn iter_residues(&self) -> ResidueIter {
+                match *self {
+                    $(
+                        $name::$entry(ref object) => object.iter_residues(),
+                    )*
+                }
+            }
+
 
             fn num_atoms(&self) -> u64 {
                 match *self {
                     $(
                         $name::$entry(ref object) => object.num_atoms(),
+                    )*
+                }
+            }
+
+            fn with_pbc(self) -> Self {
+                match self {
+                    $(
+                        $name::$entry(object) => $name::$entry(object.with_pbc()),
                     )*
                 }
             }
@@ -168,7 +195,24 @@ macro_rules! create_entry_wrapper {
                     )*
                 }
             }
+
+            fn translate_in_place(&mut self, coord: Coord) {
+                match *self {
+                    $(
+                        $name::$entry(ref mut object)
+                            => { object.translate_in_place(coord); }
+                    )*
+                }
+            }
         }
+
+        $(
+            impl From<$class> for $name {
+                fn from(object: $class) -> $name {
+                    $name::$entry(object)
+                }
+            }
+        )*
     }
 }
 
@@ -178,7 +222,9 @@ create_entry_wrapper![
     (volume::Cuboid => VolumeCuboid),
     (volume::Cylinder => VolumeCylinder),
     (surface::Sheet => SurfaceSheet),
-    (surface::Cylinder => SurfaceCylinder)
+    (surface::Cuboid => SurfaceCuboid),
+    (surface::Cylinder => SurfaceCylinder),
+    (read_conf::ReadConf => ConfigurationFile)
 ];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -212,8 +258,7 @@ impl DataBase {
     /// otherwise the unenclosed string "None".
     pub fn get_path_pretty(&self) -> String {
         self.path.as_ref()
-            .map(|path| path.to_string_lossy().to_owned())
-            .map(|path| format!("'{}'", path))
+            .map(|path| format!("'{}'", path.display()))
             .unwrap_or("None".to_string())
     }
 
@@ -266,12 +311,11 @@ impl Describe for DataBase {
 
 /// Read a `DataBase` from a JSON formatted file.
 /// The owned path is set to the input path.
-pub fn read_database(from_path: &str) -> Result<DataBase, io::Error> {
-    let path = Path::new(from_path);
+pub fn read_database(path: &Path) -> Result<DataBase, io::Error> {
     let buffer = File::open(&path)?;
-
     let mut database = DataBase::from_reader(buffer)?;
-    database.path = Some(PathBuf::from(&from_path));
+
+    database.path = Some(PathBuf::from(&path));
 
     Ok(database)
 }
@@ -295,7 +339,10 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use coord::Direction;
+    use surface::{LatticeType, Sheet};
     use system::*;
+    use volume::Cuboid;
 
     #[test]
     fn serialize_and_deserialize_residue_entry() {
@@ -367,5 +414,58 @@ mod tests {
 
         database.set_path("/a/file.json").unwrap();
         assert_eq!("'/a/file.json'", &database.get_path_pretty());
+    }
+
+    #[test]
+    fn create_entry_macro_adds_from_method() {
+        let cuboid = Cuboid::default();
+        let component = ComponentEntry::from(cuboid.clone());
+
+        match component {
+            ComponentEntry::VolumeCuboid(object) => {
+                assert_eq!(object.name, cuboid.name);
+                assert_eq!(object.residue, cuboid.residue);
+                assert_eq!(object.size, cuboid.size);
+                assert_eq!(object.origin, cuboid.origin);
+                assert_eq!(object.coords, cuboid.coords);
+            },
+            _ => panic!["Incorrect object was created"],
+        }
+    }
+
+    #[test]
+    fn component_entry_adds_with_pbc_method() {
+        let sheet = Sheet {
+            name: None,
+            residue: None,
+            lattice: LatticeType::Hexagonal { a: 0.1 },
+            std_z: None,
+            origin: Coord::ORIGO,
+            normal: Direction::Z,
+            length: 2.0,
+            width: 1.0,
+            coords: vec![
+                Coord::new(0.5, 0.0, 0.0), // inside box
+                Coord::new(1.5, 0.0, 0.0), // inside box
+                Coord::new(2.5, 0.0, 0.0), // outside box by 0.5 along x
+                Coord::new(0.0, 1.5, 0.0) // outside box by 0.5 along y
+            ],
+        };
+
+        let component = ComponentEntry::from(sheet);
+
+        let pbc_coords = vec![
+            Coord::new(0.5, 0.0, 0.0), // unchanged
+            Coord::new(1.5, 0.0, 0.0), // unchanged
+            Coord::new(0.5, 0.0, 0.0), // moved to within box
+            Coord::new(0.0, 0.5, 0.0) // moved to within box
+        ];
+        let pbc_component = component.with_pbc();
+
+        if let ComponentEntry::SurfaceSheet(ref sheet) = pbc_component {
+            assert_eq!(&sheet.coords, &pbc_coords);
+        } else {
+            panic!("From component was selected in the constructed test")
+        }
     }
 }

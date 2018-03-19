@@ -2,7 +2,7 @@
 
 use error::{GrafenCliError, Result, UIErrorKind, UIResult};
 
-use grafen::coord::Coord;
+use grafen::coord::{Coord, Direction};
 use grafen::describe::{describe_list_short, describe_list, Describe};
 
 use dialoguer::{Input, Select};
@@ -19,9 +19,25 @@ pub fn get_value_from_user<T: FromStr>(description: &str) -> UIResult<T> {
         .map_err(|_| UIErrorKind::from("could not parse a value"))
 }
 
-/// Get a `Coord` either from the user or by default at (0, 0, 0)
+pub fn get_value_or_default_from_user<T: FromStr>(description: &str, default: &str)
+        -> UIResult<T> {
+    Input::new(description)
+        .default(default)
+        .show_default(true)
+        .interact()?
+        .trim()
+        .parse::<T>()
+        .map_err(|_| UIErrorKind::from("could not parse a value"))
+}
+
+/// Get a `Coord` either from the user or by a default.
 pub fn get_position_from_user(default: Option<&str>) -> UIResult<Coord> {
-    let mut input = Input::new("Position (x y z nm)");
+    get_coord_from_user("Position (x y z nm)", default)
+}
+
+/// Get a `Coord` either from the user or by a default.
+pub fn get_coord_from_user(description: &str, default: Option<&str>) -> UIResult<Coord> {
+    let mut input = Input::new(description);
 
     if let Some(string) = default {
         input.default(&string);
@@ -118,7 +134,41 @@ pub fn select_command<T: Copy>(item_texts: &[&str], commands: &[T]) -> UIResult<
     Ok(commands[index])
 }
 
-/// Promp the user to select an item from an input list. Return as a reference to the object.
+/// Use a prompt to select a direction with optional description and default values.
+pub fn select_direction(description: Option<&str>, default: Option<Direction>)
+        -> UIResult<Direction> {
+    if let Some(desc) = description {
+        eprint!("{}: ", desc);
+    }
+
+    if let Some(dir) = default {
+        let (commands, item_texts) = create_menu_items![
+            (YesOrNo::Yes, "Yes"),
+            (YesOrNo::No, "No")
+        ];
+
+        eprintln!("Use default ({})?", dir);
+        if let YesOrNo::Yes = select_command(item_texts, commands)? {
+            return Ok(dir);
+        }
+    }
+
+    // The default prints a newline, otherwise ensure that it is printed
+    if description.is_some() && default.is_none() {
+        eprint!("\n");
+    }
+
+    let (choices, item_texts) = create_menu_items![
+        (Direction::X, "X"),
+        (Direction::Y, "Y"),
+        (Direction::Z, "Z")
+    ];
+
+    select_command(item_texts, choices).map_err(|err| UIErrorKind::from(err))
+}
+
+/// Promp the user to select an item from an input list. Return as a reference
+/// to the object.
 ///
 /// Optionally print a header description of the choices to standard error.
 pub fn select_item<'a, T: Describe>(items: &'a [T], header: Option<&str>) -> UIResult<&'a T> {
@@ -132,7 +182,7 @@ pub fn select_item<'a, T: Describe>(items: &'a [T], header: Option<&str>) -> UIR
 /// Promp the user to select an item from an input list. The item index is returned.
 ///
 /// Helper function for quick item selection in other functions.
-fn select_item_index<T: Describe>(items: &[T], default: usize) -> UIResult<usize> {
+pub fn select_item_index<T: Describe>(items: &[T], default: usize) -> UIResult<usize> {
     let item_texts: Vec<_> = items.iter().map(|item| item.describe_short()).collect();
 
     select_string(&item_texts, default)
@@ -228,4 +278,11 @@ pub fn print_list_description_short<T: Describe>(description: &str, list: &[T]) 
 /// Print a description of an input list using their `describe` method to standard error.
 pub fn print_list_description<T: Describe>(description: &str, list: &[T]) {
     eprintln!("{}", describe_list(description, list));
+}
+
+#[derive(Clone, Copy, Debug)]
+/// Yes or no selection.
+pub enum YesOrNo {
+    Yes,
+    No,
 }

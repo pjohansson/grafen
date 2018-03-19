@@ -11,4 +11,5 @@ branches:
 
 matrix:
     allow_failures:
-        - rust: nightly
+        - rust: stable
+        - rust: beta

@@ -1,3 +1,8 @@
+0.10
+===
+* Add the ability to read configuration files (currently only .gro) as components.
+* A default database is used to store data in. It is located in a platform-dependent source directory and is read if no database is supplied as a CLI argument.
+
 0.9
 ===
 * Rewrite of the object construction framework. Instead of a messy matching to different object types using `IntoComponent`, the simple trait `Component` has been redone to yield all necessary information from objects.
@@ -6,6 +11,13 @@
 * Object definitions now contain all the information required to process and use them. Instead of containing as little information as possible and then have a separate object wrap them with more methods for `DataBase` use, etc. This second layer is unnecessarily confusing (although we still need one separate layer for the static dispatch, but as per above this is fully transparent).
 * The `ResidueBase` object has been renamed to `Residue`.
 * `System` has been moved to `system` and improved to user proper methods for yielding information for output. This includes implementing `iter_atoms` through the `Component` trait which links to all components` methods of that name and merges them to a single whole.
+
+0.9.1
+-----
+* Add the ability to edit constructed components by translating them or cutting coordinates from them using another constructed component.
+* Sheets are now constructed with periodic boundary conditions being applied. Residue coordinates will not extend beyond the component box size (although atoms belonging to the residue might).
+* Sheets can now be constructed with their normal vector pointing along any axis.
+* The user menus have been rewritten using a macro to ensure more consistent behaviour.
 
 0.8
 ===
