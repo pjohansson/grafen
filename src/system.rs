@@ -49,10 +49,12 @@ impl<'a> System {
 
     /// Print the system state to standard error.
     pub fn print_state(&self) {
+        let (dx, dy, dz) = self.box_size().to_tuple();
+
         eprintln!("{}", "System".underline().color("yellow"));
         eprintln!("Title       '{}'", self.title);
         eprintln!("Output path  {}", self.output_path.to_str().unwrap_or("(Not set)"));
-        eprintln!("Box size     {}", self.box_size());
+        eprintln!("Box size     ({:.8}, {:.8}, {:.8})", dx, dy, dz);
         eprintln!("");
 
         if self.components.len() > 0 {
