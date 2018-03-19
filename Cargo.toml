@@ -1,10 +1,6 @@
 [package]
 name = "grafen"
-<<<<<<< HEAD
 version = "0.10.0"
-=======
-version = "0.10.1-dev"
->>>>>>> development
 authors = ["Petter Johansson <pettjoha@kth.se>"]
 description = "Create graphene and other substrates for use in molecular dynamics simulations."
 repository = "https://github.com/pjohansson/grafen"
