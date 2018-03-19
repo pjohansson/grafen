@@ -1,6 +1,6 @@
 //! Construct planar sheets.
 
-use surface::distribution::PoissonDistribution;
+use surface::distribution::Distribution;
 use surface::lattice::Lattice;
 use surface::LatticeType;
 use surface::LatticeType::*;
@@ -74,7 +74,10 @@ impl Sheet {
                 use std::f64::consts::PI;
                 let rmin = (2.0 / (PI * density)).sqrt();
 
-                PoissonDistribution::new(rmin, self.length, self.width)
+                Distribution::poisson(rmin, self.length, self.width)
+            },
+            BlueNoise { number } => {
+                Distribution::blue_noise(number, self.length, self.width)
             },
         };
 
