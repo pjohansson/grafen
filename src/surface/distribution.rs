@@ -30,6 +30,17 @@ mod number {
     pub struct BlueNoiseDistribution;
 
     impl BlueNoiseDistribution {
+        // This algorithm is quite expensive since every candidate has to be checked
+        // against every coordinate that has been constructed, and the number of candidates
+        // which we create increases equally. Thus it scales very poorly with the number
+        // of points that are created.
+        //
+        // Could be sped up by implementing a grid for the final coordinates and compare
+        // every candidate to those inside a neighbouring area only. Also by making it
+        // parallel, but more power cannot substitute bad algorithms.
+        //
+        // **Note that before any performance improvements are made, a benchmark test should
+        // be created!**
         pub fn new(num_points: u64, size_x: f64, size_y: f64) -> Points {
             let mut coords = vec![gen_coord(size_x, size_y)];
             const NUM_CANDIDATES_MULTIPLIER: u64 = 1;
@@ -59,9 +70,10 @@ mod number {
     }
 
     pub fn calc_min_dist(coord: Coord, samples: &[Coord], size_x: f64, size_y: f64) -> f64 {
-        use std::f64;
+        use std::f64::MAX;
+
         samples.iter()
-               .fold(f64::MAX, |dist, &other| {
+               .fold(MAX, |dist, &other| {
                     dist.min(calc_toroidal_distance(coord, other, size_x, size_y))
                })
     }
