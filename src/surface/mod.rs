@@ -29,4 +29,14 @@ pub enum LatticeType {
     ///  R. Bridson, ACM SIGGRAPH 2007 Sketches Program,
     ///  http://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph07-poissondisk.pdf
     PoissonDisc { density: f64 },
+    /// A number of points generated from Mitchell's Best Candidate algorithm
+    /// for Blue Noise sampling algorithm to ensure a more even distribution
+    /// than purely random sampling.
+    ///
+    /// *Spectrally Optimal Sampling for Distribution Ray Tracing*
+    /// D. P. Mitchell, Proceeding SIGGRAPH '91
+    BlueNoise {
+        #[serde(skip_deserializing)]
+        number: u64
+    },
 }

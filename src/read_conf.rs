@@ -14,13 +14,13 @@ use std::rc::Rc;
 pub enum ConfType {
     /// The cuboid uses a specific size.
     Cuboid {
-        #[serde(skip)]
+        #[serde(skip_deserializing)]
         origin: Coord,
         size: Coord,
     },
     /// The cylinder requires some data about its construction.
     Cylinder {
-        #[serde(skip)]
+        #[serde(skip_deserializing)]
         origin: Coord,
         radius: f64,
         height: f64,
@@ -127,11 +127,6 @@ impl ReadConf {
                 }
             },
         }
-    }
-
-    pub fn construct(&mut self) {
-        let volume_type = self.volume_type.clone();
-        self.reconstruct(volume_type);
     }
 
     pub fn reconstruct(&mut self, new_conf_type: ConfType) {
@@ -245,14 +240,14 @@ impl Describe for ReadConf {
             match self.volume_type {
                 ConfType::Cuboid { origin: _, size } => {
                     description.push_str(&format!(
-                        " (Configuration of {} atoms at {} with size {})",
-                        self.num_atoms(), self.get_displayed_origin(), size
+                        " (Cuboid of {} atoms of size {} at {})",
+                        self.num_atoms(), size, self.get_displayed_origin()
                     ));
                 },
                 ConfType::Cylinder { origin: _, radius, height, normal: _ } => {
                     description.push_str(&format!(
-                        " (Configuration cylinder of {} atoms at {} with radius {:.1} and height {:.1})",
-                        self.num_atoms(), self.get_displayed_origin(), radius, height
+                        " (Cylinder of {} atoms of radius {:.1} and height {:.1} at {})",
+                        self.num_atoms(), radius, height, self.get_displayed_origin()
                     ));
                 },
             }

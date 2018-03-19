@@ -1,6 +1,7 @@
 0.10
 ===
 * Add the ability to read configuration files (currently only .gro) as components.
+* Add a `Cuboid` component that is a surface, not a filled volume.
 * A default database is used to store data in. It is located in a platform-dependent source directory and is read if no database is supplied as a CLI argument.
 
 0.9
