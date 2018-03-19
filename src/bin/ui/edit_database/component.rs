@@ -4,7 +4,8 @@
 
 use error::{GrafenCliError, UIResult, UIErrorKind};
 use ui::utils::{MenuResult, get_value_from_user, print_description, print_list_description_short,
-                remove_items, reorder_list, select_command, select_direction, select_item};
+                remove_items, reorder_list, select_command, select_direction, select_item,
+                print_message_to_user_and_hold};
 
 use grafen::coord::{Coord, Direction};
 use grafen::database::ComponentEntry;
@@ -913,6 +914,7 @@ enum LatticeSelection {
     Triclinic,
     Hexagonal,
     PoissonDisc,
+    BlueNoise,
 }
 
 fn get_density() -> UIResult<Option<f64>> {
@@ -935,7 +937,8 @@ fn select_lattice() -> UIResult<LatticeType> {
     let (choices, item_texts) = create_menu_items![
         (Triclinic, "Triclinic lattice: two base vector lengths and an in-between angle"),
         (Hexagonal, "Hexagonal lattice: a honeycomb grid with a spacing"),
-        (PoissonDisc, "Poisson disc: Randomly generated points with a density")
+        (PoissonDisc, "Poisson disc: Randomly generated points with a density"),
+        (BlueNoise, "Blue Noise: An explicit number of randomly generated points")
     ];
 
     let lattice = select_command(item_texts, choices)?;
@@ -968,6 +971,16 @@ fn select_lattice() -> UIResult<LatticeType> {
             let density = get_value_from_user::<f64>("Density 'ρ' (1/nm^2)")?;
 
             Ok(LatticeType::PoissonDisc { density })
+        },
+        BlueNoise => {
+            eprintln!("A Blue Noise distribution generates points with an even distribution.");
+            eprintln!("This generates an exact number of points for the sheet, which is");
+            eprintln!("selected by the user in the construction stage.");
+            eprintln!("");
+
+            print_message_to_user_and_hold("[enter] to continue")?;
+
+            Ok(LatticeType::BlueNoise { number: 0 })
         },
     }
 }
