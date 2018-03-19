@@ -14,13 +14,13 @@ use std::rc::Rc;
 pub enum ConfType {
     /// The cuboid uses a specific size.
     Cuboid {
-        #[serde(skip)]
+        #[serde(skip_deserializing)]
         origin: Coord,
         size: Coord,
     },
     /// The cylinder requires some data about its construction.
     Cylinder {
-        #[serde(skip)]
+        #[serde(skip_deserializing)]
         origin: Coord,
         radius: f64,
         height: f64,

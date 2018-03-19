@@ -36,7 +36,7 @@ pub enum LatticeType {
     /// *Spectrally Optimal Sampling for Distribution Ray Tracing*
     /// D. P. Mitchell, Proceeding SIGGRAPH '91
     BlueNoise {
-        #[serde(skip)]
+        #[serde(skip_deserializing)]
         number: u64
     },
 }
