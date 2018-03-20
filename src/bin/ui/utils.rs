@@ -10,6 +10,15 @@ use std::str::FromStr;
 
 pub type MenuResult = Result<Option<String>>;
 
+pub fn print_message_to_user_and_hold(message: &str) -> UIResult<()> {
+    Input::new(message)
+        .default(" ")
+        .show_default(false)
+        .interact()
+        .map(|_| ())
+        .map_err(|_| UIErrorKind::from("this should not happen"))
+}
+
 /// Parse a value from the user.
 pub fn get_value_from_user<T: FromStr>(description: &str) -> UIResult<T> {
     Input::new(description)

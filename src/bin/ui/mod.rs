@@ -17,6 +17,7 @@ use ui::utils::{MenuResult, YesOrNo,
 use grafen::coord::{Coord, Translate};
 use grafen::database::*;
 use grafen::read_conf::{ConfType, ReadConf};
+use grafen::surface::LatticeType;
 use grafen::system::*;
 use grafen::volume::{FillType, Volume};
 
@@ -114,6 +115,13 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             conf.origin = get_position_from_user(Some("0 0 0"))?;
             conf.length = get_value_from_user::<f64>("Length ΔX (nm)")?;
             conf.width = get_value_from_user::<f64>("Width ΔY (nm)")?;
+
+            match conf.lattice {
+                LatticeType::BlueNoise { ref mut number } => {
+                    *number = get_value_from_user::<u64>("Number of residues")?;
+                },
+                _ => (),
+            }
 
             Ok(
                 ComponentEntry::from(

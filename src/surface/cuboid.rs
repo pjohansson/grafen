@@ -169,8 +169,8 @@ impl Cuboid {
 
 impl Describe for Cuboid {
     fn describe(&self) -> String {
-        format!("{} (Surface box of size {})",
-            unwrap_name(&self.name), self.size)
+        format!("{} (Surface box of size {} at {})",
+            unwrap_name(&self.name), self.size, self.origin)
     }
 
     fn describe_short(&self) -> String {
