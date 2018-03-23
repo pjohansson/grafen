@@ -78,7 +78,9 @@ impl<'a> Iterator for ResidueIter<'a> {
                     .next()
                     .map(|res| res.unwrap())
                     .map(|res| {
-                        ResidueIterOut::FromConf(res.iter().map(|&atom| Rc::new(RefCell::new(atom.clone()))).collect())
+                        ResidueIterOut::FromConf(res.into_iter().map(|atom| {
+                            Rc::new(RefCell::new(atom))
+                        }).collect())
                     })
             },
             &mut ResidueIter::Component(ref res, ref mut iter) => {
