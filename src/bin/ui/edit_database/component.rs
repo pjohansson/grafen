@@ -68,6 +68,7 @@ enum ComponentSelect {
     Sheet,
     Cylinder,
     Cuboid,
+    Spheroid,
     Abort,
 }
 use self::ComponentSelect::*;
@@ -81,6 +82,7 @@ fn new_component(residue_list: &[Residue]) -> UIResult<ComponentEntry> {
             Sheet => create_sheet(&residue_list),
             Cylinder => create_cylinder(&residue_list),
             Cuboid => create_cuboid(&residue_list),
+            Spheroid => create_spheroid(&residue_list),
             Abort => return Err(UIErrorKind::Abort),
         };
 
@@ -105,6 +107,7 @@ fn select_component_type() -> UIResult<ComponentSelect> {
         (Sheet, "Sheet"),
         (Cylinder, "Cylinder"),
         (Cuboid, "Cuboid box"),
+        (Spheroid, "Spheroid"),
         (Abort, "(Abort)")
     ];
 
@@ -858,6 +861,129 @@ fn create_cuboid(residue_list: &[Residue]) -> result::Result<ComponentEntry, Cha
         eprintln!("");
     }
 }
+
+/***********************
+ * Spheroid construction *
+ ***********************/
+
+struct SpheroidBuilder {
+    name: String,
+    residue: Residue,
+    density: Option<f64>,
+}
+
+impl SpheroidBuilder {
+    fn initialize(residue_list: &[Residue]) -> UIResult<SpheroidBuilder> {
+        let residue = select_residue(&residue_list)?;
+
+        Ok(SpheroidBuilder {
+            name: String::new(),
+            residue,
+            density: None,
+        })
+    }
+
+    fn finalize(&self) -> result::Result<ComponentEntry, &str> {
+        if self.name.is_empty() {
+            return Err("Cannot add component: No name is set")
+        } else {
+            Ok(VolumeSpheroid(volume::Spheroid {
+                name: Some(self.name.clone()),
+                residue: Some(self.residue.clone()),
+                density: self.density.clone(),
+
+                origin: Coord::default(),
+                coords: Vec::new(),
+                radius: 0.0,
+            }))
+        }
+    }
+}
+
+impl Describe for SpheroidBuilder {
+    fn describe(&self) -> String {
+        let mut description = String::new();
+        const ERR: &'static str = "could not construct a string";
+
+        writeln!(description, "Name: {}", &self.name).expect(ERR);
+
+        writeln!(description, "Residue: {}", self.residue.code).expect(ERR);
+
+        let density_string = self.density
+            .map(|dens| format!("{}", dens))
+            .unwrap_or("None".into());
+        writeln!(description, "Density: {}", density_string).expect(ERR);
+
+        description
+    }
+
+    fn describe_short(&self) -> String { self.describe() }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum SpheroidMenu {
+    ChangeComponent,
+    SetName,
+    SetResidue,
+    SetDensity,
+    QuitAndSave,
+    QuitWithoutSaving,
+}
+
+fn create_spheroid(residue_list: &[Residue]) -> result::Result<ComponentEntry, ChangeOrError> {
+    let mut builder = SpheroidBuilder::initialize(&residue_list)?;
+
+
+    loop {
+        print_description(&builder);
+
+        use self::SpheroidMenu::*;
+
+        let (commands, item_texts) = create_menu_items![
+            (ChangeComponent, "Change component type"),
+            (SetName, "Set name"),
+            (SetResidue, "Set residue"),
+            (SetDensity, "Set default density"),
+            (QuitAndSave, "Finalize component definition and return"),
+            (QuitWithoutSaving, "Abort")
+        ];
+
+        let command = select_command(item_texts, commands)
+            .map_err(|err| UIErrorKind::from(err))?;
+
+        match command {
+            ChangeComponent => return Err(ChangeOrError::ChangeComponent),
+            SetName => match get_value_from_user::<String>("Component name") {
+                Ok(new_name) => {
+                    builder.name = new_name;
+                },
+                Err(_) => {
+                    eprintln!("error: Could not read name");
+                },
+            },
+            SetResidue => match select_residue(&residue_list) {
+                Ok(new_residue) => {
+                    builder.residue = new_residue;
+                },
+                Err(_) => eprintln!("error: Could not select new residue"),
+            },
+            SetDensity => match get_density() {
+                Ok(density) => {
+                    builder.density = density;
+                },
+                Err(_) => eprintln!("error: Could not set density"),
+            },
+            QuitAndSave => match builder.finalize() {
+                Ok(component) => return Ok(component),
+                Err(msg) => eprintln!("{}", msg),
+            },
+            QuitWithoutSaving => return Err(ChangeOrError::Error(UIErrorKind::Abort)),
+        }
+
+        eprintln!("");
+    }
+}
+
 
 fn select_sides() -> UIResult<Sides> {
     let choices = &[

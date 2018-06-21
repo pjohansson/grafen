@@ -21,7 +21,7 @@ use grafen::surface::LatticeType;
 use grafen::system::*;
 use grafen::volume::{FillType, Volume};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -81,8 +81,6 @@ fn create_component(system: &mut System) -> MenuResult {
     }
 }
 
-use std::path::PathBuf;
-
 /// Ask the user for information about the selected component, then return the constructed object.
 fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
         -> Result<ComponentEntry> {
@@ -105,6 +103,15 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             conf.origin = get_position_from_user(Some("0 0 0"))?;
             conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
+
+            let fill_type = select_num_coords_or_density_with_default(conf.density)?;
+
+            Ok(ComponentEntry::from(conf.fill(fill_type)))
+        },
+
+        ComponentEntry::VolumeSpheroid(mut conf) => {
+            conf.origin = get_position_from_user(Some("0 0 0"))?;
+            conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
 
             let fill_type = select_num_coords_or_density_with_default(conf.density)?;
 
@@ -177,6 +184,12 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
                     let normal = select_direction(Some("Select normal"), Some(normal))?;
 
                     ConfType::Cylinder { origin, radius, height, normal }
+                },
+                ConfType::Spheroid { origin: _, radius } => {
+                    let radius = get_value_or_default_from_user::<f64>(
+                        "Radius (nm)", &format!("{}", radius))?;
+
+                    ConfType::Spheroid { origin, radius }
                 },
             };
 

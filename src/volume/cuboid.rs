@@ -100,8 +100,7 @@ impl Cuboid {
     }
 
     /// Construct a `Sphere` from the cuboid by cutting its coordinates.
-    #[allow(dead_code)]
-    fn to_sphere(&self, radius: f64) -> Sphere {
+    pub fn to_sphere(&self, radius: f64) -> Spheroid {
         // Check whether we need to extend the cuboid to create the full sphere
         let diameter = 2.0 * radius;
         let pbc_multiples = (
@@ -120,9 +119,12 @@ impl Cuboid {
             }
         };
 
-        Sphere {
+        Spheroid {
+            name: self.name.clone(),
+            residue: self.residue.clone(),
             origin: self.origin,
             radius,
+            density: self.density,
             coords,
         }
     }

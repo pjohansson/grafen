@@ -26,6 +26,12 @@ pub enum ConfType {
         height: f64,
         normal: Direction,
     },
+    /// The sphere requires some data about its construction.
+    Spheroid {
+        #[serde(skip_deserializing)]
+        origin: Coord,
+        radius: f64,
+    },
 }
 
 impl ConfType {
@@ -38,6 +44,9 @@ impl ConfType {
                     Direction::Y => Coord::new(2.0 * radius, height, 2.0 * radius),
                     Direction::Z => Coord::new(2.0 * radius, 2.0 * radius, height),
                 }
+            },
+            &ConfType::Spheroid { origin: _, radius } => {
+                Coord::new(2.0 * radius, 2.0 * radius, 2.0 * radius)
             }
         }
     }
@@ -62,6 +71,13 @@ impl Contains for ConfType {
                 let (dr, dh) = center.distance_cylindrical(coord, normal);
 
                 dr <= radius && dh >= 0.0 && dh <= height
+            },
+            &ConfType::Spheroid { origin, radius } => {
+                // Check the distance from the center of the sphere
+                let center = origin + Coord::new(radius, radius, radius);
+                let dr = center.distance(coord);
+
+                dr <= radius
             },
         }
     }
@@ -126,6 +142,9 @@ impl ReadConf {
                     Direction::Z => Coord::new(radius, radius, 0.0),
                 }
             },
+            ConfType::Spheroid { origin: _, radius } => {
+                self.get_origin() + Coord::new(radius, radius, radius)
+            },
         }
     }
 
@@ -137,6 +156,9 @@ impl ReadConf {
             },
             ConfType::Cylinder { origin: _, radius, height, normal } => {
                 ConfType::Cylinder { origin: self.get_origin(), radius, height, normal }
+            },
+            ConfType::Spheroid { origin: _, radius } => {
+                ConfType::Spheroid { origin: self.get_origin(), radius }
             },
         };
 
@@ -195,17 +217,13 @@ impl<'a> Component<'a> for ReadConf {
 
     fn box_size(&self) -> Coord {
         self.get_origin() + self.calc_size()
-        // self.conf
-        //     .as_ref()
-        //     .map(|c| Coord::from(c.origin))
-        //     .unwrap_or(Coord::ORIGO)
-        //     + self.calc_size()
     }
 
     fn get_origin(&self) -> Coord {
         match self.volume_type {
             ConfType::Cuboid { origin, size: _ } => origin,
             ConfType::Cylinder { origin, radius: _, height: _, normal: _ } => origin,
+            ConfType::Spheroid { origin, radius: _ } => origin,
         }
     }
 
@@ -250,6 +268,12 @@ impl Describe for ReadConf {
                         self.num_atoms(), radius, height, self.get_displayed_origin()
                     ));
                 },
+                ConfType::Spheroid { origin: _, radius } => {
+                    description.push_str(&format!(
+                        " (Spheroid of {} atoms of radius {:.1} at {})",
+                        self.num_atoms(), radius, self.get_displayed_origin()
+                    ));
+                },
             }
         }
 
@@ -280,6 +304,9 @@ impl Translate for ReadConf {
             },
             ConfType::Cylinder { origin, radius, height, normal } => {
                 ConfType::Cylinder { origin: origin + coord, radius, height, normal }
+            },
+            ConfType::Spheroid { origin, radius } => {
+                ConfType::Spheroid { origin: origin + coord, radius }
             },
         };
     }

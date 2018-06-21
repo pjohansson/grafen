@@ -10,7 +10,7 @@ use system::{Component};
 
 pub use self::cuboid::Cuboid;
 pub use self::cylinder::Cylinder;
-pub use self::sphere::Sphere;
+pub use self::sphere::Spheroid;
 
 /// Volumes can contain coordinates.
 pub trait Contains {

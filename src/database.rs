@@ -221,6 +221,7 @@ create_entry_wrapper![
     ComponentEntry,
     (volume::Cuboid => VolumeCuboid),
     (volume::Cylinder => VolumeCylinder),
+    (volume::Spheroid => VolumeSpheroid),
     (surface::Sheet => SurfaceSheet),
     (surface::Cuboid => SurfaceCuboid),
     (surface::Cylinder => SurfaceCylinder),
