@@ -9,6 +9,7 @@ categories = ["command-line-utilities", "science"]
 keywords = ["gromacs", "molecular-dynamics", "substrates"]
 readme = "README.md"
 license = "Unlicense"
+autobins = false
 
 [badges]
 travis-ci = { repository = "pjohansson/grafen", branch = "master" }
