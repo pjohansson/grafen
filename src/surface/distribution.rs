@@ -1,10 +1,12 @@
 //! Implement a Poisson Disc distribution algorithm.
 
+use crate::{
+    coord::Coord,
+    surface::points::Points
+};
+
 use rand;
 use std::cmp;
-
-use coord::Coord;
-use surface::points::Points;
 
 /// Container for constructing different randomly sampled distributions.
 pub struct Distribution;

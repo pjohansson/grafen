@@ -3,12 +3,13 @@
 use grafen::error::GrafenError;
 
 use colored::*;
-use std::error::Error;
-use std::fmt;
-use std::fmt::Display;
-use std::io;
-use std::num::{ParseFloatError, ParseIntError};
-use std::result;
+use std::{
+    error::Error,
+    fmt::{self, Display},
+    io,
+    num::{ParseFloatError, ParseIntError},
+    result
+};
 
 /// Shorthand for our `Result` class.
 pub type Result<T> = result::Result<T, GrafenCliError>;

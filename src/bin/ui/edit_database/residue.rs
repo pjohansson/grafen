@@ -1,14 +1,19 @@
 //! Modify the list of `Residue` objects in a `DataBase`.
 
-use error::{GrafenCliError, Result, UIErrorKind, UIResult};
-use ui::utils::{MenuResult, remove_items, reorder_list, select_command, get_position_from_user,
-                get_value_from_user, print_list_description};
+use crate::{
+    error::{GrafenCliError, Result, UIErrorKind, UIResult},
+    ui::utils::{MenuResult, remove_items, reorder_list, select_command, get_position_from_user,
+                get_value_from_user, print_list_description}
+};
 
-use grafen::describe::describe_list;
-use grafen::system::{Atom, Residue};
-
-use std::error::Error;
-use std::result;
+use grafen::{
+    describe::describe_list,
+    system::{Atom, Residue}
+};
+use std::{
+    error::Error,
+    result
+};
 
 pub fn user_menu(mut residue_list: &mut Vec<Residue>) -> MenuResult {
     let residues_backup = residue_list.clone();

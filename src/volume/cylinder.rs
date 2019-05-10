@@ -1,13 +1,14 @@
 //! Cylinder objects.
 
-use coord::{Coord, Direction, Translate};
-use describe::{unwrap_name, Describe};
-use iterator::{ResidueIter, ResidueIterOut};
-use system::{Component, Residue};
-use volume::*;
+use crate::{
+    coord::{Coord, Direction, Translate},
+    describe::{unwrap_name, Describe},
+    iterator::{ResidueIter, ResidueIterOut},
+    system::{Component, Residue},
+    volume::*
+};
 
-use rand;
-use rand::distributions::IndependentSample;
+use rand::{self, distributions::IndependentSample};
 use std::f64::consts::PI;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

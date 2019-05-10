@@ -1,17 +1,20 @@
 //! Construct cylinders that are curved sheets, not volumes.
 
-use surface::{Sheet, LatticeType};
 
-use coord::{Coord, Direction, Translate,
-    rotate_coords, rotate_planar_coords_to_alignment};
-use describe::{unwrap_name, Describe};
-use error::Result;
-use iterator::{ResidueIter, ResidueIterOut};
-use system::*;
+use crate::{
+    coord::{Coord, Direction, Translate, rotate_coords, rotate_planar_coords_to_alignment},
+    describe::{unwrap_name, Describe},
+    error::Result,
+    iterator::{ResidueIter, ResidueIterOut},
+    surface::{Sheet, LatticeType},
+    system::*
+};
 
-use std::f64::consts::PI;
-use std::fmt;
-use std::fmt::{Display, Formatter};
+use serde_derive::{Serialize, Deserialize};
+use std::{
+    f64::consts::PI,
+    fmt::{self, Display, Formatter}
+};
 
 
 impl_component![Cylinder];
@@ -163,7 +166,7 @@ impl Describe for Cylinder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use surface::LatticeType::*;
+    use crate::surface::LatticeType::*;
 
     fn setup_cylinder(radius: f64, height: f64, lattice: &LatticeType) -> Cylinder {
         Cylinder {

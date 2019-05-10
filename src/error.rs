@@ -1,8 +1,10 @@
 //! Implements the custom `GrafenError` class for the library.
 
-use std::error;
-use std::fmt;
-use std::result;
+use std::{
+    error,
+    fmt,
+    result
+};
 
 #[derive(Debug)]
 /// A class for configuration or runtime errors.

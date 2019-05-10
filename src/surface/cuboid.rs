@@ -1,16 +1,17 @@
 //! Construct planar sheets.
 
-use surface::LatticeType;
-use surface::Sheet;
+use crate::{
+    coord::{Coord, Direction, Translate},
+    describe::{unwrap_name, Describe},
+    error::Result,
+    iterator::{ResidueIter, ResidueIterOut},
+    surface::{LatticeType, Sheet},
+    system::*
+};
 
-use coord::{Coord, Direction, Translate};
-use describe::{unwrap_name, Describe};
-use error::Result;
-use iterator::{ResidueIter, ResidueIterOut};
-use system::*;
-
-use std::fmt;
-use std::fmt::{Display, Formatter};
+use bitflags::bitflags;
+use serde_derive::{Serialize, Deserialize};
+use std::fmt::{self, Display, Formatter};
 
 impl_component![Cuboid];
 impl_translate![Cuboid];

@@ -7,9 +7,14 @@ mod lattice;
 mod points;
 mod sheet;
 
-pub use self::cuboid::{Cuboid, Sides};
-pub use self::sheet::{Circle, Sheet};
-pub use self::cylinder::{Cylinder, CylinderCap};
+use serde_derive::{Serialize, Deserialize};
+
+// Export components
+pub use self::{
+    cuboid::{Cuboid, Sides},
+    sheet::{Circle, Sheet},
+    cylinder::{Cylinder, CylinderCap}
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 /// Lattice types which a substrate can be constructed from.

@@ -1,17 +1,20 @@
 //! Construct planar sheets.
 
-use surface::distribution::Distribution;
-use surface::lattice::Lattice;
-use surface::LatticeType;
-use surface::LatticeType::*;
+use crate::{
+    coord::{Coord, Direction, Periodic, Translate, rotate_planar_coords_to_alignment},
+    describe::{unwrap_name, Describe},
+    error::{GrafenError, Result},
+    iterator::{ResidueIter, ResidueIterOut},
+    surface::{
+        distribution::Distribution,
+        lattice::Lattice,
+        LatticeType::{self, *},
+    },
+    system::*,
+    volume::pbc_multiply_volume,
+};
 
-use coord::{Coord, Direction, Periodic, Translate,
-    rotate_planar_coords_to_alignment};
-use describe::{unwrap_name, Describe};
-use error::{GrafenError, Result};
-use iterator::{ResidueIter, ResidueIterOut};
-use system::*;
-use volume::pbc_multiply_volume;
+use serde_derive::{Serialize, Deserialize};
 
 impl_component![Sheet];
 impl_translate![Circle, Sheet];

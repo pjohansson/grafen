@@ -7,20 +7,24 @@ mod edit_component;
 mod edit_database;
 
 use super::Config;
-use error::{GrafenCliError, Result, UIErrorKind, UIResult};
-use output;
-use ui::utils::{MenuResult, YesOrNo,
-    get_value_from_user, get_value_or_default_from_user, get_coord_from_user,
-    get_position_from_user, remove_items, reorder_list, select_command,
-    select_direction, select_item};
 
-use grafen::coord::{Coord, Translate};
-use grafen::database::*;
-use grafen::read_conf::{ConfType, ReadConf};
-use grafen::surface::LatticeType;
-use grafen::system::*;
-use grafen::volume::{FillType, Volume};
+use crate::{
+    error::{GrafenCliError, Result, UIErrorKind, UIResult},
+    output,
+    ui::utils::{MenuResult, YesOrNo,
+        get_value_from_user, get_value_or_default_from_user, get_coord_from_user,
+        get_position_from_user, remove_items, reorder_list, select_command,
+        select_direction, select_item}
+};
 
+use grafen::{
+    coord::{Coord, Translate},
+    database::*,
+    read_conf::{ConfType, ReadConf},
+    surface::LatticeType,
+    system::*,
+    volume::{FillType, Volume}
+};
 use std::path::{Path, PathBuf};
 
 /// Loop over a menu in which the user can define the system which will be created, etc.

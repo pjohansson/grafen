@@ -1,9 +1,11 @@
 //! Tools for the user interface.
 
-use error::{GrafenCliError, Result, UIErrorKind, UIResult};
+use crate::error::{GrafenCliError, Result, UIErrorKind, UIResult};
 
-use grafen::coord::{Coord, Direction};
-use grafen::describe::{describe_list_short, describe_list, Describe};
+use grafen::{
+    coord::{Coord, Direction},
+    describe::{describe_list_short, describe_list, Describe}
+};
 
 use dialoguer::{Input, Select};
 use std::str::FromStr;

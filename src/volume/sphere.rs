@@ -1,13 +1,15 @@
 //! Spherical objects.
 
-use coord::{Coord, Translate};
-use describe::{unwrap_name, Describe};
-use iterator::{ResidueIter, ResidueIterOut};
-use system::{Component, Residue};
-use volume::*;
+use crate::{
+    coord::{Coord, Translate},
+    describe::{unwrap_name, Describe},
+    iterator::{ResidueIter, ResidueIterOut},
+    system::{Component, Residue},
+    volume::*
+};
 
-use rand;
-use rand::distributions::IndependentSample;
+use rand::{self, distributions::IndependentSample};
+use serde_derive::{Serialize, Deserialize};
 use std::f64::consts::PI;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -112,6 +114,6 @@ impl Volume for Spheroid {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
 
 }

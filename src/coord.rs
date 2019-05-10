@@ -1,12 +1,13 @@
 //! Implement elementary coordinate operations.
 
 use mdio::RVec;
-
-use std::error::Error;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Sub, SubAssign, Neg, Mul, MulAssign};
-use std::str::FromStr;
+use serde_derive::{Serialize, Deserialize};
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+    ops::{Add, AddAssign, Sub, SubAssign, Neg, Mul, MulAssign},
+    str::FromStr
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 /// A three-dimensional carthesian coordinate.

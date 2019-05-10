@@ -1,30 +1,26 @@
 //! Create graphene and other substrates for use in molecular dynamics simulations.
 
-extern crate colored;
-extern crate dialoguer;
-extern crate serde;
-extern crate serde_json;
-extern crate structopt;
-#[macro_use] extern crate structopt_derive;
-
-extern crate grafen;
-extern crate mdio;
-
 mod error;
 mod output;
 mod ui;
 
-use error::{GrafenCliError, Result};
-use ui::read_configuration;
+use crate::{
+    error::{GrafenCliError, Result},
+    ui::read_configuration
+};
 
-use grafen::database::{read_database, ComponentEntry, DataBase};
-use grafen::read_conf::ReadConf;
+use grafen::{
+    database::{read_database, ComponentEntry, DataBase},
+    read_conf::ReadConf
+};
 
 use colored::*;
-use std::env::{current_dir, home_dir, var, var_os};
-use std::fs::DirBuilder;
-use std::process;
-use std::path::PathBuf;
+use std::{
+    env::{current_dir, home_dir, var, var_os},
+    fs::DirBuilder,
+    process,
+    path::PathBuf
+};
 use structopt::StructOpt;
 
 const DEFAULT_DBNAME: &str = "database.json";

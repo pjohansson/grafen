@@ -1,11 +1,12 @@
 //! Write systems to disk.
 
-use error::Result;
+use crate::error::Result;
 
 use grafen::system::{Component, System};
-
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::{
+    fs::File,
+    io::{BufWriter, Write}
+};
 
 /// Output a system to disk as a GROMOS formatted file.
 /// The filename extension is adjusted to .gro.

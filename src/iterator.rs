@@ -1,13 +1,16 @@
 //! Iterate over atoms in components.
 
-use coord::Coord;
-use system::Residue;
+use crate::{
+    coord::Coord,
+    system::Residue
+};
 
 use mdio;
-
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::slice::Iter;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    slice::Iter
+};
 
 /// Iteration object which owns the iterator. Used to ensure that it always exists.
 ///

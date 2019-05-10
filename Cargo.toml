@@ -10,6 +10,7 @@ keywords = ["gromacs", "molecular-dynamics", "substrates"]
 readme = "README.md"
 license = "Unlicense"
 autobins = false
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "pjohansson/grafen", branch = "master" }

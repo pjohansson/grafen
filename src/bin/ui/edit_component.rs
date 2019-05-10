@@ -1,15 +1,18 @@
 //! Edit constructed `ComponentEntry` objects.
 
-use error::{GrafenCliError, Result};
-use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_description,
-                select_command, select_item, select_item_index};
+use crate::{
+    error::{GrafenCliError, Result},
+    ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_description,
+                select_command, select_item, select_item_index}
+};
 
-use grafen::coord::Direction;
-use grafen::database::*;
-use grafen::system::*;
-use grafen::coord::{Coord, Translate};
-use grafen::volume::{Contains, Cuboid, Cylinder, prune_residues_from_volume};
-
+use grafen::{
+    coord::Direction,
+    database::*,
+    system::*,
+    coord::{Coord, Translate},
+    volume::{Contains, Cuboid, Cylinder, prune_residues_from_volume}
+};
 use std::borrow::Borrow;
 
 /// Prompt the user to select a defined component and then edit it.

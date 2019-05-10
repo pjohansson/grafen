@@ -2,24 +2,29 @@
 
 // This module is a bit of a mess.
 
-use error::{GrafenCliError, UIResult, UIErrorKind};
-use ui::utils::{MenuResult, get_value_from_user, print_description, print_list_description_short,
+use crate::{
+    error::{GrafenCliError, UIResult, UIErrorKind},
+    ui::utils::{MenuResult, get_value_from_user, print_description, print_list_description_short,
                 remove_items, reorder_list, select_command, select_direction, select_item,
-                print_message_to_user_and_hold};
+                print_message_to_user_and_hold}
+};
 
-use grafen::coord::{Coord, Direction};
-use grafen::database::ComponentEntry;
-use grafen::database::ComponentEntry::*;
-use grafen::describe::Describe;
-use grafen::surface;
-use grafen::surface::{CylinderCap, LatticeType, Sides};
-use grafen::system::Residue;
-use grafen::volume;
+use grafen::{
+    coord::{Coord, Direction},
+    database::ComponentEntry::{self, *},
+    describe::Describe,
+    surface,
+    surface::{CylinderCap, LatticeType, Sides},
+    system::Residue,
+    volume
+};
 
 use dialoguer::Checkboxes;
-use std::error::Error;
-use std::fmt::Write;
-use std::result;
+use std::{
+    error::Error,
+    fmt::Write,
+    result
+};
 
 pub fn user_menu(mut component_list: &mut Vec<ComponentEntry>, residue_list: &[Residue])
         -> MenuResult {

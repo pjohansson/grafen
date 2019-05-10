@@ -1,12 +1,15 @@
 //! Cuboid objects.
 
-use coord::{Coord, Direction, Periodic, Translate};
-use describe::{unwrap_name, Describe};
-use iterator::{ResidueIter, ResidueIterOut};
-use system::{Component, Residue};
-use volume::*;
+use crate::{
+    coord::{Coord, Direction, Periodic, Translate},
+    describe::{unwrap_name, Describe},
+    iterator::{ResidueIter, ResidueIterOut},
+    system::{Component, Residue},
+    volume::*
+};
 
 use rand;
+use serde_derive::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.

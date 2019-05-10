@@ -4,13 +4,19 @@ mod cuboid;
 mod cylinder;
 mod sphere;
 
-use coord::{Coord, Direction, Periodic};
-use iterator::ResidueIterOut;
-use system::{Component};
+use crate::{
+    coord::{Coord, Direction, Periodic},
+    iterator::ResidueIterOut,
+    system::{Component}
+};
 
-pub use self::cuboid::Cuboid;
-pub use self::cylinder::Cylinder;
-pub use self::sphere::Spheroid;
+pub use self::{
+    cuboid::Cuboid,
+    cylinder::Cylinder,
+    sphere::Spheroid
+};
+
+use serde_derive::{Serialize, Deserialize};
 
 /// Volumes can contain coordinates.
 pub trait Contains {
@@ -145,7 +151,7 @@ pub fn keep_residues_within_volume<'a, T, V>(component: &'a T, containing_vol: &
 #[cfg(test)]
 mod tests {
     use super::*;
-    use system::{Atom, Residue};
+    use crate::system::{Atom, Residue};
 
     #[test]
     fn fill_type_returns_correct_numbers() {

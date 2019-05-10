@@ -1,22 +1,27 @@
 //! Collect definitions for `Residue` and `SheetConf` objects
 //! into a `DataBase` which can be read from or saved to disk.
 
-use coord::{Coord, Translate};
-use describe::{describe_list_short, describe_list, Describe};
-use iterator::{ResidueIter, ResidueIterOut};
-use read_conf;
-use surface;
-use system::{Component, Residue};
-use volume;
+use crate::{
+    coord::{Coord, Translate},
+    describe::{describe_list_short, describe_list, Describe},
+    iterator::{ResidueIter, ResidueIterOut},
+    read_conf,
+    surface,
+    system::{Component, Residue},
+    volume
+};
 
+use serde_derive::{Serialize, Deserialize};
 use serde_json;
-use std::ffi::OsStr;
-use std::fmt::Write;
-use std::convert::From;
-use std::fs::File;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::result;
+use std::{
+    convert::From,
+    ffi::OsStr,
+    fmt::Write,
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+    result
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum DataBaseError {
@@ -340,10 +345,10 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coord::Direction;
-    use surface::{LatticeType, Sheet};
-    use system::*;
-    use volume::Cuboid;
+    use crate::coord::Direction;
+    use crate::surface::{LatticeType, Sheet};
+    use crate::system::*;
+    use crate::volume::Cuboid;
 
     #[test]
     fn serialize_and_deserialize_residue_entry() {

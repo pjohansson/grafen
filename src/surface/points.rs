@@ -3,9 +3,8 @@
 //! using a Lattice or Poisson Disc generator) all transformations
 //! of the points belong in this module.
 
+use crate::coord::Coord;
 use rand;
-
-use coord::Coord;
 
 /// A collection of points to broadcast residues onto.
 pub struct Points {

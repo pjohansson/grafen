@@ -11,12 +11,15 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
-use coord::Coord;
-use describe::{describe_list, Describe};
-use database::{ComponentEntry, DataBase};
-use iterator::{ResidueIter, ResidueIterOut};
+use crate::{
+    coord::Coord,
+    describe::{describe_list, Describe},
+    database::{ComponentEntry, DataBase},
+    iterator::{ResidueIter, ResidueIterOut}
+};
 
 use colored::*;
+use serde_derive::{Serialize, Deserialize};
 use std::path::PathBuf;
 
 /// Main structure of a constructed system with several components.
@@ -283,8 +286,8 @@ macro_rules! resbase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coord::Translate;
-    use volume::Cuboid;
+    use crate::coord::Translate;
+    use crate::volume::Cuboid;
 
     #[test]
     fn create_residue_base_macro() {

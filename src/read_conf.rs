@@ -1,12 +1,17 @@
-use coord::{Coord, Direction, Translate};
-use describe::Describe;
-use iterator::{ConfIter, ResidueIter, ResidueIterOut};
-use system::Component;
-use volume::{Contains, keep_residues_within_volume};
+use crate::{
+    coord::{Coord, Direction, Translate},
+    describe::Describe,
+    iterator::{ConfIter, ResidueIter, ResidueIterOut},
+    system::Component,
+    volume::{Contains, keep_residues_within_volume},
+};
 
 use mdio;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use serde_derive::{Serialize, Deserialize};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc
+};
 
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
