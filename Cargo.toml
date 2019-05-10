@@ -21,7 +21,7 @@ colored = "1.6"
 dirs = "1.0"
 dialoguer = "0.1"
 mdio = { git = "https://github.com/pjohansson/mdio" }
-rand = "0.5"
+rand = "0.6"
 serde = "^1.0.8"
 serde_json = "1.0"
 serde_derive = "^1.0.8"
