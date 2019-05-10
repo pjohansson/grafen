@@ -8,7 +8,7 @@ use crate::{
     volume::*,
 };
 
-use rand;
+use rand::seq::sample_indices;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -212,7 +212,7 @@ impl Volume for Cuboid {
         let num_cells = nx * ny * nz;
 
         let mut rng = rand::thread_rng();
-        let selected_indices = rand::sample(&mut rng, 0..num_cells, num_coords as usize);
+        let selected_indices = sample_indices(&mut rng, num_cells as usize, num_coords as usize);
 
         let dx = self.size.x / (nx as f64);
         let dy = self.size.y / (ny as f64);
@@ -221,9 +221,9 @@ impl Volume for Cuboid {
         let coords = selected_indices
             .into_iter()
             .map(|i| {
-                let ix = i % nx;
-                let iy = (i / nx) % ny;
-                let iz = i / (nx * ny);
+                let ix = i as u64 % nx;
+                let iy = (i as u64 / nx) % ny;
+                let iz = i as u64 / (nx * ny);
 
                 Coord::new(
                     dx * (ix as f64 + 0.5),

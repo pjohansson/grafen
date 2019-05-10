@@ -4,7 +4,7 @@
 //! of the points belong in this module.
 
 use crate::coord::Coord;
-use rand;
+use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
 
 /// A collection of points to broadcast residues onto.
 pub struct Points {
@@ -20,16 +20,14 @@ impl Points {
     /// The positions are shifted on a range of (-std_z, +std_z)
     /// where std_z is the input deviation.
     pub fn uniform_distribution(&self, std_z: f64) -> Points {
-        use rand::distributions::IndependentSample;
-
-        let range = rand::distributions::Range::new(-std_z, std_z);
-        let mut rng = rand::thread_rng();
+        let range = Uniform::new(-std_z, std_z);
+        let mut rng = thread_rng();
 
         let coords: Vec<Coord> = self
             .coords
             .iter()
             .map(|&c| {
-                let add_z = range.ind_sample(&mut rng);
+                let add_z = range.sample(&mut rng);
                 //c.add(Coord::new(0.0, 0.0, add_z))
                 c + Coord::new(0.0, 0.0, add_z)
             })

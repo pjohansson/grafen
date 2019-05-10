@@ -8,7 +8,7 @@ use crate::{
     volume::*,
 };
 
-use rand::{self, distributions::IndependentSample};
+use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
 use std::f64::consts::PI;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -100,20 +100,20 @@ impl Volume for Cylinder {
                 // Note that this currently uses a generation that does not account for
                 // coordinate clustering, which isn't great. The radius generation should
                 // make fewer coordinates appear close to the center.
-                let range_radius = rand::distributions::Range::new(0.0, self.radius);
-                let range_height = rand::distributions::Range::new(0.0, self.height);
-                let range_angle = rand::distributions::Range::new(0.0, 2.0 * PI);
+                let range_radius = Uniform::new(0.0, self.radius);
+                let range_height = Uniform::new(0.0, self.height);
+                let range_angle = Uniform::new(0.0, 2.0 * PI);
 
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
 
                 let mut gen_coord = || {
-                    let radius = range_radius.ind_sample(&mut rng);
-                    let angle = range_angle.ind_sample(&mut rng);
+                    let radius = range_radius.sample(&mut rng);
+                    let angle = range_angle.sample(&mut rng);
 
                     // Generalized coordinates for radial and height positions
                     let r0 = radius * angle.cos();
                     let r1 = radius * angle.sin();
-                    let h = range_height.ind_sample(&mut rng);
+                    let h = range_height.sample(&mut rng);
 
                     match self.alignment {
                         Direction::X => Coord::new(h, r0, r1),

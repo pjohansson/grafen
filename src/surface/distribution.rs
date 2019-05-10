@@ -2,7 +2,7 @@
 
 use crate::{coord::Coord, surface::points::Points};
 
-use rand;
+use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
 use std::cmp;
 
 /// Container for constructing different randomly sampled distributions.
@@ -12,7 +12,7 @@ impl Distribution {
     /// Return a set of points that have been generated using a Poisson disk sampling
     /// algorithm. They will be separated from each other at minimum by an input distance.
     pub fn poisson(rmin: f64, size_x: f64, size_y: f64) -> Points {
-        self::density::PoissonDistribution::new(rmin, size_x, size_y)
+        self::density::PoissonDiskDistribution::new(rmin, size_x, size_y)
     }
 
     /// Return a set of an input number of points that have been generated using
@@ -24,7 +24,6 @@ impl Distribution {
 
 mod number {
     use super::*;
-    use rand::distributions::IndependentSample;
 
     pub struct BlueNoiseDistribution;
 
@@ -92,13 +91,13 @@ mod number {
     }
 
     fn gen_coord(dx: f64, dy: f64) -> Coord {
-        let mut rng = rand::thread_rng();
-        let range_x = rand::distributions::Range::new(0.0, dx);
-        let range_y = rand::distributions::Range::new(0.0, dy);
+        let mut rng = thread_rng();
+        let range_x = Uniform::new(0.0, dx);
+        let range_y = Uniform::new(0.0, dy);
 
         Coord::new(
-            range_x.ind_sample(&mut rng),
-            range_y.ind_sample(&mut rng),
+            range_x.sample(&mut rng),
+            range_y.sample(&mut rng),
             0.0,
         )
     }
@@ -106,11 +105,10 @@ mod number {
 
 mod density {
     use super::*;
-    use rand::distributions::IndependentSample;
 
-    pub struct PoissonDistribution;
+    pub struct PoissonDiskDistribution;
 
-    impl PoissonDistribution {
+    impl PoissonDiskDistribution {
         pub fn new(rmin: f64, size_x: f64, size_y: f64) -> Points {
             let mut grid = PoissonGrid::new(rmin, size_x, size_y);
 
@@ -236,15 +234,15 @@ mod density {
 
     fn gen_coord_around(coord: &Coord, grid: &PoissonGrid) -> Coord {
         use std::f64::consts::PI;
-        let mut rng = rand::thread_rng();
-        let range_dr = rand::distributions::Range::new(grid.rmin, 2.0 * grid.rmin);
-        let range_angle = rand::distributions::Range::new(0.0, 2.0 * PI);
+        let mut rng = thread_rng();
+        let range_dr = Uniform::new(grid.rmin, 2.0 * grid.rmin);
+        let range_angle = Uniform::new(0.0, 2.0 * PI);
 
         let (max_x, max_y) = grid.size;
 
         loop {
-            let dr = range_dr.ind_sample(&mut rng);
-            let angle = range_angle.ind_sample(&mut rng);
+            let dr = range_dr.sample(&mut rng);
+            let angle = range_angle.sample(&mut rng);
             let x = coord.x + dr * angle.cos();
             let y = coord.y + dr * angle.sin();
 
@@ -255,22 +253,22 @@ mod density {
     }
 
     fn gen_grid_coord(x: f64, y: f64) -> Coord {
-        let mut rng = rand::thread_rng();
-        let range_x = rand::distributions::Range::new(0.0, x);
-        let range_y = rand::distributions::Range::new(0.0, y);
+        let mut rng = thread_rng();
+        let range_x = Uniform::new(0.0, x);
+        let range_y = Uniform::new(0.0, y);
 
         Coord::new(
-            range_x.ind_sample(&mut rng),
-            range_y.ind_sample(&mut rng),
+            range_x.sample(&mut rng),
+            range_y.sample(&mut rng),
             0.0,
         )
     }
 
     fn select_coordinate(coords: &Vec<Coord>) -> usize {
-        let mut rng = rand::thread_rng();
-        let range = rand::distributions::Range::new(0, coords.len());
+        let mut rng = thread_rng();
+        let range = Uniform::new(0, coords.len());
 
-        range.ind_sample(&mut rng)
+        range.sample(&mut rng)
     }
 }
 
@@ -282,7 +280,7 @@ mod tests {
     fn create_poisson_distribution() {
         let rmin = 1.0;
         let (size_x, size_y) = (5.0, 10.0);
-        let distribution = density::PoissonDistribution::new(rmin, size_x, size_y);
+        let distribution = density::PoissonDiskDistribution::new(rmin, size_x, size_y);
 
         // We can only assert that no coordinates are within the minimum
         // distance of each other, or outside the box.

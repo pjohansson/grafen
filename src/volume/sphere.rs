@@ -8,7 +8,7 @@ use crate::{
     volume::*,
 };
 
-use rand::{self, distributions::IndependentSample};
+use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
 use serde_derive::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
@@ -85,16 +85,16 @@ impl Volume for Spheroid {
                 // Note that this currently uses a generation that does not account for
                 // coordinate clustering, which isn't great. The radius generation should
                 // make fewer coordinates appear close to the center.
-                let range_radius = rand::distributions::Range::new(0.0, self.radius);
-                let range_theta = rand::distributions::Range::new(0.0, PI);
-                let range_phi = rand::distributions::Range::new(0.0, 2.0 * PI);
+                let range_radius = Uniform::new(0.0, self.radius);
+                let range_theta = Uniform::new(0.0, PI);
+                let range_phi = Uniform::new(0.0, 2.0 * PI);
 
-                let mut rng = rand::thread_rng();
+                let mut rng = thread_rng();
 
                 let mut gen_coord = || {
-                    let radius = range_radius.ind_sample(&mut rng);
-                    let theta = range_theta.ind_sample(&mut rng);
-                    let phi = range_phi.ind_sample(&mut rng);
+                    let radius = range_radius.sample(&mut rng);
+                    let theta = range_theta.sample(&mut rng);
+                    let phi = range_phi.sample(&mut rng);
 
                     let x = radius * theta.sin() * phi.cos();
                     let y = radius * theta.sin() * phi.sin();
