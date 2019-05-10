@@ -5,7 +5,7 @@ mod residue;
 
 use crate::{
     error::GrafenCliError,
-    ui::utils::{MenuResult, print_description, select_command}
+    ui::utils::{print_description, select_command, MenuResult},
 };
 
 use grafen::database::{write_database, DataBase};

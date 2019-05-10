@@ -5,11 +5,11 @@ use crate::{
     describe::{unwrap_name, Describe},
     iterator::{ResidueIter, ResidueIterOut},
     system::{Component, Residue},
-    volume::*
+    volume::*,
 };
 
 use rand;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// A cuboid shaped volume box.
@@ -37,7 +37,11 @@ impl_translate![Cuboid];
 impl Cuboid {
     /// Calculate the center position of the cuboid, relative to the origin.
     fn center(&self) -> Coord {
-        Coord { x: self.size.x / 2.0, y: self.size.y / 2.0, z: self.size.z / 2.0 }
+        Coord {
+            x: self.size.x / 2.0,
+            y: self.size.y / 2.0,
+            z: self.size.z / 2.0,
+        }
     }
 
     /// Calculate the box size.
@@ -51,43 +55,50 @@ impl Cuboid {
         // Check if we need to extend the cube to create the complete cylinder.
         let diameter = 2.0 * radius;
         let pbc_multiples = match alignment {
-            Direction::X => {(
+            Direction::X => (
                 (height / self.size.x).ceil() as usize,
                 (diameter / self.size.y).ceil() as usize,
-                (diameter / self.size.z).ceil() as usize
-            )},
-            Direction::Y => {(
+                (diameter / self.size.z).ceil() as usize,
+            ),
+            Direction::Y => (
                 (diameter / self.size.x).ceil() as usize,
                 (height / self.size.y).ceil() as usize,
-                (diameter / self.size.z).ceil() as usize
-            )},
-            Direction::Z => {(
+                (diameter / self.size.z).ceil() as usize,
+            ),
+            Direction::Z => (
                 (diameter / self.size.x).ceil() as usize,
                 (diameter / self.size.y).ceil() as usize,
-                (height / self.size.z).ceil() as usize
-            )},
+                (height / self.size.z).ceil() as usize,
+            ),
         };
 
         // Closure to calculate the coordinate in the center of the "bottom"
         // cuboid face from which the cylinder will be created.
-        let get_bottom_center = |cuboid: &Cuboid| {
-            match alignment {
-                    Direction::X => Coord { x: 0.0, .. cuboid.center() },
-                    Direction::Y => Coord { y: 0.0, .. cuboid.center() },
-                    Direction::Z => Coord { z: 0.0, .. cuboid.center() },
-            }
+        let get_bottom_center = |cuboid: &Cuboid| match alignment {
+            Direction::X => Coord {
+                x: 0.0,
+                ..cuboid.center()
+            },
+            Direction::Y => Coord {
+                y: 0.0,
+                ..cuboid.center()
+            },
+            Direction::Z => Coord {
+                z: 0.0,
+                ..cuboid.center()
+            },
         };
 
         let coords = match pbc_multiples {
             (1, 1, 1) => {
                 let bottom_center = get_bottom_center(&self);
                 cut_to_cylinder(&self.coords, bottom_center, alignment, radius, height)
-            },
+            }
             (nx, ny, nz) => {
                 let extended = self.pbc_multiply(nx, ny, nz);
                 let bottom_center = get_bottom_center(&extended);
                 cut_to_cylinder(&extended.coords, bottom_center, alignment, radius, height)
-            },
+            }
         };
 
         Cylinder {
@@ -113,9 +124,7 @@ impl Cuboid {
         );
 
         let coords = match pbc_multiples {
-            (1, 1, 1) => {
-                cut_to_sphere(&self.coords, self.center(), radius)
-            },
+            (1, 1, 1) => cut_to_sphere(&self.coords, self.center(), radius),
             (nx, ny, nz) => {
                 let extended = self.pbc_multiply(nx, ny, nz);
                 cut_to_sphere(&extended.coords, extended.center(), radius)
@@ -158,7 +167,12 @@ impl Default for Cuboid {
 
 impl Describe for Cuboid {
     fn describe(&self) -> String {
-        format!("{} (Box of size {} at {})", unwrap_name(&self.name), self.size, self.origin)
+        format!(
+            "{} (Box of size {} at {})",
+            unwrap_name(&self.name),
+            self.size,
+            self.origin
+        )
     }
 
     fn describe_short(&self) -> String {
@@ -176,7 +190,7 @@ impl Periodic for Cuboid {
             size: self.size.pbc_multiply(nx, ny, nz),
             coords,
             // TODO: Add explicit parameters here
-            .. self.clone()
+            ..self.clone()
         }
     }
 }
@@ -214,7 +228,7 @@ impl Volume for Cuboid {
                 Coord::new(
                     dx * (ix as f64 + 0.5),
                     dy * (iy as f64 + 0.5),
-                    dz * (iz as f64 + 0.5)
+                    dz * (iz as f64 + 0.5),
                 )
             })
             .collect::<Vec<_>>();
@@ -224,7 +238,7 @@ impl Volume for Cuboid {
         Cuboid {
             density,
             coords,
-            .. self
+            ..self
         }
     }
 
@@ -259,7 +273,7 @@ mod tests {
         Cuboid {
             size: Coord::new(dx, dy, dz),
             coords,
-            .. Cuboid::default()
+            ..Cuboid::default()
         }
     }
 
@@ -324,8 +338,9 @@ mod tests {
         let cuboid = Cuboid {
             // size: Coord::new(1.0 * diameter, diameter, diameter),
             size: Coord::new(radius, radius, radius),
-            .. Cuboid::default()
-        }.fill(FillType::Density(density));
+            ..Cuboid::default()
+        }
+        .fill(FillType::Density(density));
 
         let cylinder = cuboid.to_cylinder(radius, diameter, Direction::X);
         let expected_coords = (cylinder.volume() * density).round() as usize;
@@ -342,8 +357,7 @@ mod tests {
         let too_large_radius = 10.0;
         let too_large_height = 15.0;
         let alignment = Direction::Z;
-        let large_cylinder = cuboid.to_cylinder(too_large_radius, too_large_height,
-            alignment);
+        let large_cylinder = cuboid.to_cylinder(too_large_radius, too_large_height, alignment);
 
         assert!(large_cylinder.coords.len() > cuboid.coords.len());
     }
@@ -379,7 +393,7 @@ mod tests {
         let cuboid = Cuboid {
             size: Coord::new(2.0, 2.0, 2.0),
             coords: vec![Coord::new(0.5, 1.0, 1.5)],
-            .. Cuboid::default()
+            ..Cuboid::default()
         };
 
         let cuboid_octupled = cuboid.pbc_multiply(2, 2, 2);
@@ -406,7 +420,7 @@ mod tests {
         let cuboid = Cuboid {
             size: Coord::new(2.0, 2.0, 2.0),
             coords: vec![Coord::new(0.5, 1.0, 1.5)],
-            .. Cuboid::default()
+            ..Cuboid::default()
         };
 
         let cloned_cuboid = cuboid.pbc_multiply(1, 1, 1);
@@ -421,7 +435,7 @@ mod tests {
         let cuboid = Cuboid {
             origin: Coord::new(1.0, 1.0, 1.0),
             size: Coord::new(1.0, 1.0, 1.0),
-            .. Cuboid::default()
+            ..Cuboid::default()
         };
 
         let err = 1e-9;
@@ -447,8 +461,9 @@ mod tests {
         let size = Coord::new(1.0, 2.0, 3.0);
         let cuboid = Cuboid {
             size,
-            .. Cuboid::default()
-        }.fill(FillType::NumCoords(num_atoms));
+            ..Cuboid::default()
+        }
+        .fill(FillType::NumCoords(num_atoms));
 
         assert_eq!(cuboid.coords.len(), num_atoms as usize);
 
@@ -464,7 +479,7 @@ mod tests {
     fn cuboid_volume_is_correct() {
         let cuboid = Cuboid {
             size: Coord::new(1.0, 3.0, 7.0),
-            .. Cuboid::default()
+            ..Cuboid::default()
         };
 
         assert_eq!(cuboid.volume(), 1.0 * 3.0 * 7.0);
@@ -476,9 +491,12 @@ mod tests {
 
         let cuboid = Cuboid {
             size,
-            .. Cuboid::default()
+            ..Cuboid::default()
         };
 
-        assert_eq!(cuboid.center(), Coord::new(size.x / 2.0, size.y / 2.0, size.z / 2.0));
+        assert_eq!(
+            cuboid.center(),
+            Coord::new(size.x / 2.0, size.y / 2.0, size.z / 2.0)
+        );
     }
 }

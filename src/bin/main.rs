@@ -6,20 +6,20 @@ mod ui;
 
 use crate::{
     error::{GrafenCliError, Result},
-    ui::read_configuration
+    ui::read_configuration,
 };
 
 use grafen::{
     database::{read_database, ComponentEntry, DataBase},
-    read_conf::ReadConf
+    read_conf::ReadConf,
 };
 
 use colored::*;
 use std::{
     env::{current_dir, home_dir, var, var_os},
     fs::DirBuilder,
+    path::PathBuf,
     process,
-    path::PathBuf
 };
 use structopt::StructOpt;
 
@@ -58,7 +58,12 @@ impl Config {
         let (components, mut entries) = read_input_configurations(options.input_confs);
         database.component_defs.append(&mut entries);
 
-        Ok(Config { title, output_path, components, database })
+        Ok(Config {
+            title,
+            output_path,
+            components,
+            database,
+        })
     }
 }
 
@@ -69,7 +74,12 @@ struct CliOptions {
     #[structopt(short = "t", long = "title")]
     /// Title of output system
     title: Option<String>,
-    #[structopt(short = "o", long = "output", default_value = "conf.gro", parse(from_os_str))]
+    #[structopt(
+        short = "o",
+        long = "output",
+        default_value = "conf.gro",
+        parse(from_os_str)
+    )]
     /// Output configuration file
     output: PathBuf,
     #[structopt(short = "d", long = "database", parse(from_os_str))]
@@ -124,10 +134,14 @@ fn read_or_create_default_database() -> Result<DataBase> {
     let default_database_paths = get_default_database_paths();
 
     if default_database_paths.is_empty() {
-        eprintln!("{}", format!(
-            "Could not find a location for the default database. \
-            Opening a database which cannot be saved.",
-        ).color("yellow"));
+        eprintln!(
+            "{}",
+            format!(
+                "Could not find a location for the default database. \
+                 Opening a database which cannot be saved.",
+            )
+            .color("yellow")
+        );
 
         return Ok(DataBase::new());
     }
@@ -135,7 +149,7 @@ fn read_or_create_default_database() -> Result<DataBase> {
     // See if a default database can be found at any path before creating a new one.
     for path in &default_database_paths {
         if path.is_file() {
-            return read_database(&path).map_err(|err| GrafenCliError::from(err))
+            return read_database(&path).map_err(|err| GrafenCliError::from(err));
         }
     }
 
@@ -146,12 +160,17 @@ fn read_or_create_default_database() -> Result<DataBase> {
         match DirBuilder::new().recursive(true).create(&parent_dir) {
             Ok(_) => default_database.set_path(&default_path).unwrap(),
             Err(err) => {
-                eprintln!("{}", format!(
-                    "Warning: Could not create a folder for a default database at '{}' ({}). \
-                    Opening a database which cannot be saved.",
-                    default_path.display(), err
-                ).color("yellow"));
-            },
+                eprintln!(
+                    "{}",
+                    format!(
+                        "Warning: Could not create a folder for a default database at '{}' ({}). \
+                         Opening a database which cannot be saved.",
+                        default_path.display(),
+                        err
+                    )
+                    .color("yellow")
+                );
+            }
         }
     }
 
@@ -166,25 +185,33 @@ fn get_default_database_paths() -> Vec<PathBuf> {
 }
 
 fn get_platform_dependent_data_dirs() -> Vec<PathBuf> {
-    let xdg_data_dirs_variable = var("XDG_DATA_DIRS")
-        .unwrap_or(String::from("/usr/local/share:/usr/local"));
-    let xdg_dirs_iter = xdg_data_dirs_variable.split(':').map(|s| Some(PathBuf::from(s)));
+    let xdg_data_dirs_variable =
+        var("XDG_DATA_DIRS").unwrap_or(String::from("/usr/local/share:/usr/local"));
+    let xdg_dirs_iter = xdg_data_dirs_variable
+        .split(':')
+        .map(|s| Some(PathBuf::from(s)));
 
     let dirs = if cfg!(target_os = "macos") {
         vec![
             var_os("XDG_DATA_HOME").map(|dir| PathBuf::from(dir)),
-            home_dir().map(|dir| dir.join("Library").join("Application Support"))
-        ].into_iter()
-         .chain(xdg_dirs_iter)
-         .chain(vec![Some(PathBuf::from("/").join("Library").join("Application Support"))])
-         .collect()
+            home_dir().map(|dir| dir.join("Library").join("Application Support")),
+        ]
+        .into_iter()
+        .chain(xdg_dirs_iter)
+        .chain(vec![Some(
+            PathBuf::from("/")
+                .join("Library")
+                .join("Application Support"),
+        )])
+        .collect()
     } else if cfg!(target_os = "linux") {
         vec![
             var_os("XDG_DATA_HOME").map(|dir| PathBuf::from(dir)),
-            home_dir().map(|dir| dir.join(".local").join("share"))
-        ].into_iter()
-         .chain(xdg_dirs_iter)
-         .collect()
+            home_dir().map(|dir| dir.join(".local").join("share")),
+        ]
+        .into_iter()
+        .chain(xdg_dirs_iter)
+        .collect()
     } else if cfg!(target_os = "windows") {
         vec![var_os("APPDATA").map(|dir| PathBuf::from(dir))]
     } else {
@@ -210,8 +237,13 @@ pub mod tests {
         let xdg_data_dirs = format!("{}:{}", xdg_data_directories[0], xdg_data_directories[1]);
         set_var("XDG_DATA_DIRS", xdg_data_dirs);
 
-        let user_appsupport = home_dir().unwrap().join("Library").join("Application Support");
-        let root_appsupport = PathBuf::from("/").join("Library").join("Application Support");
+        let user_appsupport = home_dir()
+            .unwrap()
+            .join("Library")
+            .join("Application Support");
+        let root_appsupport = PathBuf::from("/")
+            .join("Library")
+            .join("Application Support");
 
         let result = get_platform_dependent_data_dirs();
         let priority_list = vec![
@@ -219,7 +251,7 @@ pub mod tests {
             user_appsupport,
             PathBuf::from(xdg_data_directories[0]),
             PathBuf::from(xdg_data_directories[1]),
-            root_appsupport
+            root_appsupport,
         ];
 
         assert_eq!(result, priority_list);
@@ -242,7 +274,7 @@ pub mod tests {
             PathBuf::from(xdg_data_home),
             user_local_share,
             PathBuf::from(xdg_data_directories[0]),
-            PathBuf::from(xdg_data_directories[1])
+            PathBuf::from(xdg_data_directories[1]),
         ];
 
         assert_eq!(result, priority_list);
@@ -256,7 +288,10 @@ pub mod tests {
 
         for path in dirs {
             let mut iter = path.components().rev();
-            assert_eq!(iter.next().unwrap(), Component::Normal(DEFAULT_DBNAME.as_ref()));
+            assert_eq!(
+                iter.next().unwrap(),
+                Component::Normal(DEFAULT_DBNAME.as_ref())
+            );
             assert_eq!(iter.next().unwrap(), Component::Normal("grafen".as_ref()));
         }
     }

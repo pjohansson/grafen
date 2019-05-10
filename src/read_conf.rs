@@ -3,16 +3,15 @@ use crate::{
     describe::Describe,
     iterator::{ConfIter, ResidueIter, ResidueIterOut},
     system::Component,
-    volume::{Contains, keep_residues_within_volume},
+    volume::{keep_residues_within_volume, Contains},
 };
 
 use mdio;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
-    rc::Rc
+    rc::Rc,
 };
-
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 /// The read configuration can be morphed into different types of elements.
@@ -43,12 +42,15 @@ impl ConfType {
     fn calc_size(&self) -> Coord {
         match self {
             &ConfType::Cuboid { origin: _, size } => size,
-            &ConfType::Cylinder { origin: _, radius, height, normal } => {
-                match normal {
-                    Direction::X => Coord::new(height, 2.0 * radius, 2.0 * radius),
-                    Direction::Y => Coord::new(2.0 * radius, height, 2.0 * radius),
-                    Direction::Z => Coord::new(2.0 * radius, 2.0 * radius, height),
-                }
+            &ConfType::Cylinder {
+                origin: _,
+                radius,
+                height,
+                normal,
+            } => match normal {
+                Direction::X => Coord::new(height, 2.0 * radius, 2.0 * radius),
+                Direction::Y => Coord::new(2.0 * radius, height, 2.0 * radius),
+                Direction::Z => Coord::new(2.0 * radius, 2.0 * radius, height),
             },
             &ConfType::Spheroid { origin: _, radius } => {
                 Coord::new(2.0 * radius, 2.0 * radius, 2.0 * radius)
@@ -61,29 +63,38 @@ impl Contains for ConfType {
     fn contains(&self, coord: Coord) -> bool {
         match self {
             &ConfType::Cuboid { origin, size } => {
-                coord.x >= origin.x && coord.x <= (origin.x + size.x)
-                    && coord.y >= origin.y && coord.y <= (origin.y + size.y)
-                    && coord.z >= origin.z && coord.z <= (origin.z + size.z)
-            },
-            &ConfType::Cylinder { origin, radius, height, normal } => {
+                coord.x >= origin.x
+                    && coord.x <= (origin.x + size.x)
+                    && coord.y >= origin.y
+                    && coord.y <= (origin.y + size.y)
+                    && coord.z >= origin.z
+                    && coord.z <= (origin.z + size.z)
+            }
+            &ConfType::Cylinder {
+                origin,
+                radius,
+                height,
+                normal,
+            } => {
                 // Check distance from the "bottom center" of the cylinder
-                let center = origin + match normal {
-                    Direction::X => Coord::new(0.0, radius, radius),
-                    Direction::Y => Coord::new(radius, 0.0, radius),
-                    Direction::Z => Coord::new(radius, radius, 0.0),
-                };
+                let center = origin
+                    + match normal {
+                        Direction::X => Coord::new(0.0, radius, radius),
+                        Direction::Y => Coord::new(radius, 0.0, radius),
+                        Direction::Z => Coord::new(radius, radius, 0.0),
+                    };
 
                 let (dr, dh) = center.distance_cylindrical(coord, normal);
 
                 dr <= radius && dh >= 0.0 && dh <= height
-            },
+            }
             &ConfType::Spheroid { origin, radius } => {
                 // Check the distance from the center of the sphere
                 let center = origin + Coord::new(radius, radius, radius);
                 let dr = center.distance(coord);
 
                 dr <= radius
-            },
+            }
         }
     }
 }
@@ -140,30 +151,46 @@ impl ReadConf {
     pub fn get_displayed_origin(&self) -> Coord {
         match self.volume_type {
             ConfType::Cuboid { origin: _, size: _ } => self.get_origin(),
-            ConfType::Cylinder { origin: _, radius, height: _, normal } => {
-                self.get_origin() + match normal {
-                    Direction::X => Coord::new(0.0, radius, radius),
-                    Direction::Y => Coord::new(radius, 0.0, radius),
-                    Direction::Z => Coord::new(radius, radius, 0.0),
-                }
-            },
+            ConfType::Cylinder {
+                origin: _,
+                radius,
+                height: _,
+                normal,
+            } => {
+                self.get_origin()
+                    + match normal {
+                        Direction::X => Coord::new(0.0, radius, radius),
+                        Direction::Y => Coord::new(radius, 0.0, radius),
+                        Direction::Z => Coord::new(radius, radius, 0.0),
+                    }
+            }
             ConfType::Spheroid { origin: _, radius } => {
                 self.get_origin() + Coord::new(radius, radius, radius)
-            },
+            }
         }
     }
 
     pub fn reconstruct(&mut self, new_conf_type: ConfType) {
         // Ensure that the volume we want to create has our origin.
         let new_conf_type = match new_conf_type {
-            ConfType::Cuboid { origin: _, size } => {
-                ConfType::Cuboid { origin: self.get_origin(), size }
+            ConfType::Cuboid { origin: _, size } => ConfType::Cuboid {
+                origin: self.get_origin(),
+                size,
             },
-            ConfType::Cylinder { origin: _, radius, height, normal } => {
-                ConfType::Cylinder { origin: self.get_origin(), radius, height, normal }
+            ConfType::Cylinder {
+                origin: _,
+                radius,
+                height,
+                normal,
+            } => ConfType::Cylinder {
+                origin: self.get_origin(),
+                radius,
+                height,
+                normal,
             },
-            ConfType::Spheroid { origin: _, radius } => {
-                ConfType::Spheroid { origin: self.get_origin(), radius }
+            ConfType::Spheroid { origin: _, radius } => ConfType::Spheroid {
+                origin: self.get_origin(),
+                radius,
             },
         };
 
@@ -197,24 +224,25 @@ impl<'a> Component<'a> for ReadConf {
         if let Some(conf) = self.conf.as_mut() {
             let mut atoms: Vec<mdio::Atom> = Vec::new();
 
-            residues
-                .iter()
-                .for_each(|res| {
-                    let res_name = res.get_residue();
-                    res.get_atoms().iter().for_each(|atom_data| {
-                        let (x, y, z) = atom_data.1.to_tuple();
-                        let (residue, atom) = mdio::get_or_insert_atom_and_residue(
-                            &res_name.borrow(), &atom_data.0.borrow(), &mut conf.residues
-                        ).unwrap();
+            residues.iter().for_each(|res| {
+                let res_name = res.get_residue();
+                res.get_atoms().iter().for_each(|atom_data| {
+                    let (x, y, z) = atom_data.1.to_tuple();
+                    let (residue, atom) = mdio::get_or_insert_atom_and_residue(
+                        &res_name.borrow(),
+                        &atom_data.0.borrow(),
+                        &mut conf.residues,
+                    )
+                    .unwrap();
 
-                        atoms.push(mdio::Atom {
-                            name: Rc::clone(&atom),
-                            residue: Rc::clone(&residue),
-                            position: mdio::RVec { x, y, z },
-                            velocity: None,
-                        });
+                    atoms.push(mdio::Atom {
+                        name: Rc::clone(&atom),
+                        residue: Rc::clone(&residue),
+                        position: mdio::RVec { x, y, z },
+                        velocity: None,
                     });
                 });
+            });
 
             conf.atoms = atoms;
         }
@@ -227,7 +255,12 @@ impl<'a> Component<'a> for ReadConf {
     fn get_origin(&self) -> Coord {
         match self.volume_type {
             ConfType::Cuboid { origin, size: _ } => origin,
-            ConfType::Cylinder { origin, radius: _, height: _, normal: _ } => origin,
+            ConfType::Cylinder {
+                origin,
+                radius: _,
+                height: _,
+                normal: _,
+            } => origin,
             ConfType::Spheroid { origin, radius: _ } => origin,
         }
     }
@@ -264,21 +297,33 @@ impl Describe for ReadConf {
                 ConfType::Cuboid { origin: _, size } => {
                     description.push_str(&format!(
                         " (Cuboid of {} atoms of size {} at {})",
-                        self.num_atoms(), size, self.get_displayed_origin()
+                        self.num_atoms(),
+                        size,
+                        self.get_displayed_origin()
                     ));
-                },
-                ConfType::Cylinder { origin: _, radius, height, normal: _ } => {
+                }
+                ConfType::Cylinder {
+                    origin: _,
+                    radius,
+                    height,
+                    normal: _,
+                } => {
                     description.push_str(&format!(
                         " (Cylinder of {} atoms of radius {:.1} and height {:.1} at {})",
-                        self.num_atoms(), radius, height, self.get_displayed_origin()
+                        self.num_atoms(),
+                        radius,
+                        height,
+                        self.get_displayed_origin()
                     ));
-                },
+                }
                 ConfType::Spheroid { origin: _, radius } => {
                     description.push_str(&format!(
                         " (Spheroid of {} atoms of radius {:.1} at {})",
-                        self.num_atoms(), radius, self.get_displayed_origin()
+                        self.num_atoms(),
+                        radius,
+                        self.get_displayed_origin()
                     ));
-                },
+                }
             }
         }
 
@@ -304,14 +349,24 @@ impl Translate for ReadConf {
 
     fn translate_in_place(&mut self, coord: Coord) {
         self.volume_type = match self.volume_type {
-            ConfType::Cuboid { origin, size } => {
-                ConfType::Cuboid { origin: origin + coord, size }
+            ConfType::Cuboid { origin, size } => ConfType::Cuboid {
+                origin: origin + coord,
+                size,
             },
-            ConfType::Cylinder { origin, radius, height, normal } => {
-                ConfType::Cylinder { origin: origin + coord, radius, height, normal }
+            ConfType::Cylinder {
+                origin,
+                radius,
+                height,
+                normal,
+            } => ConfType::Cylinder {
+                origin: origin + coord,
+                radius,
+                height,
+                normal,
             },
-            ConfType::Spheroid { origin, radius } => {
-                ConfType::Spheroid { origin: origin + coord, radius }
+            ConfType::Spheroid { origin, radius } => ConfType::Spheroid {
+                origin: origin + coord,
+                radius,
             },
         };
     }
@@ -339,25 +394,49 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: 10.0, y: 20.0, z: 30.0 }, // Will be ignored
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: 10.0,
+                y: 20.0,
+                z: 30.0,
+            }, // Will be ignored
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: residues.clone(),
             atoms: vec![
                 // Residue 2
                 mdio::Atom {
                     name: Rc::clone(&residues[1].borrow().atoms[0]),
                     residue: Rc::clone(&residues[1]),
-                    position: RVec { x: 0.0, y: 1.0, z: 2.0 },
-                    velocity: Some(RVec { x: 0.0, y: 0.1, z: 0.2 }),
+                    position: RVec {
+                        x: 0.0,
+                        y: 1.0,
+                        z: 2.0,
+                    },
+                    velocity: Some(RVec {
+                        x: 0.0,
+                        y: 0.1,
+                        z: 0.2,
+                    }),
                 },
                 // Residue 1
                 mdio::Atom {
                     name: Rc::clone(&residues[0].borrow().atoms[0]),
                     residue: Rc::clone(&residues[0]),
-                    position: RVec { x: 3.0, y: 4.0, z: 5.0 },
-                    velocity: Some(RVec { x: 0.3, y: 0.4, z: 0.5 }),
+                    position: RVec {
+                        x: 3.0,
+                        y: 4.0,
+                        z: 5.0,
+                    },
+                    velocity: Some(RVec {
+                        x: 0.3,
+                        y: 0.4,
+                        z: 0.5,
+                    }),
                 },
-            ]
+            ],
         };
 
         let read_conf = ReadConf {
@@ -365,7 +444,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: String::new(),
-            volume_type: ConfType::Cuboid { origin: Coord::ORIGO, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin: Coord::ORIGO,
+                size: Coord::ORIGO,
+            },
         };
 
         let mut iter = read_conf.iter_residues();
@@ -406,25 +488,49 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: 10.0, y: 20.0, z: 30.0 }, // Will be ignored
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: 10.0,
+                y: 20.0,
+                z: 30.0,
+            }, // Will be ignored
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: residues.clone(),
             atoms: vec![
                 // Residue 1
                 mdio::Atom {
                     name: Rc::clone(&residues[0].borrow().atoms[0]),
                     residue: Rc::clone(&residues[0]),
-                    position: RVec { x: 0.0, y: 1.0, z: 2.0 },
-                    velocity: Some(RVec { x: 0.0, y: 0.1, z: 0.2 }),
+                    position: RVec {
+                        x: 0.0,
+                        y: 1.0,
+                        z: 2.0,
+                    },
+                    velocity: Some(RVec {
+                        x: 0.0,
+                        y: 0.1,
+                        z: 0.2,
+                    }),
                 },
                 // Residue 2
                 mdio::Atom {
                     name: Rc::clone(&residues[1].borrow().atoms[0]),
                     residue: Rc::clone(&residues[1]),
-                    position: RVec { x: 3.0, y: 4.0, z: 5.0 },
-                    velocity: Some(RVec { x: 0.3, y: 0.4, z: 0.5 }),
+                    position: RVec {
+                        x: 3.0,
+                        y: 4.0,
+                        z: 5.0,
+                    },
+                    velocity: Some(RVec {
+                        x: 0.3,
+                        y: 0.4,
+                        z: 0.5,
+                    }),
                 },
-            ]
+            ],
         };
 
         let read_conf = ReadConf {
@@ -432,7 +538,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: String::new(),
-            volume_type: ConfType::Cuboid { origin: Coord::ORIGO, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin: Coord::ORIGO,
+                size: Coord::ORIGO,
+            },
         };
 
         let mut iter = read_conf.iter_residues();
@@ -455,7 +564,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: String::new(),
-            volume_type: ConfType::Cuboid { origin: Coord::ORIGO, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin: Coord::ORIGO,
+                size: Coord::ORIGO,
+            },
         };
         assert!(unread_conf.iter_residues().next().is_none());
     }
@@ -475,25 +587,49 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: 10.0, y: 20.0, z: 30.0 }, // Will be ignored
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: 10.0,
+                y: 20.0,
+                z: 30.0,
+            }, // Will be ignored
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: residues.clone(),
             atoms: vec![
                 // Residue 1
                 mdio::Atom {
                     name: Rc::clone(&residues[0].borrow().atoms[0]),
                     residue: Rc::clone(&residues[0]),
-                    position: RVec { x: 0.0, y: 1.0, z: 2.0 },
-                    velocity: Some(RVec { x: 0.0, y: 0.1, z: 0.2 }),
+                    position: RVec {
+                        x: 0.0,
+                        y: 1.0,
+                        z: 2.0,
+                    },
+                    velocity: Some(RVec {
+                        x: 0.0,
+                        y: 0.1,
+                        z: 0.2,
+                    }),
                 },
                 // Residue 2
                 mdio::Atom {
                     name: Rc::clone(&residues[1].borrow().atoms[0]),
                     residue: Rc::clone(&residues[1]),
-                    position: RVec { x: 3.0, y: 4.0, z: 5.0 },
-                    velocity: Some(RVec { x: 0.3, y: 0.4, z: 0.5 }),
+                    position: RVec {
+                        x: 3.0,
+                        y: 4.0,
+                        z: 5.0,
+                    },
+                    velocity: Some(RVec {
+                        x: 0.3,
+                        y: 0.4,
+                        z: 0.5,
+                    }),
                 },
-            ]
+            ],
         };
 
         let mut read_conf = ReadConf {
@@ -501,18 +637,17 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: String::new(),
-            volume_type: ConfType::Cuboid { origin: Coord::ORIGO, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin: Coord::ORIGO,
+                size: Coord::ORIGO,
+            },
         };
 
         let original: Vec<ResidueIterOut> = read_conf.iter_residues().collect::<Vec<_>>();
         assert_eq!(original.len(), 2);
 
         // Modify the residue list by reversing it
-        let modified = original
-                .iter()
-                .cloned()
-                .rev()
-                .collect::<Vec<_>>();
+        let modified = original.iter().cloned().rev().collect::<Vec<_>>();
 
         read_conf.assign_residues(&modified);
 
@@ -534,8 +669,16 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: x0, y: y0, z: z0 },
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: x0,
+                y: y0,
+                z: z0,
+            },
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -545,7 +688,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cuboid { origin, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin,
+                size: Coord::ORIGO,
+            },
         };
 
         let description = comp.describe();
@@ -560,8 +706,16 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: x0, y: y0, z: z0 },
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: x0,
+                y: y0,
+                z: z0,
+            },
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -599,8 +753,16 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: x0, y: y0, z: z0 },
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: x0,
+                y: y0,
+                z: z0,
+            },
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -610,7 +772,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cuboid { origin, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin,
+                size: Coord::ORIGO,
+            },
         };
 
         assert_eq!(cuboid.get_displayed_origin(), origin);
@@ -668,12 +833,10 @@ pub mod tests {
 
     #[test]
     fn use_read_conf_to_construct_larger_cuboid_multiplies_and_cuts_the_base() {
-        let residues = vec![
-            Rc::new(RefCell::new(mdio::Residue {
-                name: Rc::new(RefCell::new("RES1".to_string())),
-                atoms: vec![Rc::new(RefCell::new("AT1".to_string()))],
-            })),
-        ];
+        let residues = vec![Rc::new(RefCell::new(mdio::Residue {
+            name: Rc::new(RefCell::new("RES1".to_string())),
+            atoms: vec![Rc::new(RefCell::new("AT1".to_string()))],
+        }))];
 
         let origin = Coord::new(20.0, 20.0, 30.0);
         let (x0, y0, z0) = origin.to_tuple();
@@ -689,23 +852,39 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: x0, y: y0, z: z0 },
-            size: RVec { x: dx, y: dy, z: dz },
+            origin: RVec {
+                x: x0,
+                y: y0,
+                z: z0,
+            },
+            size: RVec {
+                x: dx,
+                y: dy,
+                z: dz,
+            },
             residues: residues.clone(),
             atoms: vec![
                 mdio::Atom {
                     name: Rc::clone(&residues[0].borrow().atoms[0]),
                     residue: Rc::clone(&residues[0]),
-                    position: RVec { x: x1, y: y1, z: z1 },
+                    position: RVec {
+                        x: x1,
+                        y: y1,
+                        z: z1,
+                    },
                     velocity: None,
                 },
                 mdio::Atom {
                     name: Rc::clone(&residues[0].borrow().atoms[0]),
                     residue: Rc::clone(&residues[0]),
-                    position: RVec { x: x2, y: y2, z: z2 },
+                    position: RVec {
+                        x: x2,
+                        y: y2,
+                        z: z2,
+                    },
                     velocity: None,
                 },
-            ]
+            ],
         };
 
         let mut cuboid = ReadConf {
@@ -713,14 +892,20 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: String::new(),
-            volume_type: ConfType::Cuboid { origin, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin,
+                size: Coord::ORIGO,
+            },
         };
 
         // Construct this cuboid which is 1.5x larger along x (thus only the first atom
         // is multiplied) and 2x larger along y and z
 
         let new_size = Coord::new(dx * 1.5, dy * 2.0, dz * 2.0);
-        let new_volume = ConfType::Cuboid { origin: Coord::ORIGO, size: new_size };
+        let new_volume = ConfType::Cuboid {
+            origin: Coord::ORIGO,
+            size: new_size,
+        };
 
         cuboid.reconstruct(new_volume);
 
@@ -741,8 +926,16 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: x0, y: y0, z: z0 },
-            size: RVec { x: dx_bad, y: dy_bad, z: dz_bad }, // Will not be used
+            origin: RVec {
+                x: x0,
+                y: y0,
+                z: z0,
+            },
+            size: RVec {
+                x: dx_bad,
+                y: dy_bad,
+                z: dz_bad,
+            }, // Will not be used
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -766,7 +959,12 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cylinder { origin, radius, height, normal },
+            volume_type: ConfType::Cylinder {
+                origin,
+                radius,
+                height,
+                normal,
+            },
         };
 
         // The cylinder normal is aligned along y
@@ -782,8 +980,16 @@ pub mod tests {
         // This configuration has the wrong origin
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: 0.0, y: 0.0, z: 0.0 },
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 }, // Will not be used
+            origin: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }, // Will not be used
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -810,8 +1016,16 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: 1.0, y: 2.0, z: 3.0 },
-            size: RVec { x: dx_bad, y: dy_bad, z: dz_bad }, // Will not be used
+            origin: RVec {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+            },
+            size: RVec {
+                x: dx_bad,
+                y: dy_bad,
+                z: dz_bad,
+            }, // Will not be used
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -821,7 +1035,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cuboid { origin: Coord::ORIGO, size },
+            volume_type: ConfType::Cuboid {
+                origin: Coord::ORIGO,
+                size,
+            },
         };
 
         assert_eq!(cuboid.calc_size(), size);
@@ -835,7 +1052,12 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cylinder { origin: Coord::ORIGO, radius, height, normal },
+            volume_type: ConfType::Cylinder {
+                origin: Coord::ORIGO,
+                radius,
+                height,
+                normal,
+            },
         };
 
         let cylinder_size = Coord::new(height, 2.0 * radius, 2.0 * radius);
@@ -847,7 +1069,12 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cylinder { origin: Coord::ORIGO, radius, height, normal },
+            volume_type: ConfType::Cylinder {
+                origin: Coord::ORIGO,
+                radius,
+                height,
+                normal,
+            },
         };
 
         let cylinder_size = Coord::new(2.0 * radius, height, 2.0 * radius);
@@ -859,7 +1086,12 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cylinder { origin: Coord::ORIGO, radius, height, normal },
+            volume_type: ConfType::Cylinder {
+                origin: Coord::ORIGO,
+                radius,
+                height,
+                normal,
+            },
         };
 
         let cylinder_size = Coord::new(2.0 * radius, 2.0 * radius, height);
@@ -877,8 +1109,16 @@ pub mod tests {
 
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: x0_bad, y: y0_bad, z: z0_bad }, // Will not be used
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: x0_bad,
+                y: y0_bad,
+                z: z0_bad,
+            }, // Will not be used
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -888,7 +1128,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cuboid { origin, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin,
+                size: Coord::ORIGO,
+            },
         };
 
         assert_eq!(cuboid.get_origin(), origin);
@@ -902,7 +1145,12 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cylinder { origin, radius, height, normal },
+            volume_type: ConfType::Cylinder {
+                origin,
+                radius,
+                height,
+                normal,
+            },
         };
 
         // The cylinder normal is aligned along y
@@ -913,8 +1161,16 @@ pub mod tests {
     fn translate_uses_origin_in_volume_type() {
         let conf = mdio::Conf {
             title: "A title".to_string(),
-            origin: RVec { x: 0.0, y: 0.0, z: 0.0 }, // Will not be used
-            size: RVec { x: 0.0, y: 0.0, z: 0.0 },
+            origin: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            }, // Will not be used
+            size: RVec {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
             residues: Vec::new(),
             atoms: Vec::new(),
         };
@@ -927,7 +1183,10 @@ pub mod tests {
             backup_conf: None,
             path: PathBuf::from(""),
             description: "".to_string(),
-            volume_type: ConfType::Cuboid { origin, size: Coord::ORIGO },
+            volume_type: ConfType::Cuboid {
+                origin,
+                size: Coord::ORIGO,
+            },
         };
 
         let cuboid_translated = cuboid.clone().translate(-origin);

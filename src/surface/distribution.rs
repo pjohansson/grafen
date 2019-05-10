@@ -1,9 +1,6 @@
 //! Implement a Poisson Disc distribution algorithm.
 
-use crate::{
-    coord::Coord,
-    surface::points::Points
-};
+use crate::{coord::Coord, surface::points::Points};
 
 use rand;
 use std::cmp;
@@ -26,8 +23,8 @@ impl Distribution {
 }
 
 mod number {
-    use rand::distributions::IndependentSample;
     use super::*;
+    use rand::distributions::IndependentSample;
 
     pub struct BlueNoiseDistribution;
 
@@ -59,7 +56,7 @@ mod number {
                         max_dist = dist;
                         current_best = candidate;
                     }
-                };
+                }
 
                 coords.push(current_best);
             }
@@ -74,10 +71,9 @@ mod number {
     pub fn calc_min_dist(coord: Coord, samples: &[Coord], size_x: f64, size_y: f64) -> f64 {
         use std::f64::MAX;
 
-        samples.iter()
-               .fold(MAX, |dist, &other| {
-                    dist.min(calc_toroidal_distance(coord, other, size_x, size_y))
-               })
+        samples.iter().fold(MAX, |dist, &other| {
+            dist.min(calc_toroidal_distance(coord, other, size_x, size_y))
+        })
     }
 
     pub fn calc_toroidal_distance(coord: Coord, other: Coord, size_x: f64, size_y: f64) -> f64 {
@@ -85,7 +81,7 @@ mod number {
         let mut dy = (coord.y - other.y).abs();
 
         if dx > size_x / 2.0 {
-           dx = size_x - dx;
+            dx = size_x - dx;
         }
 
         if dy > size_y / 2.0 {
@@ -100,13 +96,17 @@ mod number {
         let range_x = rand::distributions::Range::new(0.0, dx);
         let range_y = rand::distributions::Range::new(0.0, dy);
 
-        Coord::new(range_x.ind_sample(&mut rng), range_y.ind_sample(&mut rng), 0.0)
+        Coord::new(
+            range_x.ind_sample(&mut rng),
+            range_y.ind_sample(&mut rng),
+            0.0,
+        )
     }
 }
 
 mod density {
-    use rand::distributions::IndependentSample;
     use super::*;
+    use rand::distributions::IndependentSample;
 
     pub struct PoissonDistribution;
 
@@ -116,7 +116,8 @@ mod density {
 
             let init_coord = gen_grid_coord(size_x, size_y);
             let mut active: Vec<Coord> = vec![init_coord];
-            grid.set_coord(init_coord).expect("There was an error when creating the Poisson disc distribution");
+            grid.set_coord(init_coord)
+                .expect("There was an error when creating the Poisson disc distribution");
 
             while !active.is_empty() {
                 let index = select_coordinate(&active);
@@ -258,7 +259,11 @@ mod density {
         let range_x = rand::distributions::Range::new(0.0, x);
         let range_y = rand::distributions::Range::new(0.0, y);
 
-        Coord::new(range_x.ind_sample(&mut rng), range_y.ind_sample(&mut rng), 0.0)
+        Coord::new(
+            range_x.ind_sample(&mut rng),
+            range_y.ind_sample(&mut rng),
+            0.0,
+        )
     }
 
     fn select_coordinate(coords: &Vec<Coord>) -> usize {
@@ -301,7 +306,7 @@ mod tests {
 
         // We can only (easily) assert that we have the input number of points
         // and that none are outside of the box.
-        assert_eq!(distribution.coords.len() , num_points as usize);
+        assert_eq!(distribution.coords.len(), num_points as usize);
 
         for coord in distribution.coords {
             assert!(coord.x >= 0.0 && coord.x <= size_x);
@@ -319,7 +324,10 @@ mod tests {
         // Both coordinates are closer by wrapping around! Also, ignore the z coordinate!
         let dist = (size_x - 1.5).powi(2) + (size_y - 2.5).powi(2);
 
-        assert_eq!(number::calc_toroidal_distance(coord, other, size_x, size_y), dist);
+        assert_eq!(
+            number::calc_toroidal_distance(coord, other, size_x, size_y),
+            dist
+        );
     }
 
     #[test]
@@ -329,13 +337,16 @@ mod tests {
         let candidates = vec![
             Coord::new(0.0, 0.0, 0.0), // distance squared: 2^2 + 2^2 =  8
             Coord::new(3.0, 1.0, 3.0), //                   1^2 + 1^2 =  2, minimum!
-            Coord::new(5.0, 5.0, 5.0)  //                   3^2 + 3^2 = 18
+            Coord::new(5.0, 5.0, 5.0), //                   3^2 + 3^2 = 18
         ];
 
         let dist = 2.0 * 1.0_f64.powi(2);
 
         let (size_x, size_y) = (10.0, 10.0);
 
-        assert_eq!(number::calc_min_dist(coord, &candidates, size_x, size_y), dist);
+        assert_eq!(
+            number::calc_min_dist(coord, &candidates, size_x, size_y),
+            dist
+        );
     }
 }

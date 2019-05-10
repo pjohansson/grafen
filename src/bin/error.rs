@@ -8,7 +8,7 @@ use std::{
     fmt::{self, Display},
     io,
     num::{ParseFloatError, ParseIntError},
-    result
+    result,
 };
 
 /// Shorthand for our `Result` class.
@@ -84,21 +84,13 @@ impl Display for GrafenCliError {
         let red_error = "error:".color("red");
 
         match *self {
-            GrafenCliError::IoError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
-            GrafenCliError::RunError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
+            GrafenCliError::IoError(ref err) => write!(f, "{} {}", red_error, err),
+            GrafenCliError::RunError(ref err) => write!(f, "{} {}", red_error, err),
             GrafenCliError::ConstructError(ref err) => {
                 write!(f, "{}", err.as_str().color("yellow"))
-            },
-            GrafenCliError::UIError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
-            GrafenCliError::ReadConfError(ref err) => {
-                write!(f, "{}", err.as_str().color("yellow"))
             }
+            GrafenCliError::UIError(ref err) => write!(f, "{} {}", red_error, err),
+            GrafenCliError::ReadConfError(ref err) => write!(f, "{}", err.as_str().color("yellow")),
         }
     }
 }

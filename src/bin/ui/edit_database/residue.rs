@@ -2,18 +2,17 @@
 
 use crate::{
     error::{GrafenCliError, Result, UIErrorKind, UIResult},
-    ui::utils::{MenuResult, remove_items, reorder_list, select_command, get_position_from_user,
-                get_value_from_user, print_list_description}
+    ui::utils::{
+        get_position_from_user, get_value_from_user, print_list_description, remove_items,
+        reorder_list, select_command, MenuResult,
+    },
 };
 
 use grafen::{
     describe::describe_list,
-    system::{Atom, Residue}
+    system::{Atom, Residue},
 };
-use std::{
-    error::Error,
-    result
-};
+use std::{error::Error, result};
 
 pub fn user_menu(mut residue_list: &mut Vec<Residue>) -> MenuResult {
     let residues_backup = residue_list.clone();
@@ -169,7 +168,10 @@ mod tests {
         builder.name = "is_set".to_string();
         assert!(builder.finalize().is_err());
 
-        builder.atoms.push(Atom { code: "A".to_string(), position: Coord::ORIGO });
+        builder.atoms.push(Atom {
+            code: "A".to_string(),
+            position: Coord::ORIGO,
+        });
         assert!(builder.finalize().is_ok());
     }
 }

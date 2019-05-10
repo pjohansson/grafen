@@ -7,13 +7,13 @@ mod lattice;
 mod points;
 mod sheet;
 
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 // Export components
 pub use self::{
     cuboid::{Cuboid, Sides},
+    cylinder::{Cylinder, CylinderCap},
     sheet::{Circle, Sheet},
-    cylinder::{Cylinder, CylinderCap}
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
@@ -42,6 +42,6 @@ pub enum LatticeType {
     /// D. P. Mitchell, Proceeding SIGGRAPH '91
     BlueNoise {
         #[serde(skip_deserializing)]
-        number: u64
+        number: u64,
     },
 }

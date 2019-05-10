@@ -25,12 +25,13 @@ impl Points {
         let range = rand::distributions::Range::new(-std_z, std_z);
         let mut rng = rand::thread_rng();
 
-        let coords: Vec<Coord> = self.coords
+        let coords: Vec<Coord> = self
+            .coords
             .iter()
             .map(|&c| {
-                    let add_z = range.ind_sample(&mut rng);
-                    //c.add(Coord::new(0.0, 0.0, add_z))
-                    c + Coord::new(0.0, 0.0, add_z)
+                let add_z = range.ind_sample(&mut rng);
+                //c.add(Coord::new(0.0, 0.0, add_z))
+                c + Coord::new(0.0, 0.0, add_z)
             })
             .collect();
 
@@ -57,13 +58,18 @@ mod tests {
         let distributed_points = points.uniform_distribution(dz);
 
         // Assert that the positions are centered around z0 with non-zero variance
-        assert!(distributed_points.coords.iter().all(|&c| c.z.abs() - z0 <= dz));
+        assert!(distributed_points
+            .coords
+            .iter()
+            .all(|&c| c.z.abs() - z0 <= dz));
 
         let len = distributed_points.coords.len();
-        let var_z: f64 = distributed_points.coords
+        let var_z: f64 = distributed_points
+            .coords
             .iter()
             .map(|c| (c.z - z0) * (c.z - z0))
-            .sum::<f64>() / (len as f64);
+            .sum::<f64>()
+            / (len as f64);
         assert!(var_z > 0.0);
     }
 }

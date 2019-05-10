@@ -5,11 +5,11 @@ use crate::{
     describe::{unwrap_name, Describe},
     iterator::{ResidueIter, ResidueIterOut},
     system::{Component, Residue},
-    volume::*
+    volume::*,
 };
 
 use rand::{self, distributions::IndependentSample};
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -47,8 +47,12 @@ impl Contains for Spheroid {
 
 impl Describe for Spheroid {
     fn describe(&self) -> String {
-        format!("{} (Spherical volume of radius {:.2} at {})",
-            unwrap_name(&self.name), self.radius, self.origin)
+        format!(
+            "{} (Spherical volume of radius {:.2} at {})",
+            unwrap_name(&self.name),
+            self.radius,
+            self.origin
+        )
     }
 
     fn describe_short(&self) -> String {
@@ -71,9 +75,11 @@ impl Volume for Spheroid {
                     residue: self.residue,
                     origin: self.origin,
                     size,
-                    .. Cuboid::default()
-                }.fill(fill_type).to_sphere(self.radius)
-            },
+                    ..Cuboid::default()
+                }
+                .fill(fill_type)
+                .to_sphere(self.radius)
+            }
             FillType::NumCoords(num_coords) => {
                 // To fill with an exact number of coordinates, generate them explictly.
                 // Note that this currently uses a generation that does not account for
@@ -85,7 +91,7 @@ impl Volume for Spheroid {
 
                 let mut rng = rand::thread_rng();
 
-                let mut gen_coord = | | {
+                let mut gen_coord = || {
                     let radius = range_radius.ind_sample(&mut rng);
                     let theta = range_theta.ind_sample(&mut rng);
                     let phi = range_phi.ind_sample(&mut rng);
@@ -101,7 +107,7 @@ impl Volume for Spheroid {
 
                 Spheroid {
                     coords,
-                    .. self.clone()
+                    ..self.clone()
                 }
             }
         }
@@ -113,7 +119,4 @@ impl Volume for Spheroid {
 }
 
 #[cfg(test)]
-mod tests {
-    
-
-}
+mod tests {}

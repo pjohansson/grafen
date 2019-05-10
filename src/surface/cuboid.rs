@@ -6,11 +6,11 @@ use crate::{
     error::Result,
     iterator::{ResidueIter, ResidueIterOut},
     surface::{LatticeType, Sheet},
-    system::*
+    system::*,
 };
 
 use bitflags::bitflags;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 
 impl_component![Cuboid];
@@ -109,22 +109,28 @@ impl Cuboid {
             normal: Direction::X,
             length: dz_target,
             width: dy_target,
-            .. sheet_base.clone()
-        }.construct()?.with_pbc();
+            ..sheet_base.clone()
+        }
+        .construct()?
+        .with_pbc();
 
         let sheet_xz = Sheet {
             normal: Direction::Y,
             length: dx_target,
             width: dz_target,
-            .. sheet_base.clone()
-        }.construct()?.with_pbc();
+            ..sheet_base.clone()
+        }
+        .construct()?
+        .with_pbc();
 
         let sheet_xy = Sheet {
             normal: Direction::Z,
             length: dx_target,
             width: dy_target,
-            .. sheet_base.clone()
-        }.construct()?.with_pbc();
+            ..sheet_base.clone()
+        }
+        .construct()?
+        .with_pbc();
 
         let (dx, dy, dz) = (sheet_xy.length, sheet_xy.width, sheet_yz.length);
 
@@ -158,7 +164,7 @@ impl Cuboid {
         Ok(Cuboid {
             coords,
             size: Coord::new(dx, dy, dz),
-            .. self
+            ..self
         })
     }
 
@@ -170,8 +176,12 @@ impl Cuboid {
 
 impl Describe for Cuboid {
     fn describe(&self) -> String {
-        format!("{} (Surface box of size {} at {})",
-            unwrap_name(&self.name), self.size, self.origin)
+        format!(
+            "{} (Surface box of size {} at {})",
+            unwrap_name(&self.name),
+            self.size,
+            self.origin
+        )
     }
 
     fn describe_short(&self) -> String {
@@ -183,8 +193,12 @@ impl Describe for Cuboid {
 mod tests {
     use super::*;
 
-    fn setup_sheets_and_cuboid_base(dx: f64, dy: f64, dz: f64, lattice: LatticeType)
-        -> (Sheet, Sheet, Sheet, Cuboid) {
+    fn setup_sheets_and_cuboid_base(
+        dx: f64,
+        dy: f64,
+        dz: f64,
+        lattice: LatticeType,
+    ) -> (Sheet, Sheet, Sheet, Cuboid) {
         let size = Coord::new(dx, dy, dz);
 
         // Create sheets of the box in each direction to compare against.
@@ -204,24 +218,33 @@ mod tests {
             normal: Direction::Z,
             length: dx,
             width: dy,
-            .. sheet_base.clone()
-        }.construct().unwrap().with_pbc();
+            ..sheet_base.clone()
+        }
+        .construct()
+        .unwrap()
+        .with_pbc();
         assert!(!sheet_xy.coords.is_empty());
 
         let sheet_xz = Sheet {
             normal: Direction::Y,
             length: dx,
             width: dz,
-            .. sheet_base.clone()
-        }.construct().unwrap().with_pbc();
+            ..sheet_base.clone()
+        }
+        .construct()
+        .unwrap()
+        .with_pbc();
         assert!(!sheet_xz.coords.is_empty());
 
         let sheet_yz = Sheet {
             normal: Direction::X,
             length: dz,
             width: dy,
-            .. sheet_base.clone()
-        }.construct().unwrap().with_pbc();
+            ..sheet_base.clone()
+        }
+        .construct()
+        .unwrap()
+        .with_pbc();
         assert!(!sheet_yz.coords.is_empty());
 
         // Now create the cuboids with the six different faces and ensure that the coordinates
@@ -245,20 +268,24 @@ mod tests {
         let (dx, dy, dz) = (3.0, 5.0, 7.0);
         let lattice = LatticeType::Hexagonal { a: 0.57 };
 
-        let (sheet_xy, sheet_xz, sheet_yz, cuboid_base) = setup_sheets_and_cuboid_base(
-            dx, dy, dz, lattice);
+        let (sheet_xy, sheet_xz, sheet_yz, cuboid_base) =
+            setup_sheets_and_cuboid_base(dx, dy, dz, lattice);
 
         let cuboid_x0 = Cuboid {
             sides: Sides::X0,
-            .. cuboid_base.clone()
-        }.construct().unwrap();
+            ..cuboid_base.clone()
+        }
+        .construct()
+        .unwrap();
 
         assert_eq!(cuboid_x0.coords, sheet_yz.coords);
 
         let cuboid_x1 = Cuboid {
             sides: Sides::X1,
-            .. cuboid_base.clone()
-        }.construct().unwrap();
+            ..cuboid_base.clone()
+        }
+        .construct()
+        .unwrap();
 
         // Compare the further away side by translating the sheet coordinates accordingly.
         // Note that they are translated using the *output* side size, since this may not
@@ -270,15 +297,19 @@ mod tests {
 
         let cuboid_y0 = Cuboid {
             sides: Sides::Y0,
-            .. cuboid_base.clone()
-        }.construct().unwrap();
+            ..cuboid_base.clone()
+        }
+        .construct()
+        .unwrap();
 
         assert_eq!(cuboid_y0.coords, sheet_xz.coords);
 
         let cuboid_y1 = Cuboid {
             sides: Sides::Y1,
-            .. cuboid_base.clone()
-        }.construct().unwrap();
+            ..cuboid_base.clone()
+        }
+        .construct()
+        .unwrap();
 
         let dr = Coord::new(0.0, sheet_xy.width, 0.0);
         for (&c0, &c1) in cuboid_y1.coords.iter().zip(sheet_xz.coords.iter()) {
@@ -287,15 +318,19 @@ mod tests {
 
         let cuboid_z0 = Cuboid {
             sides: Sides::Z0,
-            .. cuboid_base.clone()
-        }.construct().unwrap();
+            ..cuboid_base.clone()
+        }
+        .construct()
+        .unwrap();
 
         assert_eq!(cuboid_z0.coords, sheet_xy.coords);
 
         let cuboid_z1 = Cuboid {
             sides: Sides::Z1,
-            .. cuboid_base.clone()
-        }.construct().unwrap();
+            ..cuboid_base.clone()
+        }
+        .construct()
+        .unwrap();
 
         let dr = Coord::new(0.0, 0.0, sheet_yz.length);
         for (&c0, &c1) in cuboid_z1.coords.iter().zip(sheet_xy.coords.iter()) {
@@ -308,15 +343,20 @@ mod tests {
         let (dx, dy, dz) = (3.0, 5.0, 7.0);
         let lattice = LatticeType::Hexagonal { a: 0.57 };
 
-        let (_, sheet_xz, sheet_yz, cuboid_base)
-            = setup_sheets_and_cuboid_base(dx, dy, dz, lattice);
+        let (_, sheet_xz, sheet_yz, cuboid_base) =
+            setup_sheets_and_cuboid_base(dx, dy, dz, lattice);
 
         let cuboid = Cuboid {
             sides: Sides::X0 | Sides::X1 | Sides::Y0,
-            .. cuboid_base
-        }.construct().unwrap();
+            ..cuboid_base
+        }
+        .construct()
+        .unwrap();
 
-        assert_eq!(cuboid.coords.len(), 2 * sheet_yz.coords.len() + sheet_xz.coords.len());
+        assert_eq!(
+            cuboid.coords.len(),
+            2 * sheet_yz.coords.len() + sheet_xz.coords.len()
+        );
     }
 
     #[test]
@@ -324,8 +364,8 @@ mod tests {
         let (dx_target, dy_target, dz_target) = (3.0, 5.0, 7.0);
         let lattice = LatticeType::Hexagonal { a: 0.57 };
 
-        let (sheet_xy, _, sheet_yz, cuboid_base) = setup_sheets_and_cuboid_base(
-            dx_target, dy_target, dz_target, lattice);
+        let (sheet_xy, _, sheet_yz, cuboid_base) =
+            setup_sheets_and_cuboid_base(dx_target, dy_target, dz_target, lattice);
 
         // The final box size will be that of the sheets
         let size = Coord::new(sheet_xy.length, sheet_xy.width, sheet_yz.length);
@@ -341,20 +381,22 @@ mod tests {
         let (dx_target, dy_target, dz_target) = (3.0, 5.0, 7.0);
         let lattice = LatticeType::Hexagonal { a: 0.57 };
 
-        let (sheet_xy, _, _, cuboid_base) = setup_sheets_and_cuboid_base(
-            dx_target, dy_target, dz_target, lattice);
+        let (sheet_xy, _, _, cuboid_base) =
+            setup_sheets_and_cuboid_base(dx_target, dy_target, dz_target, lattice);
 
         // Create a cuboid with a side in the (lower) xy plane
         let cuboid_z0 = Cuboid {
             std_z: Some(2.0),
             sides: Sides::Z0,
-            .. cuboid_base
-        }.construct().unwrap();
+            ..cuboid_base
+        }
+        .construct()
+        .unwrap();
 
-        assert!(!cuboid_z0.coords
+        assert!(!cuboid_z0
+            .coords
             .iter()
             .zip(sheet_xy.coords.iter())
-            .all(|(&c0, &c1)| c0.z == c1.z)
-        );
+            .all(|(&c0, &c1)| c0.z == c1.z));
     }
 }

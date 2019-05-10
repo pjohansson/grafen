@@ -5,7 +5,7 @@ use crate::{
     describe::{unwrap_name, Describe},
     iterator::{ResidueIter, ResidueIterOut},
     system::{Component, Residue},
-    volume::*
+    volume::*,
 };
 
 use rand::{self, distributions::IndependentSample};
@@ -55,8 +55,13 @@ impl Contains for Cylinder {
 
 impl Describe for Cylinder {
     fn describe(&self) -> String {
-        format!("{} (Cylinder volume of radius {:.2} and height {:.2} at {})",
-            unwrap_name(&self.name), self.radius, self.height, self.origin)
+        format!(
+            "{} (Cylinder volume of radius {:.2} and height {:.2} at {})",
+            unwrap_name(&self.name),
+            self.radius,
+            self.height,
+            self.origin
+        )
     }
 
     fn describe_short(&self) -> String {
@@ -85,9 +90,11 @@ impl Volume for Cylinder {
                     residue: self.residue,
                     origin: self.origin,
                     size,
-                    .. Cuboid::default()
-                }.fill(fill_type).to_cylinder(self.radius, self.height, self.alignment)
-            },
+                    ..Cuboid::default()
+                }
+                .fill(fill_type)
+                .to_cylinder(self.radius, self.height, self.alignment)
+            }
             FillType::NumCoords(num_coords) => {
                 // To fill with an exact number of coordinates, generate them explictly.
                 // Note that this currently uses a generation that does not account for
@@ -99,7 +106,7 @@ impl Volume for Cylinder {
 
                 let mut rng = rand::thread_rng();
 
-                let mut gen_coord = | | {
+                let mut gen_coord = || {
                     let radius = range_radius.ind_sample(&mut rng);
                     let angle = range_angle.ind_sample(&mut rng);
 
@@ -119,7 +126,7 @@ impl Volume for Cylinder {
 
                 Cylinder {
                     coords,
-                    .. self.clone()
+                    ..self.clone()
                 }
             }
         }
@@ -196,13 +203,22 @@ mod tests {
 
         let diameter = 2.0 * radius;
 
-        assert_eq!(Coord::new(height, diameter, diameter), cylinder.calc_box_size());
+        assert_eq!(
+            Coord::new(height, diameter, diameter),
+            cylinder.calc_box_size()
+        );
 
         cylinder.alignment = Direction::Y;
-        assert_eq!(Coord::new(diameter, height, diameter), cylinder.calc_box_size());
+        assert_eq!(
+            Coord::new(diameter, height, diameter),
+            cylinder.calc_box_size()
+        );
 
         cylinder.alignment = Direction::Z;
-        assert_eq!(Coord::new(diameter, diameter, height), cylinder.calc_box_size());
+        assert_eq!(
+            Coord::new(diameter, diameter, height),
+            cylinder.calc_box_size()
+        );
     }
 
     #[test]
@@ -297,7 +313,8 @@ mod tests {
             density: None,
             alignment: Direction::Y,
             coords: vec![],
-        }.fill(FillType::Density(density));
+        }
+        .fill(FillType::Density(density));
 
         let expected_coords = (cylinder.volume() * density).round() as usize;
         let ratio = cylinder.coords.len() as f64 / expected_coords as f64;

@@ -5,7 +5,7 @@ use crate::error::Result;
 use grafen::system::{Component, System};
 use std::{
     fs::File,
-    io::{BufWriter, Write}
+    io::{BufWriter, Write},
 };
 
 /// Output a system to disk as a GROMOS formatted file.
@@ -37,9 +37,17 @@ pub fn write_gromos(system: &System) -> Result<()> {
 
                 let (x, y, z) = (x0 + position.x, y0 + position.y, z0 + position.z);
 
-                write!(&mut writer, "{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
-                    res_num, res_name.borrow(), atom_name.borrow(), atom_num,
-                    x, y, z)?;
+                write!(
+                    &mut writer,
+                    "{:>5}{:<5}{:>5}{:>5}{:>8.3}{:>8.3}{:>8.3}\n",
+                    res_num,
+                    res_name.borrow(),
+                    atom_name.borrow(),
+                    atom_num,
+                    x,
+                    y,
+                    z
+                )?;
 
                 atom_num_total += 1;
             }
