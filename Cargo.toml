@@ -18,6 +18,7 @@ travis-ci = { repository = "pjohansson/grafen", branch = "master" }
 [dependencies]
 bitflags = "1.0"
 colored = "1.6"
+dirs = "1.0"
 dialoguer = "0.1"
 mdio = { git = "https://github.com/pjohansson/mdio" }
 rand = "~0.3.0"
