@@ -8,7 +8,10 @@ use crate::{
     volume::*,
 };
 
-use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
+use rand::{
+    distributions::{Distribution as _, Uniform},
+    thread_rng,
+};
 use std::f64::consts::PI;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

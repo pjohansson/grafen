@@ -16,12 +16,7 @@ use grafen::{
 
 use colored::*;
 use dirs;
-use std::{
-    env::current_dir,
-    fs::DirBuilder,
-    path::PathBuf,
-    process,
-};
+use std::{env::current_dir, fs::DirBuilder, path::PathBuf, process};
 use structopt::StructOpt;
 
 const DEFAULT_DBNAME: &str = "database.json";
@@ -139,13 +134,13 @@ fn read_or_create_default_database() -> Result<DataBase> {
                 "{}",
                 format!(
                     "Could not find a location for the default database. \
-                    Opening a temporary database which cannot be saved.",
+                     Opening a temporary database which cannot be saved.",
                 )
                 .color("yellow")
             );
 
             return Ok(DataBase::new());
-        },
+        }
     };
 
     // See if a database can be found before creating a new one.
@@ -185,7 +180,6 @@ fn get_default_database_path() -> Option<PathBuf> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use std::env::set_var;
     use std::path::Component;
     #[test]
     #[cfg(any(unix, windows))]

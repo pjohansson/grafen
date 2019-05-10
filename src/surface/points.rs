@@ -4,7 +4,10 @@
 //! of the points belong in this module.
 
 use crate::coord::Coord;
-use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
+use rand::{
+    distributions::{Distribution as _, Uniform},
+    thread_rng,
+};
 
 /// A collection of points to broadcast residues onto.
 pub struct Points {

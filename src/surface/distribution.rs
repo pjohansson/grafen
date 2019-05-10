@@ -2,7 +2,10 @@
 
 use crate::{coord::Coord, surface::points::Points};
 
-use rand::{thread_rng, distributions::{Distribution as _, Uniform}};
+use rand::{
+    distributions::{Distribution as _, Uniform},
+    thread_rng,
+};
 use std::cmp;
 
 /// Container for constructing different randomly sampled distributions.
@@ -95,11 +98,7 @@ mod number {
         let range_x = Uniform::new(0.0, dx);
         let range_y = Uniform::new(0.0, dy);
 
-        Coord::new(
-            range_x.sample(&mut rng),
-            range_y.sample(&mut rng),
-            0.0,
-        )
+        Coord::new(range_x.sample(&mut rng), range_y.sample(&mut rng), 0.0)
     }
 }
 
@@ -257,11 +256,7 @@ mod density {
         let range_x = Uniform::new(0.0, x);
         let range_y = Uniform::new(0.0, y);
 
-        Coord::new(
-            range_x.sample(&mut rng),
-            range_y.sample(&mut rng),
-            0.0,
-        )
+        Coord::new(range_x.sample(&mut rng), range_y.sample(&mut rng), 0.0)
     }
 
     fn select_coordinate(coords: &Vec<Coord>) -> usize {
