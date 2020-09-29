@@ -1,18 +1,19 @@
 //! Construct cylinders that are curved sheets, not volumes.
 
-use surface::{Sheet, LatticeType};
+use crate::{
+    coord::{rotate_coords, rotate_planar_coords_to_alignment, Coord, Direction, Translate},
+    describe::{unwrap_name, Describe},
+    error::Result,
+    iterator::{ResidueIter, ResidueIterOut},
+    surface::{LatticeType, Sheet},
+    system::*,
+};
 
-use coord::{Coord, Direction, Translate,
-    rotate_coords, rotate_planar_coords_to_alignment};
-use describe::{unwrap_name, Describe};
-use error::Result;
-use iterator::{ResidueIter, ResidueIterOut};
-use system::*;
-
-use std::f64::consts::PI;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-
+use serde_derive::{Deserialize, Serialize};
+use std::{
+    f64::consts::PI,
+    fmt::{self, Display, Formatter},
+};
 
 impl_component![Cylinder];
 impl_translate![Cylinder];
@@ -83,13 +84,15 @@ impl Cylinder {
             length,
             width,
             coords: vec![],
-        }.construct()?;
+        }
+        .construct()?;
 
         let final_radius = sheet.length / (2.0 * PI);
         let final_height = sheet.width;
 
         // The cylinder will be created aligned to the Y axis
-        let mut coords: Vec<_> = sheet.coords
+        let mut coords: Vec<_> = sheet
+            .coords
             .iter()
             .map(|coord| {
                 let (x0, y, _) = coord.to_tuple();
@@ -108,11 +111,12 @@ impl Cylinder {
             // the same sheet and rotate it to match.
 
             let mut bottom = sheet.to_circle(final_radius); //.rotate(Direction::X);
-            bottom.coords = rotate_planar_coords_to_alignment(&bottom.coords,
-                Direction::Z, Direction::Y);
+            bottom.coords =
+                rotate_planar_coords_to_alignment(&bottom.coords, Direction::Z, Direction::Y);
 
             // Get the top cap coordinates by shifting the bottom ones, not just the origin.
-            let top_coords: Vec<_> = bottom.coords
+            let top_coords: Vec<_> = bottom
+                .coords
                 .iter()
                 .map(|&coord| coord + Coord::new(0.0, final_height, 0.0))
                 .collect();
@@ -133,7 +137,7 @@ impl Cylinder {
             radius: final_radius,
             height: final_height,
             coords: rotate_coords(&coords, Direction::X),
-            .. self
+            ..self
         })
     }
 
@@ -151,8 +155,13 @@ impl Cylinder {
 
 impl Describe for Cylinder {
     fn describe(&self) -> String {
-        format!("{} (Cylinder surface of radius {:.2} and height {:.2} at {})",
-            unwrap_name(&self.name), self.radius, self.height, self.origin)
+        format!(
+            "{} (Cylinder surface of radius {:.2} and height {:.2} at {})",
+            unwrap_name(&self.name),
+            self.radius,
+            self.height,
+            self.origin
+        )
     }
 
     fn describe_short(&self) -> String {
@@ -163,7 +172,7 @@ impl Describe for Cylinder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use surface::LatticeType::*;
+    use crate::surface::LatticeType::*;
 
     fn setup_cylinder(radius: f64, height: f64, lattice: &LatticeType) -> Cylinder {
         Cylinder {
@@ -186,14 +195,20 @@ mod tests {
         let density = 10.0;
         let lattice = PoissonDisc { density };
 
-        let cylinder = setup_cylinder(radius, height, &lattice).construct().unwrap();
+        let cylinder = setup_cylinder(radius, height, &lattice)
+            .construct()
+            .unwrap();
 
         // We should have a rough surface density match
         let expected = 2.0 * PI * radius * height * density;
         assert!((expected - cylinder.coords.len() as f64).abs() / expected < 0.1);
 
         // Not all coords should be at z = 0, ie. not still a sheet
-        let sum_z = cylinder.coords.iter().map(|&Coord { x: _, y: _, z }| z.abs()).sum::<f64>();
+        let sum_z = cylinder
+            .coords
+            .iter()
+            .map(|&Coord { x: _, y: _, z }| z.abs())
+            .sum::<f64>();
         assert!(sum_z > 0.0);
 
         // Currently the alignment should be along Z
@@ -216,7 +231,9 @@ mod tests {
         let b = 1.1; // not a match to the height
         let lattice = Triclinic { a, b, gamma: 90.0 };
 
-        let cylinder = setup_cylinder(radius, height, &lattice).construct().unwrap();
+        let cylinder = setup_cylinder(radius, height, &lattice)
+            .construct()
+            .unwrap();
 
         assert_ne!(radius, cylinder.radius);
         assert_ne!(height, cylinder.height);
@@ -295,17 +312,26 @@ mod tests {
         // Check each direction
         let mut cylinder = Cylinder {
             alignment: Direction::X,
-            .. setup_cylinder(radius, height, &lattice)
+            ..setup_cylinder(radius, height, &lattice)
         };
 
         let diameter = 2.0 * radius;
 
-        assert_eq!(Coord::new(height, diameter, diameter), cylinder.calc_box_size());
+        assert_eq!(
+            Coord::new(height, diameter, diameter),
+            cylinder.calc_box_size()
+        );
 
         cylinder.alignment = Direction::Y;
-        assert_eq!(Coord::new(diameter, height, diameter), cylinder.calc_box_size());
+        assert_eq!(
+            Coord::new(diameter, height, diameter),
+            cylinder.calc_box_size()
+        );
 
         cylinder.alignment = Direction::Z;
-        assert_eq!(Coord::new(diameter, diameter, height), cylinder.calc_box_size());
+        assert_eq!(
+            Coord::new(diameter, diameter, height),
+            cylinder.calc_box_size()
+        );
     }
 }

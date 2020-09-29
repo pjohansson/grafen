@@ -168,7 +168,7 @@
     },
     {
       "ConfigurationFile": {
-        "path": "include/water_block.gro",
+        "path": "water_block.gro",
         "description": "water box with water molecule from library",
         "volume_type": {
           "Cuboid": {
@@ -183,13 +183,24 @@
     },
     {
       "ConfigurationFile": {
-        "path": "include/water_block.gro",
+        "path": "water_block.gro",
         "description": "Water disk",
         "volume_type": {
           "Cylinder": {
               "radius": 15.0,
               "height": 2.3383,
               "normal": "Y"
+          }
+        }
+      }
+    },
+    {
+      "ConfigurationFile": {
+        "path": "water_block.gro",
+        "description": "Water sphere",
+        "volume_type": {
+          "Spheroid": {
+              "radius": 15.0
           }
         }
       }

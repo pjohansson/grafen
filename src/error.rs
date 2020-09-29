@@ -1,8 +1,6 @@
 //! Implements the custom `GrafenError` class for the library.
 
-use std::error;
-use std::fmt;
-use std::result;
+use std::{error, fmt, result};
 
 #[derive(Debug)]
 /// A class for configuration or runtime errors.
@@ -17,9 +15,7 @@ pub type Result<T> = result::Result<T, GrafenError>;
 impl fmt::Display for GrafenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            GrafenError::RunError(ref err) => {
-                write!(f, "{}", err)
-            },
+            GrafenError::RunError(ref err) => write!(f, "{}", err),
         }
     }
 }

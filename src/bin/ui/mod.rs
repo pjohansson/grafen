@@ -2,25 +2,32 @@
 //! They can also access and modify the `DataBase` of components to use in their
 //! systems.
 
-#[macro_use] mod utils;
+#[macro_use]
+mod utils;
 mod edit_component;
 mod edit_database;
 
 use super::Config;
-use error::{GrafenCliError, Result, UIErrorKind, UIResult};
-use output;
-use ui::utils::{MenuResult, YesOrNo,
-    get_value_from_user, get_value_or_default_from_user, get_coord_from_user,
-    get_position_from_user, remove_items, reorder_list, select_command,
-    select_direction, select_item};
 
-use grafen::coord::{Coord, Translate};
-use grafen::database::*;
-use grafen::read_conf::{ConfType, ReadConf};
-use grafen::system::*;
-use grafen::volume::{FillType, Volume};
+use crate::{
+    error::{GrafenCliError, Result, UIErrorKind, UIResult},
+    output,
+    ui::utils::{
+        get_coord_from_user, get_position_from_user, get_value_from_user,
+        get_value_or_default_from_user, remove_items, reorder_list, select_command,
+        select_direction, select_item, MenuResult, YesOrNo,
+    },
+};
 
-use std::path::Path;
+use grafen::{
+    coord::{Coord, Translate},
+    database::*,
+    read_conf::{ConfType, ReadConf},
+    surface::LatticeType,
+    system::*,
+    volume::{FillType, Volume},
+};
+use std::path::{Path, PathBuf};
 
 /// Loop over a menu in which the user can define the system which will be created, etc.
 ///
@@ -68,23 +75,26 @@ pub fn user_menu(config: Config) -> Result<()> {
 
 /// Prompt the user to select a defined component from the `DataBase`, then create it.
 fn create_component(system: &mut System) -> MenuResult {
-    let component = select_item(&system.database.component_defs, Some("Available components"))?
-        .clone();
+    let component = select_item(
+        &system.database.component_defs,
+        Some("Available components"),
+    )?
+    .clone();
 
     match fill_component(component, system.database.path.as_ref()) {
         Ok(filled) => {
             system.components.push(filled);
             Ok(Some("Added component to system".to_string()))
-        },
+        }
         Err(err) => Err(err),
     }
 }
 
-use std::path::PathBuf;
-
 /// Ask the user for information about the selected component, then return the constructed object.
-fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
-        -> Result<ComponentEntry> {
+fn fill_component(
+    component: ComponentEntry,
+    database_path: Option<&PathBuf>,
+) -> Result<ComponentEntry> {
     match component {
         ComponentEntry::VolumeCuboid(mut conf) => {
             let position = get_position_from_user(Some("0 0 0"))?;
@@ -98,7 +108,7 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             conf.size = Coord::new(length, width, height);
 
             Ok(ComponentEntry::from(conf.fill(fill_type)))
-        },
+        }
 
         ComponentEntry::VolumeCylinder(mut conf) => {
             conf.origin = get_position_from_user(Some("0 0 0"))?;
@@ -108,21 +118,35 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             let fill_type = select_num_coords_or_density_with_default(conf.density)?;
 
             Ok(ComponentEntry::from(conf.fill(fill_type)))
-        },
+        }
+
+        ComponentEntry::VolumeSpheroid(mut conf) => {
+            conf.origin = get_position_from_user(Some("0 0 0"))?;
+            conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
+
+            let fill_type = select_num_coords_or_density_with_default(conf.density)?;
+
+            Ok(ComponentEntry::from(conf.fill(fill_type)))
+        }
 
         ComponentEntry::SurfaceSheet(mut conf) => {
             conf.origin = get_position_from_user(Some("0 0 0"))?;
             conf.length = get_value_from_user::<f64>("Length ΔX (nm)")?;
             conf.width = get_value_from_user::<f64>("Width ΔY (nm)")?;
 
-            Ok(
-                ComponentEntry::from(
-                    conf.construct().map_err(|_| {
-                        UIErrorKind::from("Could not construct sheet")
-                    })?
-                ).with_pbc()
+            match conf.lattice {
+                LatticeType::BlueNoise { ref mut number } => {
+                    *number = get_value_from_user::<u64>("Number of residues")?;
+                }
+                _ => (),
+            }
+
+            Ok(ComponentEntry::from(
+                conf.construct()
+                    .map_err(|_| UIErrorKind::from("Could not construct sheet"))?,
             )
-        },
+            .with_pbc())
+        }
 
         ComponentEntry::SurfaceCuboid(mut conf) => {
             conf.origin = get_position_from_user(Some("0 0 0"))?;
@@ -133,20 +157,19 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             conf.size = Coord::new(length, width, height);
 
             Ok(ComponentEntry::from(conf.construct().map_err(|_| {
-                    UIErrorKind::from("Could not construct cuboid surface")
-                })?
-            ))
-        },
+                UIErrorKind::from("Could not construct cuboid surface")
+            })?))
+        }
 
         ComponentEntry::SurfaceCylinder(mut conf) => {
             conf.origin = get_position_from_user(Some("0 0 0"))?;
             conf.radius = get_value_from_user::<f64>("Radius (nm)")?;
             conf.height = get_value_from_user::<f64>("Height (nm)")?;
 
-            Ok(ComponentEntry::from(conf.construct().map_err(|_|
+            Ok(ComponentEntry::from(conf.construct().map_err(|_| {
                 UIErrorKind::from("Could not construct cylinder")
-            )?))
-        },
+            })?))
+        }
 
         ComponentEntry::ConfigurationFile(conf) => {
             let default_volume = conf.volume_type.clone();
@@ -154,22 +177,49 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             let origin = get_position_from_user(Some("0 0 0"))?;
 
             let to_volume = match default_volume {
-                ConfType::Cuboid { origin: _, size: default_size } => {
+                ConfType::Cuboid {
+                    origin: _,
+                    size: default_size,
+                } => {
                     let (x, y, z) = default_size.to_tuple();
                     let size = get_coord_from_user(
-                        "Size (x y z nm)", Some(&format!("{} {} {}", x, y, z)))?;
+                        "Size (x y z nm)",
+                        Some(&format!("{} {} {}", x, y, z)),
+                    )?;
 
                     ConfType::Cuboid { origin, size }
-                },
-                ConfType::Cylinder { origin: _, radius, height, normal } => {
+                }
+                ConfType::Cylinder {
+                    origin: _,
+                    radius,
+                    height,
+                    normal,
+                } => {
                     let radius = get_value_or_default_from_user::<f64>(
-                        "Radius (nm)", &format!("{}", radius))?;
+                        "Radius (nm)",
+                        &format!("{}", radius),
+                    )?;
                     let height = get_value_or_default_from_user::<f64>(
-                        "Height (nm)", &format!("{}", height))?;
+                        "Height (nm)",
+                        &format!("{}", height),
+                    )?;
                     let normal = select_direction(Some("Select normal"), Some(normal))?;
 
-                    ConfType::Cylinder { origin, radius, height, normal }
-                },
+                    ConfType::Cylinder {
+                        origin,
+                        radius,
+                        height,
+                        normal,
+                    }
+                }
+                ConfType::Spheroid { origin: _, radius } => {
+                    let radius = get_value_or_default_from_user::<f64>(
+                        "Radius (nm)",
+                        &format!("{}", radius),
+                    )?;
+
+                    ConfType::Spheroid { origin, radius }
+                }
             };
 
             // If the path is relative, it is relative to the database location.
@@ -196,7 +246,7 @@ fn fill_component(component: ComponentEntry, database_path: Option<&PathBuf>)
             new_conf.translate_in_place(origin - displayed_origin);
 
             Ok(ComponentEntry::from(new_conf))
-        },
+        }
     }
 }
 
@@ -217,10 +267,8 @@ pub fn read_configuration(path: &Path) -> Result<ReadConf> {
 fn select_num_coords_or_density_with_default(default_density: Option<f64>) -> UIResult<FillType> {
     match default_density {
         Some(density) => {
-            let (commands, item_texts) = create_menu_items![
-                (YesOrNo::Yes, "Yes"),
-                (YesOrNo::No, "No")
-            ];
+            let (commands, item_texts) =
+                create_menu_items![(YesOrNo::Yes, "Yes"), (YesOrNo::No, "No")];
 
             eprintln!("Use default density for component ({})?", density);
             let command = select_command(item_texts, commands)?;
@@ -229,10 +277,8 @@ fn select_num_coords_or_density_with_default(default_density: Option<f64>) -> UI
                 YesOrNo::Yes => Ok(FillType::Density(density)),
                 YesOrNo::No => select_num_coords_or_density(),
             }
-        },
-        None => {
-            select_num_coords_or_density()
-        },
+        }
+        None => select_num_coords_or_density(),
     }
 }
 

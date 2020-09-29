@@ -2,8 +2,7 @@
 //! information about and grid coordinates of lattices. It comes
 //! with easy-to-use constructors for different lattice types.
 
-use coord::Coord;
-use surface::points::Points;
+use crate::{coord::Coord, surface::points::Points};
 
 pub struct Lattice;
 
@@ -82,12 +81,13 @@ impl LatticeBuilder {
 
         (0..self.ny)
             .flat_map(|row| {
-                (0..self.nx)
-                    .map(move |col| {
-                        Coord::new((col as f64) * dx + (row as f64) * dx_per_row,
-                                   (row as f64) * dy,
-                                   0.0)
-                        })
+                (0..self.nx).map(move |col| {
+                    Coord::new(
+                        (col as f64) * dx + (row as f64) * dx_per_row,
+                        (row as f64) * dy,
+                        0.0,
+                    )
+                })
             })
             .collect()
     }
@@ -111,10 +111,12 @@ impl LatticeBuilder {
                 (0..self.nx)
                     .filter(move |col| (col + row + 1) % 3 > 0)
                     .map(move |col| {
-                            Coord::new((col as f64) * dx + (row as f64) * dx_per_row,
-                                       (row as f64) * dy,
-                                       0.0)
-                        })
+                        Coord::new(
+                            (col as f64) * dx + (row as f64) * dx_per_row,
+                            (row as f64) * dy,
+                            0.0,
+                        )
+                    })
             })
             .collect()
     }
@@ -170,9 +172,11 @@ impl Crystal {
     }
 }
 
-struct Spacing(f64, // Space between columns (along x) in a lattice
-               f64, // Space between rows (along y)
-               f64); // Adjustment per row of x
+struct Spacing(
+    f64, // Space between columns (along x) in a lattice
+    f64, // Space between rows (along y)
+    f64,
+); // Adjustment per row of x
 
 #[cfg(test)]
 mod tests {
@@ -200,9 +204,7 @@ mod tests {
         let dx = 1.0;
         let angle = 60f64.to_radians();
 
-        let lattice = Lattice::triclinic(dx, dx, angle)
-            .with_bins(3, 2)
-            .finalize();
+        let lattice = Lattice::triclinic(dx, dx, angle).with_bins(3, 2).finalize();
 
         // Calculate shifts for x and y when shifting along y
         let dy = dx * angle.sin();
@@ -240,10 +242,19 @@ mod tests {
         // REMOVED: assert_eq!(Some(&Coord::new(5.0*dx, 0.0, 0.0)), iter.next());
         assert_eq!(Some(&Coord::new(dx_per_row, dy, 0.0)), iter.next());
         // REMOVED: assert_eq!(Some(&Coord::new(dx_per_y + dx, dy, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row + 2.0 * dx, dy, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row + 3.0 * dx, dy, 0.0)), iter.next());
+        assert_eq!(
+            Some(&Coord::new(dx_per_row + 2.0 * dx, dy, 0.0)),
+            iter.next()
+        );
+        assert_eq!(
+            Some(&Coord::new(dx_per_row + 3.0 * dx, dy, 0.0)),
+            iter.next()
+        );
         // REMOVED: assert_eq!(Some(&Coord::new(dx_per_row + 4.0*dx, dy, 0.0)), iter.next());
-        assert_eq!(Some(&Coord::new(dx_per_row + 5.0 * dx, dy, 0.0)), iter.next());
+        assert_eq!(
+            Some(&Coord::new(dx_per_row + 5.0 * dx, dy, 0.0)),
+            iter.next()
+        );
         assert_eq!(None, iter.next());
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "grafen"
-version = "0.10.0"
+version = "0.10.2-dev"
 authors = ["Petter Johansson <pettjoha@kth.se>"]
 description = "Create graphene and other substrates for use in molecular dynamics simulations."
 repository = "https://github.com/pjohansson/grafen"
@@ -9,16 +9,19 @@ categories = ["command-line-utilities", "science"]
 keywords = ["gromacs", "molecular-dynamics", "substrates"]
 readme = "README.md"
 license = "Unlicense"
+autobins = false
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "pjohansson/grafen", branch = "master" }
 
 [dependencies]
 bitflags = "1.0"
-colored = "1.6"
+colored = "1.0"
+dirs = "1.0"
 dialoguer = "0.1"
 mdio = { git = "https://github.com/pjohansson/mdio" }
-rand = "~0.3.0"
+rand = "0.6"
 serde = "^1.0.8"
 serde_json = "1.0"
 serde_derive = "^1.0.8"

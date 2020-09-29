@@ -3,12 +3,13 @@
 use grafen::error::GrafenError;
 
 use colored::*;
-use std::error::Error;
-use std::fmt;
-use std::fmt::Display;
-use std::io;
-use std::num::{ParseFloatError, ParseIntError};
-use std::result;
+use std::{
+    error::Error,
+    fmt::{self, Display},
+    io,
+    num::{ParseFloatError, ParseIntError},
+    result,
+};
 
 /// Shorthand for our `Result` class.
 pub type Result<T> = result::Result<T, GrafenCliError>;
@@ -83,21 +84,13 @@ impl Display for GrafenCliError {
         let red_error = "error:".color("red");
 
         match *self {
-            GrafenCliError::IoError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
-            GrafenCliError::RunError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
+            GrafenCliError::IoError(ref err) => write!(f, "{} {}", red_error, err),
+            GrafenCliError::RunError(ref err) => write!(f, "{} {}", red_error, err),
             GrafenCliError::ConstructError(ref err) => {
                 write!(f, "{}", err.as_str().color("yellow"))
-            },
-            GrafenCliError::UIError(ref err) => {
-                write!(f, "{} {}", red_error, err)
-            },
-            GrafenCliError::ReadConfError(ref err) => {
-                write!(f, "{}", err.as_str().color("yellow"))
             }
+            GrafenCliError::UIError(ref err) => write!(f, "{} {}", red_error, err),
+            GrafenCliError::ReadConfError(ref err) => write!(f, "{}", err.as_str().color("yellow")),
         }
     }
 }

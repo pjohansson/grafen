@@ -11,12 +11,15 @@
 //! A proper physical way to look at is that atoms can be
 //! similarly grouped into molecules.
 
-use coord::Coord;
-use describe::{describe_list, Describe};
-use database::{ComponentEntry, DataBase};
-use iterator::{ResidueIter, ResidueIterOut};
+use crate::{
+    coord::Coord,
+    database::{ComponentEntry, DataBase},
+    describe::{describe_list, Describe},
+    iterator::{ResidueIter, ResidueIterOut},
+};
 
 use colored::*;
+use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Main structure of a constructed system with several components.
@@ -35,24 +38,27 @@ impl<'a> System {
     /// Calculate the total box size of the system as the maximum size along each axis
     /// from all components.
     pub fn box_size(&self) -> Coord {
-        self.components
-            .iter()
-            .map(|object| object.box_size())
-            .fold(Coord::new(0.0, 0.0, 0.0), |max_size, current| {
-                Coord {
-                    x: max_size.x.max(current.x),
-                    y: max_size.y.max(current.y),
-                    z: max_size.z.max(current.z),
-                }
-            })
+        self.components.iter().map(|object| object.box_size()).fold(
+            Coord::new(0.0, 0.0, 0.0),
+            |max_size, current| Coord {
+                x: max_size.x.max(current.x),
+                y: max_size.y.max(current.y),
+                z: max_size.z.max(current.z),
+            },
+        )
     }
 
     /// Print the system state to standard error.
     pub fn print_state(&self) {
+        let (dx, dy, dz) = self.box_size().to_tuple();
+
         eprintln!("{}", "System".underline().color("yellow"));
         eprintln!("Title       '{}'", self.title);
-        eprintln!("Output path  {}", self.output_path.to_str().unwrap_or("(Not set)"));
-        eprintln!("Box size     {}", self.box_size());
+        eprintln!(
+            "Output path  {}",
+            self.output_path.to_str().unwrap_or("(Not set)")
+        );
+        eprintln!("Box size     ({:.8}, {:.8}, {:.8})", dx, dy, dz);
         eprintln!("");
 
         if self.components.len() > 0 {
@@ -64,7 +70,10 @@ impl<'a> System {
 
     /// Calculate the total number of atoms in the system.
     pub fn num_atoms(&self) -> u64 {
-        self.components.iter().map(|object| object.num_atoms()).sum()
+        self.components
+            .iter()
+            .map(|object| object.num_atoms())
+            .sum()
     }
 }
 
@@ -281,34 +290,48 @@ macro_rules! resbase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coord::Translate;
-    use volume::Cuboid;
+    use crate::coord::Translate;
+    use crate::volume::Cuboid;
 
     #[test]
     fn create_residue_base_macro() {
         let expect = Residue {
             code: "RES".to_string(),
             atoms: vec![
-                Atom { code: "A1".to_string(), position: Coord::new(0.0, 0.0, 0.0) },
-                Atom { code: "A2".to_string(), position: Coord::new(0.0, 1.0, 2.0) }
+                Atom {
+                    code: "A1".to_string(),
+                    position: Coord::new(0.0, 0.0, 0.0),
+                },
+                Atom {
+                    code: "A2".to_string(),
+                    position: Coord::new(0.0, 1.0, 2.0),
+                },
             ],
         };
-        let result = resbase![
-            "RES",
-            ("A1", 0.0, 0.0, 0.0),
-            ("A2", 0.0, 1.0, 2.0)
-        ];
+        let result = resbase!["RES", ("A1", 0.0, 0.0, 0.0), ("A2", 0.0, 1.0, 2.0)];
 
         assert_eq!(expect, result);
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    struct TestObject { residue: Option<Residue>, origin: Coord, coords: Vec<Coord> }
-    impl Describe for TestObject {
-        fn describe(&self) -> String { "Doesn't matter".to_string() }
-        fn describe_short(&self) -> String { "Doesn't matter".to_string() }
+    struct TestObject {
+        residue: Option<Residue>,
+        origin: Coord,
+        coords: Vec<Coord>,
     }
-    impl TestObject { fn calc_box_size(&self) -> Coord { Coord::ORIGO } }
+    impl Describe for TestObject {
+        fn describe(&self) -> String {
+            "Doesn't matter".to_string()
+        }
+        fn describe_short(&self) -> String {
+            "Doesn't matter".to_string()
+        }
+    }
+    impl TestObject {
+        fn calc_box_size(&self) -> Coord {
+            Coord::ORIGO
+        }
+    }
 
     impl_translate![TestObject];
     impl_component![TestObject];
@@ -409,7 +432,7 @@ mod tests {
 
         let mut cuboid = Cuboid {
             residue: Some(residue.clone()),
-            .. Cuboid::default()
+            ..Cuboid::default()
         };
 
         // The residue iterator has atom positions which are component-relative,
@@ -419,14 +442,20 @@ mod tests {
 
         // In this list, the component-relative atom positions are used.
         let residues = vec![
-            ResidueIterOut::FromComp(Rc::clone(&res_name), vec![
-                (Rc::clone(&atom1_name), res1_position + atom1_relative),
-                (Rc::clone(&atom2_name), res1_position + atom2_relative),
-            ]),
-            ResidueIterOut::FromComp(Rc::clone(&res_name), vec![
-                (Rc::clone(&atom1_name), res2_position + atom1_relative),
-                (Rc::clone(&atom2_name), res2_position + atom2_relative),
-            ])
+            ResidueIterOut::FromComp(
+                Rc::clone(&res_name),
+                vec![
+                    (Rc::clone(&atom1_name), res1_position + atom1_relative),
+                    (Rc::clone(&atom2_name), res1_position + atom2_relative),
+                ],
+            ),
+            ResidueIterOut::FromComp(
+                Rc::clone(&res_name),
+                vec![
+                    (Rc::clone(&atom1_name), res2_position + atom1_relative),
+                    (Rc::clone(&atom2_name), res2_position + atom2_relative),
+                ],
+            ),
         ];
 
         // Assign the residues and check that the main residue was not modified.
@@ -469,8 +498,9 @@ mod tests {
                 Coord::new(0.1, 0.1, 0.1),  // inside locally
                 Coord::new(1.1, 0.1, 0.1),  // outside locally
             ],
-            .. Cuboid::default()
-        }.with_pbc();
+            ..Cuboid::default()
+        }
+        .with_pbc();
 
         let expected = vec![
             Coord::new(0.1, 0.1, 0.1), // moved inside
@@ -547,9 +577,7 @@ mod tests {
             title: String::new(),
             output_path: PathBuf::new(),
             database: DataBase::new(),
-            components: vec![
-                component.clone(), component.clone()
-            ],
+            components: vec![component.clone(), component.clone()],
         };
 
         assert_eq!(12, system.num_atoms());
@@ -579,10 +607,7 @@ mod tests {
             title: String::new(),
             output_path: PathBuf::new(),
             database: DataBase::new(),
-            components: vec![
-                component1.clone(),
-                component2.clone()
-            ],
+            components: vec![component1.clone(), component2.clone()],
         };
 
         assert_eq!(Coord::new(6.0, 5.0, 5.0), system.box_size());

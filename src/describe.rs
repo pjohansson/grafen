@@ -5,7 +5,7 @@ use std::fmt::Write;
 /// A verbose description of an object. Moreso than `Display` should typically be.
 /// Maybe the distinction is unnecessary? If so, change it sometime.
 pub trait Describe {
-    /// Return a descriptive `String` of the object. 
+    /// Return a descriptive `String` of the object.
     fn describe(&self) -> String;
 
     /// Return a very short descriptive `String` of the object. Typically just a name or type.
@@ -41,7 +41,7 @@ pub fn describe_list<T: Describe>(header: &str, items: &[T]) -> String {
 }
 
 /// Unwrap an optional name of an object with a default None value.
-/// 
+///
 /// # Examples
 /// ```
 /// # use grafen::describe::unwrap_name;

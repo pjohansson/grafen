@@ -1,13 +1,9 @@
 //! Iterate over atoms in components.
 
-use coord::Coord;
-use system::Residue;
+use crate::{coord::Coord, system::Residue};
 
 use mdio;
-
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::slice::Iter;
+use std::{cell::RefCell, rc::Rc, slice::Iter};
 
 /// Iteration object which owns the iterator. Used to ensure that it always exists.
 ///
@@ -48,7 +44,7 @@ impl ResidueIterOut {
                 let name = Rc::clone(&residue.borrow().name);
 
                 Rc::clone(&name)
-            },
+            }
             &ResidueIterOut::FromComp(ref res, _) => Rc::clone(&res),
         }
     }
@@ -56,12 +52,15 @@ impl ResidueIterOut {
     /// Return a list of the atoms in the residue. The atom names are pointers.
     pub fn get_atoms(&self) -> Vec<(Rc<RefCell<String>>, Coord)> {
         match self {
-            &ResidueIterOut::FromConf(ref atoms) => {
-                atoms
-                    .iter()
-                    .map(|atom| (Rc::clone(&atom.borrow().name), Coord::from(atom.borrow().position)))
-                    .collect()
-            },
+            &ResidueIterOut::FromConf(ref atoms) => atoms
+                .iter()
+                .map(|atom| {
+                    (
+                        Rc::clone(&atom.borrow().name),
+                        Coord::from(atom.borrow().position),
+                    )
+                })
+                .collect(),
             &ResidueIterOut::FromComp(_, ref atoms) => atoms.clone(),
         }
     }
@@ -74,26 +73,28 @@ impl<'a> Iterator for ResidueIter<'a> {
         match self {
             &mut ResidueIter::None => None,
             &mut ResidueIter::Conf(ref mut conf_iter) => {
-                conf_iter.iter
-                    .next()
-                    .map(|res| res.unwrap())
-                    .map(|res| {
-                        ResidueIterOut::FromConf(res.iter().map(|&atom| Rc::new(RefCell::new(atom.clone()))).collect())
-                    })
-            },
-            &mut ResidueIter::Component(ref res, ref mut iter) => {
-                iter.next()
-                    .map(|&coord| ResidueIterOut::FromComp(
-                        Rc::new(RefCell::new(res.code.clone())),
-                        res.atoms
-                            .iter()
-                            .map(|atom| (
+                conf_iter.iter.next().map(|res| res.unwrap()).map(|res| {
+                    ResidueIterOut::FromConf(
+                        res.into_iter()
+                            .map(|atom| Rc::new(RefCell::new(atom)))
+                            .collect(),
+                    )
+                })
+            }
+            &mut ResidueIter::Component(ref res, ref mut iter) => iter.next().map(|&coord| {
+                ResidueIterOut::FromComp(
+                    Rc::new(RefCell::new(res.code.clone())),
+                    res.atoms
+                        .iter()
+                        .map(|atom| {
+                            (
                                 Rc::new(RefCell::new(atom.code.clone())),
-                                atom.position + coord
-                            ))
-                            .collect::<Vec<_>>()
-                    ))
-            },
+                                atom.position + coord,
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            }),
         }
     }
 }
