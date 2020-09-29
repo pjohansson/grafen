@@ -3,8 +3,10 @@
 mod component;
 mod residue;
 
-use error::GrafenCliError;
-use ui::utils::{MenuResult, print_description, select_command};
+use crate::{
+    error::GrafenCliError,
+    ui::utils::{print_description, select_command, MenuResult},
+};
 
 use grafen::database::{write_database, DataBase};
 use std::error::Error;

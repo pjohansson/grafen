@@ -7,9 +7,14 @@ mod lattice;
 mod points;
 mod sheet;
 
-pub use self::cuboid::{Cuboid, Sides};
-pub use self::sheet::{Circle, Sheet};
-pub use self::cylinder::{Cylinder, CylinderCap};
+use serde_derive::{Deserialize, Serialize};
+
+// Export components
+pub use self::{
+    cuboid::{Cuboid, Sides},
+    cylinder::{Cylinder, CylinderCap},
+    sheet::{Circle, Sheet},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 /// Lattice types which a substrate can be constructed from.
@@ -37,6 +42,6 @@ pub enum LatticeType {
     /// D. P. Mitchell, Proceeding SIGGRAPH '91
     BlueNoise {
         #[serde(skip_deserializing)]
-        number: u64
+        number: u64,
     },
 }

@@ -1,15 +1,20 @@
 //! Edit constructed `ComponentEntry` objects.
 
-use error::{GrafenCliError, Result};
-use ui::utils::{MenuResult, get_value_from_user, get_position_from_user, print_description,
-                select_command, select_item, select_item_index};
+use crate::{
+    error::{GrafenCliError, Result},
+    ui::utils::{
+        get_position_from_user, get_value_from_user, print_description, select_command,
+        select_item, select_item_index, MenuResult,
+    },
+};
 
-use grafen::coord::Direction;
-use grafen::database::*;
-use grafen::system::*;
-use grafen::coord::{Coord, Translate};
-use grafen::volume::{Contains, Cuboid, Cylinder, prune_residues_from_volume};
-
+use grafen::{
+    coord::Direction,
+    coord::{Coord, Translate},
+    database::*,
+    system::*,
+    volume::{prune_residues_from_volume, Contains, Cuboid, Cylinder},
+};
 use std::borrow::Borrow;
 
 /// Prompt the user to select a defined component and then edit it.
@@ -70,8 +75,7 @@ pub fn user_menu(components: &mut Vec<ComponentEntry>) -> MenuResult {
 /// Ask the user to select a volume object that has been constructed.
 fn get_volume_from_user(components: &[ComponentEntry]) -> Result<Box<Contains>> {
     let volume_components = get_volume_objects(components);
-    let component = select_item(&volume_components, Some("Select component to cut with"))?
-        .clone();
+    let component = select_item(&volume_components, Some("Select component to cut with"))?.clone();
 
     let margin: f64 = get_value_from_user("Margin around volume to also exclude (nm)")?;
 
@@ -82,7 +86,7 @@ fn get_volume_from_user(components: &[ComponentEntry]) -> Result<Box<Contains>> 
             obj.size += coord_margins * 2.0;
 
             Ok(Box::new(obj))
-        },
+        }
         ComponentEntry::VolumeCylinder(mut obj) => {
             obj.radius += margin;
             obj.height += 2.0 * margin;
@@ -94,10 +98,10 @@ fn get_volume_from_user(components: &[ComponentEntry]) -> Result<Box<Contains>> 
             }
 
             Ok(Box::new(obj))
-        },
+        }
         _ => Err(GrafenCliError::RunError(String::from(
-            "Tried to get a volume type that has not been implemented: this should be impossible")
-        )),
+            "Tried to get a volume type that has not been implemented: this should be impossible",
+        ))),
     }
 }
 
@@ -105,54 +109,53 @@ fn get_volume_from_user(components: &[ComponentEntry]) -> Result<Box<Contains>> 
 /// coordinates since we don't want to copy those.
 // fn get_volume_objects(components: &[ComponentEntry]) -> Vec<VolumeComponent> {
 fn get_volume_objects(components: &[ComponentEntry]) -> Vec<ComponentEntry> {
-    components.iter()
-              .filter_map(|comp| {
-                  match comp {
-                      &ComponentEntry::VolumeCuboid(ref obj) => {
-                          let volume = Cuboid {
-                              name: obj.name.clone(),
-                              residue: obj.residue.clone(),
-                              origin: obj.origin,
-                              size: obj.size,
-                              density: obj.density,
-                              coords: vec![],
-                          };
+    components
+        .iter()
+        .filter_map(|comp| match comp {
+            &ComponentEntry::VolumeCuboid(ref obj) => {
+                let volume = Cuboid {
+                    name: obj.name.clone(),
+                    residue: obj.residue.clone(),
+                    origin: obj.origin,
+                    size: obj.size,
+                    density: obj.density,
+                    coords: vec![],
+                };
 
-                          Some(ComponentEntry::from(volume))
-                      },
+                Some(ComponentEntry::from(volume))
+            }
 
-                      &ComponentEntry::VolumeCylinder(ref obj) => {
-                          let volume = Cylinder {
-                              name: obj.name.clone(),
-                              residue: obj.residue.clone(),
-                              origin: obj.origin,
-                              radius: obj.radius,
-                              height: obj.height,
-                              density: obj.density,
-                              alignment: obj.alignment,
-                              coords: vec![],
-                          };
+            &ComponentEntry::VolumeCylinder(ref obj) => {
+                let volume = Cylinder {
+                    name: obj.name.clone(),
+                    residue: obj.residue.clone(),
+                    origin: obj.origin,
+                    radius: obj.radius,
+                    height: obj.height,
+                    density: obj.density,
+                    alignment: obj.alignment,
+                    coords: vec![],
+                };
 
-                          Some(ComponentEntry::from(volume))
-                      },
+                Some(ComponentEntry::from(volume))
+            }
 
-                      &ComponentEntry::SurfaceCylinder(ref obj) => {
-                          let volume = Cylinder {
-                              name: obj.name.clone(),
-                              residue: obj.residue.clone(),
-                              origin: obj.origin,
-                              radius: obj.radius,
-                              height: obj.height,
-                              density: None,
-                              alignment: obj.alignment,
-                              coords: vec![],
-                          };
+            &ComponentEntry::SurfaceCylinder(ref obj) => {
+                let volume = Cylinder {
+                    name: obj.name.clone(),
+                    residue: obj.residue.clone(),
+                    origin: obj.origin,
+                    radius: obj.radius,
+                    height: obj.height,
+                    density: None,
+                    alignment: obj.alignment,
+                    coords: vec![],
+                };
 
-                          Some(ComponentEntry::from(volume))
-                      },
+                Some(ComponentEntry::from(volume))
+            }
 
-                      _ => None,
-                  }
-              })
-              .collect::<Vec<_>>()
+            _ => None,
+        })
+        .collect::<Vec<_>>()
 }

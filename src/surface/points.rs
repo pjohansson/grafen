@@ -3,9 +3,11 @@
 //! using a Lattice or Poisson Disc generator) all transformations
 //! of the points belong in this module.
 
-use rand;
-
-use coord::Coord;
+use crate::coord::Coord;
+use rand::{
+    distributions::{Distribution as _, Uniform},
+    thread_rng,
+};
 
 /// A collection of points to broadcast residues onto.
 pub struct Points {
@@ -21,17 +23,16 @@ impl Points {
     /// The positions are shifted on a range of (-std_z, +std_z)
     /// where std_z is the input deviation.
     pub fn uniform_distribution(&self, std_z: f64) -> Points {
-        use rand::distributions::IndependentSample;
+        let range = Uniform::new(-std_z, std_z);
+        let mut rng = thread_rng();
 
-        let range = rand::distributions::Range::new(-std_z, std_z);
-        let mut rng = rand::thread_rng();
-
-        let coords: Vec<Coord> = self.coords
+        let coords: Vec<Coord> = self
+            .coords
             .iter()
             .map(|&c| {
-                    let add_z = range.ind_sample(&mut rng);
-                    //c.add(Coord::new(0.0, 0.0, add_z))
-                    c + Coord::new(0.0, 0.0, add_z)
+                let add_z = range.sample(&mut rng);
+                //c.add(Coord::new(0.0, 0.0, add_z))
+                c + Coord::new(0.0, 0.0, add_z)
             })
             .collect();
 
@@ -58,13 +59,18 @@ mod tests {
         let distributed_points = points.uniform_distribution(dz);
 
         // Assert that the positions are centered around z0 with non-zero variance
-        assert!(distributed_points.coords.iter().all(|&c| c.z.abs() - z0 <= dz));
+        assert!(distributed_points
+            .coords
+            .iter()
+            .all(|&c| c.z.abs() - z0 <= dz));
 
         let len = distributed_points.coords.len();
-        let var_z: f64 = distributed_points.coords
+        let var_z: f64 = distributed_points
+            .coords
             .iter()
             .map(|c| (c.z - z0) * (c.z - z0))
-            .sum::<f64>() / (len as f64);
+            .sum::<f64>()
+            / (len as f64);
         assert!(var_z > 0.0);
     }
 }

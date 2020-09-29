@@ -1,17 +1,20 @@
 //! Construct planar sheets.
 
-use surface::distribution::Distribution;
-use surface::lattice::Lattice;
-use surface::LatticeType;
-use surface::LatticeType::*;
+use crate::{
+    coord::{rotate_planar_coords_to_alignment, Coord, Direction, Periodic, Translate},
+    describe::{unwrap_name, Describe},
+    error::{GrafenError, Result},
+    iterator::{ResidueIter, ResidueIterOut},
+    surface::{
+        distribution::Distribution,
+        lattice::Lattice,
+        LatticeType::{self, *},
+    },
+    system::*,
+    volume::pbc_multiply_volume,
+};
 
-use coord::{Coord, Direction, Periodic, Translate,
-    rotate_planar_coords_to_alignment};
-use describe::{unwrap_name, Describe};
-use error::{GrafenError, Result};
-use iterator::{ResidueIter, ResidueIterOut};
-use system::*;
-use volume::pbc_multiply_volume;
+use serde_derive::{Deserialize, Serialize};
 
 impl_component![Sheet];
 impl_translate![Circle, Sheet];
@@ -52,22 +55,18 @@ impl Sheet {
     /// Returns an error if either the length or width is non-positive.
     pub fn construct(self) -> Result<Sheet> {
         if self.length <= 0.0 || self.width <= 0.0 {
-            return Err(
-                GrafenError::RunError("cannot create a substrate of negative size".to_string())
-            );
+            return Err(GrafenError::RunError(
+                "cannot create a substrate of negative size".to_string(),
+            ));
         }
 
         let mut coords_lattice = match self.lattice {
-            Hexagonal { a } => {
-                Lattice::hexagonal(a)
-                    .with_size(self.length, self.width)
-                    .finalize()
-            },
-            Triclinic { a, b, gamma } => {
-                Lattice::triclinic(a, b, gamma.to_radians())
-                    .with_size(self.length, self.width)
-                    .finalize()
-            },
+            Hexagonal { a } => Lattice::hexagonal(a)
+                .with_size(self.length, self.width)
+                .finalize(),
+            Triclinic { a, b, gamma } => Lattice::triclinic(a, b, gamma.to_radians())
+                .with_size(self.length, self.width)
+                .finalize(),
             PoissonDisc { density } => {
                 // The factor 1/sqrt(pi) comes from the area and the factor sqrt(2)
                 // is a magic number which roughly gives the correct density. It works!
@@ -75,10 +74,8 @@ impl Sheet {
                 let rmin = (2.0 / (PI * density)).sqrt();
 
                 Distribution::poisson(rmin, self.length, self.width)
-            },
-            BlueNoise { number } => {
-                Distribution::blue_noise(number, self.length, self.width)
-            },
+            }
+            BlueNoise { number } => Distribution::blue_noise(number, self.length, self.width),
         };
 
         if let Some(std) = self.std_z {
@@ -91,14 +88,14 @@ impl Sheet {
             Direction::Z => coords_lattice.coords,
             direction => {
                 rotate_planar_coords_to_alignment(&coords_lattice.coords, Direction::Z, direction)
-            },
+            }
         };
 
         Ok(Sheet {
             length,
             width,
             coords,
-            .. self
+            ..self
         })
     }
 
@@ -122,19 +119,17 @@ impl Sheet {
         // Assert that we have a large enough sheet to cut a circle from
         let pbc_multiples = (
             (2.0 * radius / self.length).ceil() as usize,
-            (2.0 * radius / self.width).ceil() as usize
+            (2.0 * radius / self.width).ceil() as usize,
         );
 
         let coords = match pbc_multiples {
-            (1, 1) => {
-                cut_circle(&self.coords, center, box_size, radius)
-            },
+            (1, 1) => cut_circle(&self.coords, center, box_size, radius),
             (nx, ny) => {
                 let box_size = box_size.pbc_multiply(nx, ny, 1);
                 let coords = self.pbc_multiply(nx, ny, 1).coords;
 
                 cut_circle(&coords, center, box_size, radius)
-            },
+            }
         };
 
         Circle {
@@ -148,8 +143,13 @@ impl Sheet {
 
 impl Describe for Sheet {
     fn describe(&self) -> String {
-        format!("{} (Rectangular sheet of size ({:.2}, {:.2}) at {})",
-            unwrap_name(&self.name), self.length, self.width, self.origin)
+        format!(
+            "{} (Rectangular sheet of size ({:.2}, {:.2}) at {})",
+            unwrap_name(&self.name),
+            self.length,
+            self.width,
+            self.origin
+        )
     }
 
     fn describe_short(&self) -> String {
@@ -167,9 +167,8 @@ impl Periodic for Sheet {
             length: nx as f64 * self.length,
             width: ny as f64 * self.width,
             coords,
-            .. self.clone()
+            ..self.clone()
         }
-
     }
 }
 
@@ -184,7 +183,8 @@ pub struct Circle {
 
 /// Cut a set of coordinates into a circle with input radius in the x-y plane.
 fn cut_circle(coords: &[Coord], center: Coord, box_size: Coord, radius: f64) -> Vec<Coord> {
-    coords.iter()
+    coords
+        .iter()
         .map(|&coord| coord.with_pbc(box_size) - center)
         .filter(|coord| {
             let (dr, _) = coord.distance_cylindrical(Coord::ORIGO, Direction::Z);
@@ -218,7 +218,9 @@ mod tests {
         let width = 5.0;
         let density = 10.0;
 
-        let sheet = setup_sheet(length, width, &PoissonDisc { density }).construct().unwrap();
+        let sheet = setup_sheet(length, width, &PoissonDisc { density })
+            .construct()
+            .unwrap();
 
         // There should be almost no risk of the density being off by more than 10%
         // since 500 points were created.
@@ -259,14 +261,18 @@ mod tests {
         let lattice = PoissonDisc { density: 10.0 };
         let sheet = Sheet {
             std_z: Some(1.0),
-            .. setup_sheet(length, width, &lattice)
-        }.construct().unwrap();
+            ..setup_sheet(length, width, &lattice)
+        }
+        .construct()
+        .unwrap();
 
         let num_coords = sheet.coords.len();
-        let var = sheet.coords
+        let var = sheet
+            .coords
             .iter()
             .map(|&Coord { x: _, y: _, z }| z.abs())
-            .sum::<f64>() / (num_coords as f64);
+            .sum::<f64>()
+            / (num_coords as f64);
 
         assert!(var > 0.0);
     }
@@ -281,24 +287,39 @@ mod tests {
 
         let sheet = Sheet {
             normal: Direction::X,
-            .. setup_sheet(length, width, &lattice)
-        }.construct().unwrap();
+            ..setup_sheet(length, width, &lattice)
+        }
+        .construct()
+        .unwrap();
 
-        assert_eq!(Coord::new(margin, sheet.width, sheet.length), sheet.calc_box_size());
+        assert_eq!(
+            Coord::new(margin, sheet.width, sheet.length),
+            sheet.calc_box_size()
+        );
 
         let sheet = Sheet {
             normal: Direction::Y,
-            .. setup_sheet(length, width, &lattice)
-        }.construct().unwrap();
+            ..setup_sheet(length, width, &lattice)
+        }
+        .construct()
+        .unwrap();
 
-        assert_eq!(Coord::new(sheet.length, margin, sheet.width), sheet.calc_box_size());
+        assert_eq!(
+            Coord::new(sheet.length, margin, sheet.width),
+            sheet.calc_box_size()
+        );
 
         let sheet = Sheet {
             normal: Direction::Z,
-            .. setup_sheet(length, width, &lattice)
-        }.construct().unwrap();
+            ..setup_sheet(length, width, &lattice)
+        }
+        .construct()
+        .unwrap();
 
-        assert_eq!(Coord::new(sheet.length, sheet.width, 0.1), sheet.calc_box_size());
+        assert_eq!(
+            Coord::new(sheet.length, sheet.width, 0.1),
+            sheet.calc_box_size()
+        );
     }
 
     #[test]
@@ -351,8 +372,10 @@ mod tests {
 
         let sheet_x = Sheet {
             normal: Direction::X,
-            .. setup_sheet(length, length, &PoissonDisc { density })
-        }.construct().unwrap();
+            ..setup_sheet(length, length, &PoissonDisc { density })
+        }
+        .construct()
+        .unwrap();
 
         assert!(sheet_x.coords.len() > min_expected_coords);
         for coord in sheet_x.coords {
@@ -361,8 +384,10 @@ mod tests {
 
         let sheet_y = Sheet {
             normal: Direction::Y,
-            .. setup_sheet(length, length, &PoissonDisc { density })
-        }.construct().unwrap();
+            ..setup_sheet(length, length, &PoissonDisc { density })
+        }
+        .construct()
+        .unwrap();
 
         assert!(sheet_y.coords.len() > min_expected_coords);
         for coord in sheet_y.coords {
@@ -371,8 +396,10 @@ mod tests {
 
         let sheet_z = Sheet {
             normal: Direction::Z,
-            .. setup_sheet(length, length, &PoissonDisc { density })
-        }.construct().unwrap();
+            ..setup_sheet(length, length, &PoissonDisc { density })
+        }
+        .construct()
+        .unwrap();
 
         assert!(sheet_z.coords.len() > min_expected_coords);
         for coord in sheet_z.coords {

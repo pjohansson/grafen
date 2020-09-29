@@ -1,12 +1,13 @@
 //! Implement elementary coordinate operations.
 
 use mdio::RVec;
-
-use std::error::Error;
-use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::ops::{Add, AddAssign, Sub, SubAssign, Neg, Mul, MulAssign};
-use std::str::FromStr;
+use serde_derive::{Deserialize, Serialize};
+use std::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    str::FromStr,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 /// A three-dimensional carthesian coordinate.
@@ -28,7 +29,11 @@ pub struct Coord {
 
 impl Coord {
     /// A coordinate at origo.
-    pub const ORIGO: Self = Coord { x: 0.0, y: 0.0, z: 0.0 };
+    pub const ORIGO: Self = Coord {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
 
     /// Construct a new coordinate.
     ///
@@ -110,9 +115,21 @@ impl Coord {
     /// ```
     pub fn rotate(self, axis: Direction) -> Coord {
         match axis {
-            Direction::X => Coord { x: self.x, y: -self.z, z: self.y },
-            Direction::Y => Coord { x: self.z, y: self.y, z: -self.x },
-            Direction::Z => Coord { x: -self.y, y: self.x, z: self.z },
+            Direction::X => Coord {
+                x: self.x,
+                y: -self.z,
+                z: self.y,
+            },
+            Direction::Y => Coord {
+                x: self.z,
+                y: self.y,
+                z: -self.x,
+            },
+            Direction::Z => Coord {
+                x: -self.y,
+                y: self.x,
+                z: self.z,
+            },
         }
     }
 
@@ -148,13 +165,21 @@ impl Coord {
         };
 
         let (x, y, z) = self.to_tuple();
-        Coord::new(do_pbc(x, box_size.x), do_pbc(y, box_size.y), do_pbc(z, box_size.z))
+        Coord::new(
+            do_pbc(x, box_size.x),
+            do_pbc(y, box_size.y),
+            do_pbc(z, box_size.z),
+        )
     }
 }
 
 impl From<RVec> for Coord {
     fn from(rvec: RVec) -> Coord {
-        Coord { x: rvec.x, y: rvec.y, z: rvec.z }
+        Coord {
+            x: rvec.x,
+            y: rvec.y,
+            z: rvec.z,
+        }
     }
 }
 
@@ -168,7 +193,11 @@ impl Periodic for Coord {
     /// assert_eq!(Coord::new(1.0, 4.0, 9.0), coord.pbc_multiply(1, 2, 3));
     /// ```
     fn pbc_multiply(&self, nx: usize, ny: usize, nz: usize) -> Coord {
-        Coord { x: self.x * nx as f64, y: self.y * ny as f64, z: self.z * nz as f64 }
+        Coord {
+            x: self.x * nx as f64,
+            y: self.y * ny as f64,
+            z: self.z * nz as f64,
+        }
     }
 }
 
@@ -207,8 +236,12 @@ impl FromStr for Coord {
     /// ```
     fn from_str(input: &str) -> Result<Coord, Self::Err> {
         let parse_opt_value = |value: Option<&str>| {
-            value.ok_or("Not enough values to parse".to_string())
-                 .and_then(|v| v.parse::<f64>().map_err(|err| err.description().to_string()))
+            value
+                .ok_or("Not enough values to parse".to_string())
+                .and_then(|v| {
+                    v.parse::<f64>()
+                        .map_err(|err| err.description().to_string())
+                })
         };
 
         let mut split = input.split_whitespace();
@@ -216,7 +249,7 @@ impl FromStr for Coord {
         let y = parse_opt_value(split.next())?;
         let z = parse_opt_value(split.next())?;
 
-        return Ok(Coord { x, y, z})
+        return Ok(Coord { x, y, z });
     }
 }
 
@@ -226,7 +259,6 @@ impl Add for Coord {
     fn add(self, other: Coord) -> Self::Output {
         Coord::new(self.x + other.x, self.y + other.y, self.z + other.z)
     }
-
 }
 
 impl AddAssign for Coord {
@@ -245,7 +277,6 @@ impl Sub for Coord {
     fn sub(self, other: Coord) -> Self::Output {
         Coord::new(self.x - other.x, self.y - other.y, self.z - other.z)
     }
-
 }
 
 impl SubAssign for Coord {
@@ -262,7 +293,11 @@ impl Neg for Coord {
     type Output = Coord;
 
     fn neg(self) -> Self::Output {
-        Coord { x: -self.x, y: -self.y, z: -self.z }
+        Coord {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
     }
 }
 
@@ -295,7 +330,11 @@ impl PartialEq for Coord {
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 /// Component direction axis. Eg. for `Cylinder`s this is the cylinder axis.
 /// For a `Sheet` the normal.
-pub enum Direction { X, Y, Z }
+pub enum Direction {
+    X,
+    Y,
+    Z,
+}
 
 impl Display for Direction {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -309,9 +348,7 @@ impl Display for Direction {
 
 /// Rotate a set of coordinates around an axis.
 pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
-    coords.iter()
-        .map(|&coord| coord.rotate(axis))
-        .collect()
+    coords.iter().map(|&coord| coord.rotate(axis)).collect()
 }
 
 /// Rotate a set of coordinates from one alignment to another.
@@ -323,28 +360,20 @@ pub fn rotate_coords(coords: &[Coord], axis: Direction) -> Vec<Coord> {
 /// it sometime to make that a special case.
 ///
 /// This code highlights how stupid the current rotation implementation is.
-pub fn rotate_planar_coords_to_alignment(coords: &[Coord], from: Direction, to: Direction) -> Vec<Coord> {
+pub fn rotate_planar_coords_to_alignment(
+    coords: &[Coord],
+    from: Direction,
+    to: Direction,
+) -> Vec<Coord> {
     use self::Direction::*;
 
     match (from, to) {
-        (X, Y) => {
-            rotate_coords(&rotate_coords(&rotate_coords(coords, Z), Z), Z)
-        },
-        (X, Z) => {
-            rotate_coords(coords, Y)
-        },
-        (Y, X) => {
-            rotate_coords(coords, Z)
-        },
-        (Y, Z) => {
-            rotate_coords(&rotate_coords(&rotate_coords(coords, X), X), X)
-        },
-        (Z, X) => {
-            rotate_coords(&rotate_coords(&rotate_coords(coords, Y), Y), Y)
-        },
-        (Z, Y) => {
-            rotate_coords(coords, X)
-        },
+        (X, Y) => rotate_coords(&rotate_coords(&rotate_coords(coords, Z), Z), Z),
+        (X, Z) => rotate_coords(coords, Y),
+        (Y, X) => rotate_coords(coords, Z),
+        (Y, Z) => rotate_coords(&rotate_coords(&rotate_coords(coords, X), X), X),
+        (Z, X) => rotate_coords(&rotate_coords(&rotate_coords(coords, Y), Y), Y),
+        (Z, Y) => rotate_coords(coords, X),
         _ => coords.into(),
     }
 }
@@ -425,12 +454,30 @@ mod tests {
     #[test]
     fn coord_with_set_pbc() {
         let box_size = Coord::new(2.0, 4.0, 6.0);
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(3.0, 1.0, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 0.5, 1.0), Coord::new(1.0, 4.5, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(1.0, 1.0, 13.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 1.0, 1.0), Coord::new(-1.0, 1.0, 1.0).with_pbc(box_size));
-        assert_eq!(Coord::new(1.0, 3.0, 1.0), Coord::new(1.0, -1.0, 1.0).with_pbc(box_size));
+        assert_eq!(
+            Coord::new(1.0, 1.0, 1.0),
+            Coord::new(1.0, 1.0, 1.0).with_pbc(box_size)
+        );
+        assert_eq!(
+            Coord::new(1.0, 1.0, 1.0),
+            Coord::new(3.0, 1.0, 1.0).with_pbc(box_size)
+        );
+        assert_eq!(
+            Coord::new(1.0, 0.5, 1.0),
+            Coord::new(1.0, 4.5, 1.0).with_pbc(box_size)
+        );
+        assert_eq!(
+            Coord::new(1.0, 1.0, 1.0),
+            Coord::new(1.0, 1.0, 13.0).with_pbc(box_size)
+        );
+        assert_eq!(
+            Coord::new(1.0, 1.0, 1.0),
+            Coord::new(-1.0, 1.0, 1.0).with_pbc(box_size)
+        );
+        assert_eq!(
+            Coord::new(1.0, 3.0, 1.0),
+            Coord::new(1.0, -1.0, 1.0).with_pbc(box_size)
+        );
     }
 
     #[test]
@@ -448,9 +495,15 @@ mod tests {
 
     #[test]
     fn coord_parsed_from_string() {
-        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("1.0 -1.0 2.0"));
+        assert_eq!(
+            Ok(Coord::new(1.0, -1.0, 2.0)),
+            Coord::from_str("1.0 -1.0 2.0")
+        );
         assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("1 -1.0 2"));
-        assert_eq!(Ok(Coord::new(1.0, -1.0, 2.0)), Coord::from_str("\t1.0 -1.0 2.0"));
+        assert_eq!(
+            Ok(Coord::new(1.0, -1.0, 2.0)),
+            Coord::from_str("\t1.0 -1.0 2.0")
+        );
         assert!(Coord::from_str("").is_err());
         assert!(Coord::from_str("2.0 1.0").is_err());
     }
@@ -487,9 +540,18 @@ mod tests {
         let coord1 = Coord::new(0.0, 0.0, 0.0);
         let coord2 = Coord::new(1.0, 1.0, 5.0);
 
-        assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::X));
-        assert_eq!((26.0f64.sqrt(), 1.0), coord1.distance_cylindrical(coord2, Direction::Y));
-        assert_eq!((2.0f64.sqrt(), 5.0), coord1.distance_cylindrical(coord2, Direction::Z));
+        assert_eq!(
+            (26.0f64.sqrt(), 1.0),
+            coord1.distance_cylindrical(coord2, Direction::X)
+        );
+        assert_eq!(
+            (26.0f64.sqrt(), 1.0),
+            coord1.distance_cylindrical(coord2, Direction::Y)
+        );
+        assert_eq!(
+            (2.0f64.sqrt(), 5.0),
+            coord1.distance_cylindrical(coord2, Direction::Z)
+        );
     }
 
     #[test]
@@ -507,27 +569,41 @@ mod tests {
     fn rotate_a_coordinate() {
         let coord = Coord::new(1.0, 2.0, 3.0);
 
-        assert_eq!(Coord::new(1.0, -3.0, 2.0), coord.clone().rotate(Direction::X));
-        assert_eq!(Coord::new(3.0, 2.0, -1.0), coord.clone().rotate(Direction::Y));
-        assert_eq!(Coord::new(-2.0, 1.0, 3.0), coord.clone().rotate(Direction::Z));
+        assert_eq!(
+            Coord::new(1.0, -3.0, 2.0),
+            coord.clone().rotate(Direction::X)
+        );
+        assert_eq!(
+            Coord::new(3.0, 2.0, -1.0),
+            coord.clone().rotate(Direction::Y)
+        );
+        assert_eq!(
+            Coord::new(-2.0, 1.0, 3.0),
+            coord.clone().rotate(Direction::Z)
+        );
     }
 
     #[test]
     fn impl_translate_object() {
-        struct TranslateTest { origin: Coord }
+        struct TranslateTest {
+            origin: Coord,
+        }
         impl_translate![TranslateTest];
 
         let coord = Coord::new(1.0, 2.0, 3.0);
         let translated = TranslateTest {
             origin: Coord::ORIGO,
-        }.translate(coord);
+        }
+        .translate(coord);
 
         assert_eq!(translated.origin, coord);
     }
 
     #[test]
     fn impl_translate_object_in_place() {
-        struct TranslateTest { origin: Coord }
+        struct TranslateTest {
+            origin: Coord,
+        }
         impl_translate![TranslateTest];
 
         let mut object = TranslateTest {
@@ -557,7 +633,7 @@ mod tests {
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(1.0, 0.0, 0.0),
             Coord::new(0.0, 0.0, 1.0),
-            Coord::new(1.0, 0.0, 1.0)
+            Coord::new(1.0, 0.0, 1.0),
         ];
 
         assert_eq!(sheet_y, expected);
@@ -569,7 +645,7 @@ mod tests {
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(0.0, 0.0, 1.0),
             Coord::new(0.0, 1.0, 0.0),
-            Coord::new(0.0, 1.0, 1.0)
+            Coord::new(0.0, 1.0, 1.0),
         ];
 
         assert_eq!(sheet_x, expected);
@@ -581,7 +657,7 @@ mod tests {
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(0.0, 1.0, 0.0),
             Coord::new(0.0, 0.0, 1.0),
-            Coord::new(0.0, 1.0, 1.0)
+            Coord::new(0.0, 1.0, 1.0),
         ];
 
         let sheet_y = rotate_planar_coords_to_alignment(&sheet_x, X, Y);
@@ -589,7 +665,7 @@ mod tests {
             Coord::new(0.0, 0.0, 0.0),
             Coord::new(1.0, 0.0, 0.0),
             Coord::new(0.0, 0.0, 1.0),
-            Coord::new(1.0, 0.0, 1.0)
+            Coord::new(1.0, 0.0, 1.0),
         ];
 
         assert_eq!(sheet_y, expected);

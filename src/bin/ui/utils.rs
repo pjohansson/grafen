@@ -1,9 +1,11 @@
 //! Tools for the user interface.
 
-use error::{GrafenCliError, Result, UIErrorKind, UIResult};
+use crate::error::{GrafenCliError, Result, UIErrorKind, UIResult};
 
-use grafen::coord::{Coord, Direction};
-use grafen::describe::{describe_list_short, describe_list, Describe};
+use grafen::{
+    coord::{Coord, Direction},
+    describe::{describe_list, describe_list_short, Describe},
+};
 
 use dialoguer::{Input, Select};
 use std::str::FromStr;
@@ -28,8 +30,7 @@ pub fn get_value_from_user<T: FromStr>(description: &str) -> UIResult<T> {
         .map_err(|_| UIErrorKind::from("could not parse a value"))
 }
 
-pub fn get_value_or_default_from_user<T: FromStr>(description: &str, default: &str)
-        -> UIResult<T> {
+pub fn get_value_or_default_from_user<T: FromStr>(description: &str, default: &str) -> UIResult<T> {
     Input::new(description)
         .default(default)
         .show_default(true)
@@ -135,26 +136,22 @@ macro_rules! create_menu_items {
 
 /// Use a dialogue prompt to select a command from a list.
 pub fn select_command<T: Copy>(item_texts: &[&str], commands: &[T]) -> UIResult<T> {
-    let index = Select::new()
-        .default(0)
-        .items(&item_texts[..])
-        .interact()?;
+    let index = Select::new().default(0).items(&item_texts[..]).interact()?;
 
     Ok(commands[index])
 }
 
 /// Use a prompt to select a direction with optional description and default values.
-pub fn select_direction(description: Option<&str>, default: Option<Direction>)
-        -> UIResult<Direction> {
+pub fn select_direction(
+    description: Option<&str>,
+    default: Option<Direction>,
+) -> UIResult<Direction> {
     if let Some(desc) = description {
         eprint!("{}: ", desc);
     }
 
     if let Some(dir) = default {
-        let (commands, item_texts) = create_menu_items![
-            (YesOrNo::Yes, "Yes"),
-            (YesOrNo::No, "No")
-        ];
+        let (commands, item_texts) = create_menu_items![(YesOrNo::Yes, "Yes"), (YesOrNo::No, "No")];
 
         eprintln!("Use default ({})?", dir);
         if let YesOrNo::Yes = select_command(item_texts, commands)? {
@@ -229,13 +226,13 @@ pub fn remove_items<T: Describe>(item_list: &mut Vec<T>) -> Result<()> {
             Ok(index) => {
                 item_list.remove(index);
                 last_index = index;
-            },
+            }
             Err(UIErrorKind::Abort) => {
                 return Ok(());
-            },
+            }
             Err(err) => {
                 return Err(GrafenCliError::from(err));
-            },
+            }
         }
     }
 }
@@ -255,21 +252,21 @@ pub fn reorder_list<T: Describe>(item_list: &mut Vec<T>) -> Result<()> {
                     Ok(j) => {
                         item_list.swap(i, j);
                         last_index = j;
-                    },
+                    }
                     Err(UIErrorKind::Abort) => {
                         last_index = 0;
-                    },
+                    }
                     Err(err) => {
                         return Err(GrafenCliError::from(err));
-                    },
+                    }
                 }
-            },
+            }
             Err(UIErrorKind::Abort) => {
                 return Ok(());
-            },
+            }
             Err(err) => {
                 return Err(GrafenCliError::from(err));
-            },
+            }
         }
     }
 }

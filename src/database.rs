@@ -1,22 +1,26 @@
 //! Collect definitions for `Residue` and `SheetConf` objects
 //! into a `DataBase` which can be read from or saved to disk.
 
-use coord::{Coord, Translate};
-use describe::{describe_list_short, describe_list, Describe};
-use iterator::{ResidueIter, ResidueIterOut};
-use read_conf;
-use surface;
-use system::{Component, Residue};
-use volume;
+use crate::{
+    coord::{Coord, Translate},
+    describe::{describe_list, describe_list_short, Describe},
+    iterator::{ResidueIter, ResidueIterOut},
+    read_conf, surface,
+    system::{Component, Residue},
+    volume,
+};
 
+use serde_derive::{Deserialize, Serialize};
 use serde_json;
-use std::ffi::OsStr;
-use std::fmt::Write;
-use std::convert::From;
-use std::fs::File;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::result;
+use std::{
+    convert::From,
+    ffi::OsStr,
+    fmt::Write,
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+    result,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum DataBaseError {
@@ -221,6 +225,7 @@ create_entry_wrapper![
     ComponentEntry,
     (volume::Cuboid => VolumeCuboid),
     (volume::Cylinder => VolumeCylinder),
+    (volume::Spheroid => VolumeSpheroid),
     (surface::Sheet => SurfaceSheet),
     (surface::Cuboid => SurfaceCuboid),
     (surface::Cylinder => SurfaceCylinder),
@@ -257,7 +262,8 @@ impl DataBase {
     /// Get the database path enclosed in single quotes if it exists,
     /// otherwise the unenclosed string "None".
     pub fn get_path_pretty(&self) -> String {
-        self.path.as_ref()
+        self.path
+            .as_ref()
             .map(|path| format!("'{}'", path.display()))
             .unwrap_or("None".to_string())
     }
@@ -265,7 +271,9 @@ impl DataBase {
     /// Set a new path for the `DataBase`. The input path is asserted to
     /// be a file and the extension is set to 'json'.
     pub fn set_path<T>(&mut self, new_path: &T) -> Result<(), DataBaseError>
-            where T: ?Sized + AsRef<OsStr> {
+    where
+        T: ?Sized + AsRef<OsStr>,
+    {
         let mut path = PathBuf::from(new_path);
 
         if path.file_stem().is_some() {
@@ -298,8 +306,18 @@ impl Describe for DataBase {
         const ERR: &'static str = "Could not construct a string";
 
         writeln!(description, "Database path: {}\n", self.get_path_pretty()).expect(ERR);
-        writeln!(description, "{}", describe_list_short("Component definitions", &self.component_defs)).expect(ERR);
-        writeln!(description, "{}", describe_list("Residue definitions", &self.residue_defs)).expect(ERR);
+        writeln!(
+            description,
+            "{}",
+            describe_list_short("Component definitions", &self.component_defs)
+        )
+        .expect(ERR);
+        writeln!(
+            description,
+            "{}",
+            describe_list("Residue definitions", &self.residue_defs)
+        )
+        .expect(ERR);
 
         description
     }
@@ -332,26 +350,32 @@ pub fn write_database(database: &DataBase) -> Result<(), io::Error> {
 
     Err(io::Error::new(
         io::ErrorKind::Other,
-        "No path was set when trying to write the database to disk")
-    )
+        "No path was set when trying to write the database to disk",
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coord::Direction;
-    use surface::{LatticeType, Sheet};
-    use system::*;
-    use volume::Cuboid;
+    use crate::coord::Direction;
+    use crate::surface::{LatticeType, Sheet};
+    use crate::system::*;
+    use crate::volume::Cuboid;
 
     #[test]
     fn serialize_and_deserialize_residue_entry() {
         let base = Residue {
             code: "RES".to_string(),
             atoms: vec![
-                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-                Atom { code: "A2".to_string(), position: Coord::new(3.0, 4.0, 5.0) },
-            ]
+                Atom {
+                    code: "A1".to_string(),
+                    position: Coord::new(0.0, 1.0, 2.0),
+                },
+                Atom {
+                    code: "A2".to_string(),
+                    position: Coord::new(3.0, 4.0, 5.0),
+                },
+            ],
         };
 
         let serialized = serde_json::to_string(&base).unwrap();
@@ -372,9 +396,15 @@ mod tests {
         let base = Residue {
             code: "RES".to_string(),
             atoms: vec![
-                Atom { code: "A1".to_string(), position: Coord::new(0.0, 1.0, 2.0) },
-                Atom { code: "A2".to_string(), position: Coord::new(3.0, 4.0, 5.0) },
-            ]
+                Atom {
+                    code: "A1".to_string(),
+                    position: Coord::new(0.0, 1.0, 2.0),
+                },
+                Atom {
+                    code: "A2".to_string(),
+                    position: Coord::new(3.0, 4.0, 5.0),
+                },
+            ],
         };
 
         let database = DataBase {
@@ -428,7 +458,7 @@ mod tests {
                 assert_eq!(object.size, cuboid.size);
                 assert_eq!(object.origin, cuboid.origin);
                 assert_eq!(object.coords, cuboid.coords);
-            },
+            }
             _ => panic!["Incorrect object was created"],
         }
     }
@@ -448,7 +478,7 @@ mod tests {
                 Coord::new(0.5, 0.0, 0.0), // inside box
                 Coord::new(1.5, 0.0, 0.0), // inside box
                 Coord::new(2.5, 0.0, 0.0), // outside box by 0.5 along x
-                Coord::new(0.0, 1.5, 0.0) // outside box by 0.5 along y
+                Coord::new(0.0, 1.5, 0.0), // outside box by 0.5 along y
             ],
         };
 
@@ -458,7 +488,7 @@ mod tests {
             Coord::new(0.5, 0.0, 0.0), // unchanged
             Coord::new(1.5, 0.0, 0.0), // unchanged
             Coord::new(0.5, 0.0, 0.0), // moved to within box
-            Coord::new(0.0, 0.5, 0.0) // moved to within box
+            Coord::new(0.0, 0.5, 0.0), // moved to within box
         ];
         let pbc_component = component.with_pbc();
 
